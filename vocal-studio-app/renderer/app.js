@@ -17,7 +17,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
-const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false,
+const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
   ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
@@ -52,15 +52,13 @@ function updateTile(t, m) {
   const av = t.el.querySelector(".av");
   if (t.data.avatar !== m.avatar || t.data.name !== m.name) {
     av.textContent = "";
-    if (m.avatar) {
-      const img = document.createElement("img");
-      img.src = m.avatar;
-      img.alt = "";
-      img.onerror = () => { av.textContent = m.name.slice(0, 2).toUpperCase(); };
-      av.appendChild(img);
-    } else {
-      av.textContent = m.name.slice(0, 2).toUpperCase();
-    }
+    const img = document.createElement("img");
+    img.alt = "";
+    // Sans photo de profil (ou si elle ne charge pas) : logo sur la couleur du joueur
+    const fallback = () => { av.classList.add("default"); img.src = "assets/discord-logo.png"; img.onerror = null; };
+    if (m.avatar) { av.classList.remove("default"); img.src = m.avatar; img.onerror = fallback; }
+    else fallback();
+    av.appendChild(img);
     t.el.querySelector(".name span").textContent = m.name;
     t.el.title = m.name;
   }
@@ -71,10 +69,12 @@ function updateTile(t, m) {
   t.data = { ...m };
 }
 
+const PLAYER_HUES = [235, 8, 150, 45, 285, 192, 330, 100, 25, 260, 170, 350, 60, 210, 305, 125];
 let lastOrder = "";
 function syncTiles() {
   const meId = state.me && state.me.id;
-  const list = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId));
+  // Toi en premier, puis l'ordre du salon, limité au nombre de joueurs choisi
+  const list = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId)).slice(0, S.players);
   const ids = new Set(list.map((m) => m.id));
   for (const [id, t] of tiles) if (!ids.has(id)) { t.el.remove(); tiles.delete(id); }
   for (const m of list) {
@@ -84,6 +84,8 @@ function syncTiles() {
   }
   const order = list.map((m) => m.id).join(",");
   if (order !== lastOrder) { lastOrder = order; list.forEach((m) => stage.appendChild(tiles.get(m.id).el)); }
+  // Couleurs bien différentes d'un joueur à l'autre, en partant du bleu Discord pour toi
+  list.forEach((m, i) => tiles.get(m.id).el.querySelector(".av").style.setProperty("--h", PLAYER_HUES[i % PLAYER_HUES.length]));
   layout();
 }
 
@@ -263,7 +265,14 @@ window.studio.voice.onState((s) => {
   renderChrome();
 });
 
-const DEMO_NAMES = ["Nova", "Kenji", "Sasha", "Milo", "Inès", "Rayan"];
+const DEMO_NAMES = ["Nova", "Kenji", "Sasha", "Milo", "Inès", "Rayan", "Luzz", "Imo", "Sanji", "Elo", "Nura", "Maroa", "Kaze", "Yuna", "Orel"];
+// Joueurs fictifs : toi + autant d'autres que le réglage « Joueurs affichés »
+function demoMembers(keep = []) {
+  const old = new Map(keep.map((m) => [m.id, m]));
+  return [{ id: "me", name: "Toi", avatar: null, muted: false, deaf: false, speaking: false },
+    ...DEMO_NAMES.slice(0, Math.max(0, S.players - 1)).map((n, i) => ({ id: "d" + i, name: n, avatar: null, muted: i === 2, deaf: i === 5, speaking: false }))]
+    .map((m) => old.get(m.id) || m);
+}
 let demoTimer = null;
 function setDemo(on, silent) {
   S.demo = on; save();
@@ -274,8 +283,7 @@ function setDemo(on, silent) {
     state = {
       status: "demo", error: null, me: { id: "me", name: "Toi" },
       channel: { id: "demo", name: "soirée-chill", guild: "Serveur de démo" },
-      members: [{ id: "me", name: "Toi", avatar: null, muted: false, deaf: false, speaking: false },
-        ...DEMO_NAMES.map((n, i) => ({ id: "d" + i, name: n, avatar: null, muted: i === 2, deaf: i === 5, speaking: false }))],
+      members: demoMembers(),
       settings: { mute: false, deaf: false },
     };
     demoTimer = setInterval(() => {
@@ -318,22 +326,6 @@ $("#leave").onclick = () => {
   if (S.demo) return setDemo(false);
   window.studio.voice.leave();
 };
-document.querySelectorAll("[data-emo]").forEach((b) => (b.onclick = () => {
-  const mine = state.me && tiles.get(state.me.id);
-  if (mine) burst(b.dataset.emo, mine);
-}));
-function burst(emo, t) {
-  const sr = stage.getBoundingClientRect(), r = t.el.querySelector(".av-wrap").getBoundingClientRect();
-  for (let i = 0; i < 3; i++) {
-    const f = el("div", { class: "float" }, emo);
-    f.style.left = r.left - sr.left + r.width / 2 + (Math.random() * 30 - 15) + "px";
-    f.style.top = r.top - sr.top + "px";
-    f.style.setProperty("--dx", Math.random() * 80 - 40 + "px");
-    f.style.animationDelay = i * 120 + "ms";
-    stage.appendChild(f);
-    setTimeout(() => f.remove(), 2600);
-  }
-}
 
 /* ——— Fenêtre ——— */
 let pinned = false;
@@ -355,9 +347,15 @@ let focusId = null, focusAt = 0;
 function layout() {
   stage.className = "stage " + S.layout;
   const n = Math.max(1, tiles.size);
-  const narrow = stage.clientWidth < 620;
-  const size = (n <= 8 ? 150 : n <= 12 ? 120 : 96) * (narrow ? 0.72 : 1);
-  stage.style.setProperty("--tile", Math.round(size) + "px");
+  const W = stage.clientWidth, H = stage.clientHeight;
+  // Grille : on cherche le nombre de colonnes qui donne les plus grands avatars
+  let size = 0;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    size = Math.max(size, Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35));
+  }
+  if (S.layout === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
+  stage.style.setProperty("--tile", Math.round(Math.max(70, Math.min(size, 320))) + "px");
   const ring = $("#ring");
   const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || S.layout !== "orbit");
   for (const t of tiles.values()) {
@@ -368,10 +366,12 @@ function layout() {
   $("#music").style.transform = "";
   for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = "";
   if (S.layout === "cinema") {
-    const c = Math.round(Math.max(100, Math.min(stage.clientHeight * 0.45, stage.clientWidth * 0.24, 300)));
+    const c = Math.round(Math.max(100, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420)));
     stage.style.setProperty("--ctile", c + "px");
   } else if (S.layout === "strip") {
-    const c = Math.round(Math.max(80, Math.min(stage.clientHeight * 0.3, stage.clientWidth * 0.14, 260)));
+    // La carte musique prend environ 0,75 avatar de large à droite : on lui laisse sa place
+    const music = !$("#music").hidden ? 0.75 : 0;
+    const c = Math.round(Math.max(80, Math.min(H * 0.55, (W * 0.9) / (n * 1.18 + music), 400)));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -502,6 +502,13 @@ $("#presetBande").onclick = () => {
   apply();
 };
 $("#glow").oninput = (e) => { S.glow = +e.target.value; apply(); };
+$("#players").oninput = (e) => {
+  S.players = +e.target.value;
+  if (S.demo) state.members = demoMembers(state.members);
+  apply();
+  syncTiles();
+  renderChrome();
+};
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
@@ -534,6 +541,7 @@ function apply() {
   SEGS.forEach(([id, k]) =>
     $(id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === S[k])));
   $("#glow").value = S.glow; $("#glowOut").textContent = S.glow + " %";
+  $("#players").value = S.players; $("#playersOut").textContent = String(S.players);
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
   $("#accent").value = S.accent || SKINS[S.skin].a;
   SWITCHES.forEach((k) => $("#" + k).setAttribute("aria-checked", S[k]));
@@ -675,7 +683,7 @@ function strip(t) {
     // Celui qui parle grossit un peu, même caméra fixe
     const near = x.data.id === focusId ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
     x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.32 : 0.12) - (x.fs ?? 1)) * 0.12;
-    const px = d * c * 1.18 * zoom * k;
+    const px = d * c * 1.18 * zoom * k - (cam || $("#music").hidden ? 0 : c * 0.4);
     const y = 5 * Math.sin(t * 0.001 * S.speed + x.seed);
     x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
     x.el.style.filter = blur > 1.5 ? `blur(${blur.toFixed(1)}px)` : "";

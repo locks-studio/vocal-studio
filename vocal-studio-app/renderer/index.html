@@ -48,11 +48,6 @@
       <button class="btn" id="mic" aria-label="Couper le micro" title="Micro"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="slash" d="M4 4l16 16"/></svg></button>
       <button class="btn" id="deaf" aria-label="Mettre en sourdine" title="Sourdine"><svg viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/><path class="slash" d="M4 4l16 16"/></svg></button>
       <span class="sep"></span>
-      <button class="btn emo" data-emo="🔥" title="Réaction (visible seulement chez toi)">🔥</button>
-      <button class="btn emo" data-emo="😂" title="Réaction (visible seulement chez toi)">😂</button>
-      <button class="btn emo" data-emo="💜" title="Réaction (visible seulement chez toi)">💜</button>
-      <button class="btn emo" data-emo="👏" title="Réaction (visible seulement chez toi)">👏</button>
-      <span class="sep"></span>
       <button class="btn leave" id="leave" aria-label="Quitter le salon" title="Quitter le salon"><svg viewBox="0 0 24 24"><path d="M3 14c5-5 13-5 18 0l-2.5 2.5-3.5-2v-2.5a12 12 0 0 0-6 0v2.5l-3.5 2z"/></svg></button>
     </nav>
   </main>
@@ -63,6 +58,11 @@
       <button class="cta" id="presetBase">Style de base · Espace</button>
       <button class="cta" id="presetMontage">Style montage 1 · Cinéma</button>
       <button class="cta alt" id="presetBande">Style montage 2 · Bande</button>
+    </div>
+    <div class="group">
+      <div class="label"><label for="players">Joueurs affichés</label><output id="playersOut"></output></div>
+      <input type="range" id="players" min="1" max="16" step="1">
+      <p class="hint" style="margin:0">Moins il y a de joueurs, plus les avatars sont grands. En mode démo, c'est le nombre de joueurs fictifs.</p>
     </div>
     <div class="group"><div class="label">Ambiance</div><div class="skins" id="skins"></div></div>
     <div class="group"><div class="label">Disposition</div>
