@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("studio", {
   },
   music: {
     source: (src) => ipcRenderer.invoke("music:source", src),
+    control: (cmd) => ipcRenderer.invoke("music:control", cmd),
     onState: (fn) => ipcRenderer.on("music:state", (_e, s) => fn(s)),
   },
   sounds: {

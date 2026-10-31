@@ -64,6 +64,7 @@
     <!-- Carte lecteur musique : toujours en bas à droite -->
     <div class="mp" id="music" hidden>
       <canvas class="mp-mosaic" id="musicMosaic"></canvas>
+      <div class="mp-resize glass" id="musicResize" role="slider" aria-label="Taille du lecteur" title="Glisser pour agrandir ou réduire · double-clic : taille d'origine"><svg viewBox="0 0 24 24"><path d="M5 11V5h6M19 13v6h-6M5 5l14 14"/></svg></div>
       <div class="mp-brand" id="musicBrand"></div>
       <div class="mp-cover" id="musicCover"></div>
       <div class="mp-info"><div class="mp-title" id="musicTitle"></div><div class="mp-artist" id="musicArtist"></div></div>
@@ -134,6 +135,10 @@
           <div class="group">
             <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
             <div class="row"><span>Masquer les membres muets</span><button class="switch" id="hideMuted" role="switch" aria-label="Masquer les membres muets"></button></div>
+          </div>
+          <div class="group">
+            <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
+            <p class="hint">Après 3 secondes sans bouger la souris, la barre du haut, la barre d'appel et le curseur disparaissent. Ils reviennent dès que tu bouges.</p>
           </div>
         </div>
 

@@ -105,6 +105,26 @@ body.no-names .name{display:none}
 .card a{color:var(--accent)}
 .setup-box{display:flex;flex-direction:column;gap:12px}
 
+/* ——— Nom du salon modifiable ——— */
+.chan b{-webkit-app-region:no-drag;cursor:text;border-radius:6px;padding:0 4px;margin:0 -4px}
+.chan b:hover{background:rgba(255,255,255,.08)}
+.chan b[contenteditable="plaintext-only"]{outline:2px solid var(--accent);outline-offset:2px;background:rgba(0,0,0,.25)}
+
+/* ——— Poignée de taille du lecteur ——— */
+.mp-resize{left:3%;top:3%;width:7.5cqw;height:7.5cqw;min-width:22px;min-height:22px;max-width:34px;max-height:34px;border-radius:50%;
+  display:grid;place-items:center;cursor:nwse-resize;z-index:6;opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s;touch-action:none}
+.mp-resize svg{width:58%;height:58%;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.mp:hover .mp-resize,.mp.resizing .mp-resize{opacity:1;transform:none}
+.mp.resizing{transition:none;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),0 0 0 3px rgba(255,255,255,.35),0 24px 60px rgba(0,0,0,.6)}
+
+/* ——— Interface masquée quand la souris ne bouge plus ——— */
+.titlebar,.dock,.toast{transition:opacity .45s ease,transform .45s ease}
+body.hud-hidden .titlebar{opacity:0;pointer-events:none}
+body.hud-hidden .dock{opacity:0;pointer-events:none;transform:translateY(16px)}
+body.hud-hidden .toast{opacity:0}
+body.hud-hidden .mp-resize{opacity:0}
+body.hud-hidden,body.hud-hidden .main,body.hud-hidden .main.cam-move{cursor:none}
+
 /* ——— Caméra libre ——— */
 .main.cam-move{cursor:grab}
 .main.cam-move.grabbing{cursor:grabbing}

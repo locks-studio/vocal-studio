@@ -31,7 +31,18 @@ function Read-Cover($ref) {
   } catch { return $null }
 }
 
-$lastKey = $null; $lastCover = $null; $lastLine = $null
+$lastKey = $null; $lastCover = $null; $lastLine = $null; $lastApp = $null; $s = $null
+# Commandes envoyées par Hush sur l'entrée standard : toggle, next, prev (lues sans bloquer)
+$stdin = [Console]::In
+$cmdTask = $stdin.ReadLineAsync()
+function Run-Command($cmd) {
+  if (-not $script:s) { return }
+  switch ($cmd) {
+    "toggle" { $null = Await ($script:s.TryTogglePlayPauseAsync()) ([bool]) }
+    "next"   { $null = Await ($script:s.TrySkipNextAsync()) ([bool]) }
+    "prev"   { $null = Await ($script:s.TrySkipPreviousAsync()) ([bool]) }
+  }
+}
 while ($true) {
   # S'arrête tout seul si Hush a été fermé brutalement
   if ($ParentPid -and -not (Get-Process -Id $ParentPid -ErrorAction SilentlyContinue)) { exit }
@@ -41,7 +52,10 @@ while ($true) {
     $playing = $sessions | Where-Object { $_.GetPlaybackInfo().PlaybackStatus -eq "Playing" }
     $s = $playing | Where-Object { $_.SourceAppUserModelId -match $Prefer } | Select-Object -First 1
     if (-not $s) { $s = $playing | Select-Object -First 1 }
+    # Rien ne joue (par exemple après une pause) : on garde la même appli qu'avant
+    if (-not $s -and $lastApp) { $s = $sessions | Where-Object { $_.SourceAppUserModelId -eq $lastApp } | Select-Object -First 1 }
     if (-not $s) { $s = $mgr.GetCurrentSession() }
+    if ($s) { $lastApp = $s.SourceAppUserModelId }
 
     if (-not $s) { $out = @{ track = $null } }
     else {
@@ -65,5 +79,16 @@ while ($true) {
   } catch {
     [Console]::Out.WriteLine((@{ error = $_.Exception.Message } | ConvertTo-Json -Compress)); [Console]::Out.Flush()
   }
-  Start-Sleep -Milliseconds 1500
+  # Attente de 1,5 s, découpée pour réagir vite aux commandes
+  for ($i = 0; $i -lt 6; $i++) {
+    if ($cmdTask.IsCompleted) {
+      $cmd = $cmdTask.Result
+      if ($null -eq $cmd) { exit } # Hush a fermé l'entrée : on s'arrête
+      try { Run-Command $cmd.Trim() } catch {}
+      $cmdTask = $stdin.ReadLineAsync()
+      $lastLine = $null # renvoie l'état tout de suite
+      break
+    }
+    Start-Sleep -Milliseconds 250
+  }
 }

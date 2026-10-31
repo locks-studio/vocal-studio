@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, autoHide: true, musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -107,11 +107,12 @@ function renderChrome() {
   $("#status").innerHTML = `<i class="dot ${cls}"></i> `;
   $("#status").append(label);
   const ch = state.channel;
-  $("#chanName").textContent = ch ? ch.name : "Hush";
-  $("#coreName").textContent = ch ? ch.name : "Hush";
+  if (!$("#chanName").isContentEditable) $("#chanName").textContent = ch ? chanLabel(ch) : "Hush";
+  $("#chanName").title = ch ? "Clique pour renommer le salon (visible seulement dans Hush)" : "";
+  $("#coreName").textContent = ch ? chanLabel(ch) : "Hush";
   $("#guild").textContent = ch && ch.guild ? ch.guild : "";
   $("#count").textContent = ch ? `${state.members.length} dans le salon` : "";
-  document.title = ch ? `${ch.name} · Hush` : "Hush";
+  document.title = ch ? `${chanLabel(ch)} · Hush` : "Hush";
 
   const inCall = !!ch;
   ["#mic", "#deaf", "#leave"].forEach((id) => ($(id).disabled = !inCall));
@@ -131,6 +132,32 @@ function renderChrome() {
   $("#accountInfo").textContent = `${how} · ${(STATUS[state.status] || STATUS.idle)[1]}${state.me ? ` · connecté en tant que ${state.me.name}` : ""}`;
   renderScreen();
 }
+
+// Nom du salon : celui que tu as choisi dans Hush, sinon celui de Discord
+function chanLabel(ch) { return (S.chanNames || {})[ch.id] || ch.name; }
+$("#chanName").addEventListener("click", () => {
+  const ch = state.channel, el = $("#chanName");
+  if (!ch || el.isContentEditable) return;
+  el.contentEditable = "plaintext-only";
+  el.focus();
+  document.getSelection().selectAllChildren(el);
+  const done = (keep) => {
+    el.contentEditable = "false";
+    el.onkeydown = el.onblur = null;
+    if (keep) {
+      const name = el.textContent.trim().slice(0, 60);
+      S.chanNames = { ...(S.chanNames || {}) };
+      if (!name || name === ch.name) delete S.chanNames[ch.id]; else S.chanNames[ch.id] = name;
+      save();
+    }
+    renderChrome();
+  };
+  el.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true); }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+  };
+  el.onblur = () => done(true);
+});
 
 function el(tag, attrs = {}, text) {
   const e = document.createElement(tag);
@@ -464,7 +491,7 @@ function updateMusicCard() {
   cardLook(cover || null);
   const card = $("#music");
   card.classList.toggle("playing", t ? !!t.playing : S.musicSource === "manual");
-  card.classList.toggle("passive", S.musicSource !== "files");
+  card.classList.toggle("passive", S.musicSource === "manual");
   // Petite ligne d'état sous le choix de la source
   const st = $("#musicStatus");
   if (S.musicSource === "manual") st.textContent = "";
@@ -539,9 +566,72 @@ $("#musicPick").onclick = () => $("#musicFile").click();
 $("#musicFile").onchange = (e) => { const f = e.target.files[0]; if (f) readImage(f, 600, (d) => { S.musicCover = d; apply(); }); };
 $("#musicTitleIn").oninput = (e) => { S.musicTitle = e.target.value; apply(); };
 $("#musicOn").onclick = () => { S.musicOn = !S.musicOn; apply(); };
-$("#mPlay").onclick = () => togglePlay();
-$("#mPrev").onclick = () => nextSound(-1);
-$("#mNext").onclick = () => nextSound(1);
+// Mes sons : lecteur intégré. Ce PC / Spotify : on pilote l'appli qui joue (Deezer, Spotify, navigateur…)
+function musicCmd(cmd) {
+  if (S.musicSource === "files") return cmd === "toggle" ? togglePlay() : nextSound(cmd === "next" ? 1 : -1);
+  if (S.musicSource === "manual") return;
+  window.studio.music.control(cmd);
+  if (cmd === "toggle" && music.track) {
+    // On affiche le changement tout de suite, sans attendre la prochaine nouvelle de Windows/Spotify
+    const tr = music.track, pos = tr.progress + (tr.playing ? Date.now() - tr.at : 0);
+    music.track = { ...tr, playing: !tr.playing, progress: pos, at: Date.now() };
+    updateMusicCard();
+  }
+}
+$("#mPlay").onclick = () => musicCmd("toggle");
+$("#mPrev").onclick = () => musicCmd("prev");
+$("#mNext").onclick = () => musicCmd("next");
+// Espace : pause / lecture (sauf quand on écrit quelque chose)
+addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.repeat || S.panel) return;
+  if (e.target.closest && e.target.closest("input, textarea, [contenteditable='plaintext-only'], button")) return;
+  e.preventDefault();
+  musicCmd("toggle");
+});
+
+// ——— 3. Taille du lecteur : poignée en haut à gauche, à faire glisser (double-clic : taille d'origine) ———
+(() => {
+  const card = $("#music"), handle = $("#musicResize");
+  let drag = null;
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    try { handle.setPointerCapture(e.pointerId); } catch {}
+    drag = { x: e.clientX, y: e.clientY, w: card.offsetWidth };
+    card.classList.add("resizing");
+  });
+  handle.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    // Le lecteur est accroché en bas à droite : tirer vers le haut/la gauche l'agrandit
+    const grow = Math.max(drag.x - e.clientX, (drag.y - e.clientY) * 1.9);
+    const max = Math.min(680, mainEl.clientWidth * 0.7);
+    S.playerW = Math.round(Math.max(200, Math.min(max, drag.w + grow)));
+    card.style.width = S.playerW + "px";
+  });
+  const end = () => { if (!drag) return; drag = null; card.classList.remove("resizing"); save(); };
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+  handle.addEventListener("dblclick", () => { S.playerW = null; card.style.width = ""; save(); });
+})();
+
+// ——— 4. Interface masquée quand la souris ne bouge plus (désactivable) ———
+const HUD_IDLE_MS = 3000;
+let hudTimer = null;
+function wakeHud() {
+  document.body.classList.remove("hud-hidden");
+  clearTimeout(hudTimer);
+  hudTimer = setTimeout(sleepHud, HUD_IDLE_MS);
+}
+function sleepHud() {
+  // Jamais pendant qu'on règle quelque chose ou qu'un écran demande une action
+  if (!S.autoHide || S.panel || !$("#screen").hidden || document.querySelector(".dock:hover, .titlebar:hover, .mp.resizing")) {
+    hudTimer = setTimeout(sleepHud, HUD_IDLE_MS);
+    return;
+  }
+  document.body.classList.add("hud-hidden");
+}
+["pointermove", "pointerdown", "keydown", "wheel"].forEach((ev) => addEventListener(ev, wakeHud, { passive: true }));
+document.addEventListener("mouseleave", () => { clearTimeout(hudTimer); hudTimer = setTimeout(sleepHud, 800); });
+wakeHud();
 $("#musicSeek").onclick = (e) => {
   const lt = localTrack();
   if (S.musicSource !== "files" || !lt) return;
@@ -581,7 +671,7 @@ $("#players").oninput = (e) => {
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
-const SWITCHES = ["camera", "names", "pixel", "cards", "hideMuted"];
+const SWITCHES = ["camera", "names", "pixel", "cards", "hideMuted", "autoHide"];
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
 
 let colors = null;
@@ -596,6 +686,8 @@ function apply() {
   b.classList.toggle("cards", S.cards);
   b.classList.toggle("hide-muted", S.hideMuted);
   $("#settingsWrap").hidden = !S.panel;
+  $("#music").style.width = S.playerW ? S.playerW + "px" : "";
+  if (!S.autoHide) document.body.classList.remove("hud-hidden");
   document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
   document.querySelectorAll(".tab-panel").forEach((x) => (x.hidden = x.dataset.tab !== S.tab));
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";

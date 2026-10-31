@@ -6,17 +6,22 @@ Le bot **n'écoute pas et n'enregistre rien** : il reçoit seulement le signal �
 
 ## 1. Créer le bot sur Discord (une fois)
 
-Tu peux réutiliser l'application Discord que tu as déjà créée pour Hush.
+1. Va sur <https://discord.com/developers/applications>, clique sur **New Application** et nomme-la « Hush » (ou réutilise celle que tu as déjà).
+2. Double-clique sur **`Configurer le bot.bat`**. L'assistant te guide :
+   - onglet **Bot** → **Reset Token** → colle le jeton (il ne s'affiche pas à l'écran) ;
+   - onglet **OAuth2** → colle le **Client ID** et le **Client Secret**.
 
-1. Va sur <https://discord.com/developers/applications> et ouvre ton application.
-2. **Bot** : clique sur **Reset Token** et copie le jeton. Il ne doit jamais être partagé ni publié.
-3. **OAuth2** : copie le **Client ID** et le **Client Secret**. Dans **Redirects**, ajoute `http://localhost:8787/auth/callback` puis enregistre.
+   Il vérifie le jeton auprès de Discord, écrit le fichier `.env` et t'affiche les deux derniers clics à faire :
+   - **OAuth2 → Redirects** : ajouter `http://localhost:8787/auth/callback` ;
+   - le **lien d'invitation** du bot pour l'ajouter à ton serveur.
+
+Le jeton et le secret restent dans `.env`, sur ton PC (jamais dans l'historique git). Ne les partage avec personne : avec le jeton, n'importe qui peut contrôler ton bot.
 
 ## 2. Lancer le serveur sur ton PC (pour tester)
 
 Il faut [Node.js](https://nodejs.org) 20.12 ou plus.
 
-1. Copie `.env.example` en `.env` et remplis les trois valeurs.
+1. Fais d'abord l'étape 1 (le fichier `.env` doit exister).
 2. Installe et lance :
 
 ```bash

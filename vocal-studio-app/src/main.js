@@ -210,6 +210,12 @@ ipcMain.handle("voice:deaf", (_e, v) => session.setDeaf(!!v));
 ipcMain.handle("voice:leave", () => session.leave());
 
 ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
+// Commandes du lecteur : toggle (pause/lecture), next, prev
+ipcMain.handle("music:control", (_e, cmd) => {
+  if (!["toggle", "next", "prev"].includes(cmd)) return;
+  if (musicSource === "pc" && mediaProc) mediaProc.stdin.write(cmd + "\n");
+  else if (musicSource === "spotify") return spotify.control(cmd);
+});
 ipcMain.handle("sounds:list", () => sounds.list());
 ipcMain.handle("sounds:add", () => sounds.add(win));
 ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));

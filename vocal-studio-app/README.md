@@ -63,9 +63,18 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 - le fond **Vignette** (sombre teinté de rouge). Avec **Image**, tu peux mettre ta propre image de fond ;
 - le **lecteur musique** en bas à droite.
 
+## Raccourcis et petites commandes
+
+- **Nom du salon** : clique sur le nom en haut à gauche pour le renommer (Entrée pour valider, Échap pour annuler, vide pour reprendre celui de Discord). Le nouveau nom ne s'affiche que dans Hush.
+- **Espace** : pause / lecture de la musique.
+- **Interface masquée** : après 3 secondes sans bouger la souris, la barre du haut, la barre d'appel et le curseur disparaissent ; ils reviennent dès que tu bouges. Désactivable dans Paramètres › Général.
+
 ## Le lecteur musique
 
 Il est toujours en bas à droite, dans toutes les dispositions, derrière les avatars : pochette, titre, onde sonore, vinyle qui tourne, temps écoulé et restant.
+
+- **Pause, suivant, précédent** marchent pour toutes les sources : Mes sons, Ce PC (Deezer, navigateur…) et Compte Spotify (Spotify ne l'autorise qu'aux comptes Premium ; si tu avais connecté Spotify avant, reconnecte-le une fois pour donner l'autorisation).
+- **Taille** : passe la souris sur le lecteur, attrape la poignée ronde en haut à gauche et fais-la glisser pour l'agrandir ou le réduire. Double-clic sur la poignée : taille d'origine.
 
 **Couleur du lecteur** : la bordure et la mosaïque de fond prennent soit la couleur de la **pochette**, soit la **couleur d'accent** de l'ambiance.
 

@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const PORT = 43821;
 const REDIRECT = `http://127.0.0.1:${PORT}/callback`;
-const SCOPES = "user-read-currently-playing user-read-playback-state";
+const SCOPES = "user-read-currently-playing user-read-playback-state user-modify-playback-state";
 const POLL_MS = 3000;
 
 const b64url = (buf) => buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -84,6 +84,19 @@ class SpotifySession {
       });
       this.openUrl(`https://accounts.spotify.com/authorize?${q}`);
     });
+  }
+
+  // Pause / lecture / suivant / précédent depuis Hush (Spotify n'autorise ça qu'aux comptes Premium)
+  async control(cmd) {
+    const playing = this.state.track && this.state.track.playing;
+    const [method, route] = cmd === "next" ? ["POST", "next"] : cmd === "prev" ? ["POST", "previous"] : ["PUT", playing ? "pause" : "play"];
+    try {
+      const res = await fetch(`https://api.spotify.com/v1/me/player/${route}`, { method, headers: { Authorization: `Bearer ${await this.accessToken()}` } });
+      if (res.status === 403) this.set({ error: "Spotify réserve le contrôle de la lecture aux comptes Premium." });
+      else if (res.status === 401) this.set({ error: "Reconnecte Spotify pour autoriser Hush à mettre en pause." });
+      else if (res.status === 404) this.set({ error: "Aucun lecteur Spotify actif : lance une musique sur un appareil." });
+    } catch (e) { this.set({ error: e.message }); }
+    setTimeout(() => this.poll(), 400);
   }
 
   async tokenRequest(params) {
