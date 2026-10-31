@@ -7,10 +7,10 @@ const crypto = require("crypto");
 const { Readable } = require("stream");
 const mm = require("music-metadata");
 
-const AUDIO = ["mp3", "m4a", "aac", "wav", "ogg", "opus", "flac", "webm"];
+const AUDIO = ["mp3", "m4a", "aac", "wav", "ogg", "opus", "flac", "webm", "weba", "mp4", "3gp"];
 const TYPES = {
   mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg", opus: "audio/ogg",
-  flac: "audio/flac", webm: "audio/webm", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+  flac: "audio/flac", webm: "audio/webm", weba: "audio/webm", mp4: "audio/mp4", "3gp": "audio/3gpp", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
 };
 
 // À appeler avant que l'application soit prête
@@ -30,7 +30,8 @@ class SoundLibrary {
   }
 
   save() { fs.writeFileSync(this.indexFile, JSON.stringify(this.items, null, 2)); }
-  list() { return this.items.map((s) => ({ ...s, url: `vsmedia://sounds/${s.file}`, coverUrl: s.cover ? `vsmedia://sounds/${s.cover}` : null })); }
+  // ?v= change quand on remplace la pochette, pour que l'interface ne garde pas l'ancienne en cache
+  list() { return this.items.map((s) => ({ ...s, url: `vsmedia://sounds/${s.file}`, coverUrl: s.cover ? `vsmedia://sounds/${s.cover}?v=${s.coverV || 0}` : null })); }
 
   // Sert les fichiers au lecteur, avec les requêtes partielles (Range) pour pouvoir avancer dans le morceau
   serve() {
@@ -101,6 +102,43 @@ class SoundLibrary {
       this.lyricsCache.clear();
       this.save();
     }
+    return this.list();
+  }
+
+  // Pochette choisie à la main pour un son (un enregistrement n'en a pas)
+  async setCover(win, id) {
+    const item = this.items.find((s) => s.id === id);
+    if (!item) return this.list();
+    const r = await dialog.showOpenDialog(win, { title: "Pochette", properties: ["openFile"], filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp"] }] });
+    if (!r.canceled) {
+      if (item.cover) fs.rmSync(path.join(this.dir, item.cover), { force: true });
+      item.cover = `${id}-cover${path.extname(r.filePaths[0]).toLowerCase()}`;
+      fs.copyFileSync(r.filePaths[0], path.join(this.dir, item.cover));
+      item.coverV = Date.now();
+      this.save();
+    }
+    return this.list();
+  }
+
+  // Son enregistré au micro dans l'appli (WebM/Opus)
+  addRecording(data, durationMs) {
+    const id = crypto.randomBytes(6).toString("hex");
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const item = {
+      id, file: id + ".webm", title: `Enregistrement du ${pad(d.getDate())}/${pad(d.getMonth() + 1)} à ${pad(d.getHours())}h${pad(d.getMinutes())}`,
+      artist: "", duration: Math.round(durationMs || 0), cover: null, lrc: null,
+    };
+    fs.writeFileSync(path.join(this.dir, item.file), Buffer.from(data));
+    this.items.push(item);
+    this.save();
+    return this.list();
+  }
+
+  rename(id, title) {
+    const item = this.items.find((s) => s.id === id);
+    const t = String(title || "").trim().slice(0, 80);
+    if (item && t) { item.title = t; this.save(); }
     return this.list();
   }
 

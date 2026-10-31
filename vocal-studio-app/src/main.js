@@ -146,6 +146,12 @@ app.whenReady().then(() => {
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
   });
+  // Seul le micro peut être demandé (pour enregistrer un son), jamais la caméra ni l'écran
+  const { session: electronSession } = require("electron");
+  electronSession.defaultSession.setPermissionRequestHandler((_wc, permission, cb, details) => {
+    cb(permission === "media" && (details.mediaTypes || []).every((t) => t === "audio"));
+  });
+  electronSession.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === "media");
   createWindow();
 });
 app.on("window-all-closed", () => {
@@ -201,6 +207,9 @@ ipcMain.handle("sounds:list", () => sounds.list());
 ipcMain.handle("sounds:add", () => sounds.add(win));
 ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));
 ipcMain.handle("sounds:remove", (_e, id) => sounds.remove(id));
+ipcMain.handle("sounds:cover", (_e, id) => sounds.setCover(win, id));
+ipcMain.handle("sounds:record", (_e, data, duration) => sounds.addRecording(data, duration));
+ipcMain.handle("sounds:rename", (_e, id, title) => sounds.rename(id, title));
 ipcMain.handle("lyrics:get", (_e, q) => sounds.lyrics(q || {}));
 ipcMain.handle("spotify:get", () => ({ clientId: spotifyStore.getClientId(), connected: !!spotifyStore.getToken(), redirect: SPOTIFY_REDIRECT }));
 ipcMain.handle("spotify:save", (_e, clientId) => {

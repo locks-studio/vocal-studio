@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld("studio", {
     add: () => ipcRenderer.invoke("sounds:add"),
     attachLrc: (id) => ipcRenderer.invoke("sounds:lrc", id),
     remove: (id) => ipcRenderer.invoke("sounds:remove", id),
+    setCover: (id) => ipcRenderer.invoke("sounds:cover", id),
+    record: (data, duration) => ipcRenderer.invoke("sounds:record", data, duration),
+    rename: (id, title) => ipcRenderer.invoke("sounds:rename", id, title),
   },
   lyrics: {
     get: (q) => ipcRenderer.invoke("lyrics:get", q),

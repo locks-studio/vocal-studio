@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -369,9 +369,7 @@ function layout() {
     const c = Math.round(Math.max(100, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420)));
     stage.style.setProperty("--ctile", c + "px");
   } else if (S.layout === "strip") {
-    // La carte musique prend environ 0,75 avatar de large à droite : on lui laisse sa place
-    const music = !$("#music").hidden ? 0.75 : 0;
-    const c = Math.round(Math.max(80, Math.min(H * 0.55, (W * 0.9) / (n * 1.18 + music), 400)));
+    const c = Math.round(Math.max(80, Math.min(H * 0.55, (W * 0.9) / (n * 1.18), 400)));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -405,7 +403,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"]];
+const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -486,6 +484,7 @@ function readImage(file, maxSide, done) {
     URL.revokeObjectURL(url);
     done(c.toDataURL("image/jpeg", 0.85));
   };
+  img.onerror = () => URL.revokeObjectURL(url);
   img.src = url;
 }
 let bgImg = null;
@@ -518,6 +517,7 @@ const addSounds = async () => {
   renderSoundList();
 };
 $("#soundsAdd").onclick = addSounds;
+$("#recBtn").onclick = () => toggleRecording();
 $("#musicAdd").onclick = addSounds;
 $("#volume").oninput = (e) => { S.volume = +e.target.value; if (Sounds.audio) Sounds.audio.volume = S.volume; apply(); };
 $("#presetMontage").onclick = () => {
@@ -705,7 +705,7 @@ function strip(t) {
     // Celui qui parle grossit un peu, même caméra fixe
     const near = x.data.id === focusId ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
     x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.32 : 0.12) - (x.fs ?? 1)) * 0.12;
-    const px = d * c * 1.18 * zoom * k - (cam || $("#music").hidden ? 0 : c * 0.4);
+    const px = d * c * 1.18 * zoom * k;
     const y = 5 * Math.sin(t * 0.001 * S.speed + x.seed);
     x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
     x.el.style.filter = blur > 1.5 ? `blur(${blur.toFixed(1)}px)` : "";

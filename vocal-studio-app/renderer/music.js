@@ -111,8 +111,15 @@ function renderSoundList() {
     const info = document.createElement("span");
     info.className = "snd-info";
     const t = document.createElement("b"); t.textContent = s.title;
+    t.title = "Clique pour renommer";
+    t.onclick = () => renameSound(t, s);
     const ar = document.createElement("small"); ar.textContent = [s.artist, s.lrc ? "paroles .lrc" : ""].filter(Boolean).join(" · ");
     info.append(t, ar);
+    const cov = document.createElement("button");
+    cov.className = "snd-mini";
+    cov.title = "Choisir la pochette de ce son";
+    cov.textContent = "🖼";
+    cov.onclick = async () => { Sounds.list = await window.studio.sounds.setCover(s.id); renderSoundList(); updateMusicCard(); };
     const lrc = document.createElement("button");
     lrc.className = "snd-mini";
     lrc.title = "Ajouter un fichier de paroles (.lrc)";
@@ -129,22 +136,85 @@ function renderSoundList() {
       renderSoundList();
       updateMusicCard();
     };
-    li.append(play, info, lrc, del);
+    li.append(play, info, cov, lrc, del);
     ul.appendChild(li);
   });
 }
 
+// Renommer un son (pratique pour les enregistrements) : clic sur le titre, Entrée pour valider
+function renameSound(el, s) {
+  el.contentEditable = "plaintext-only";
+  el.focus();
+  document.getSelection().selectAllChildren(el);
+  const done = async (keep) => {
+    el.contentEditable = "false";
+    el.onkeydown = el.onblur = null;
+    if (keep && el.textContent.trim() && el.textContent.trim() !== s.title) {
+      Sounds.list = await window.studio.sounds.rename(s.id, el.textContent);
+      updateMusicCard();
+    }
+    renderSoundList();
+  };
+  el.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true); }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+  };
+  el.onblur = () => done(true);
+}
+
+/* ——— Enregistrer un son au micro ——— */
+const Rec = { media: null, chunks: [], start: 0, timer: null };
+async function toggleRecording() {
+  const btn = document.querySelector("#recBtn");
+  const label = btn.querySelector("span");
+  if (Rec.media) { Rec.media.stop(); return; }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  } catch {
+    label.textContent = "Micro refusé ou introuvable";
+    setTimeout(() => (label.textContent = "Enregistrer au micro"), 3000);
+    return;
+  }
+  const mr = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus", audioBitsPerSecond: 160000 });
+  Object.assign(Rec, { media: mr, chunks: [], start: Date.now() });
+  mr.ondataavailable = (e) => { if (e.data.size) Rec.chunks.push(e.data); };
+  mr.onstop = async () => {
+    clearInterval(Rec.timer);
+    stream.getTracks().forEach((tr) => tr.stop());
+    const duration = Date.now() - Rec.start;
+    const blob = new Blob(Rec.chunks, { type: "audio/webm" });
+    Rec.media = null;
+    btn.classList.remove("on");
+    label.textContent = "Enregistrer au micro";
+    if (duration < 500) return; // clic par erreur
+    Sounds.list = await window.studio.sounds.record(await blob.arrayBuffer(), duration);
+    S.musicSource = "files"; S.musicOn = true;
+    apply();
+    renderSoundList();
+  };
+  mr.start(250);
+  btn.classList.add("on");
+  const tick = () => (label.textContent = `Arrêter · ${fmtTime((Date.now() - Rec.start) / 1000)}`);
+  tick();
+  Rec.timer = setInterval(tick, 250);
+}
+
 /* ——— Carte lecteur : couleur tirée de la pochette, fond mosaïque, onde ——— */
 let cardCover = undefined, cardColor = vivid(null);
+// Couleur du lecteur : celle de la pochette, ou la couleur d'accent de l'ambiance (réglage « Couleur du lecteur »)
 function cardLook(cover) {
-  if (cover === cardCover) return;
-  cardCover = cover;
+  const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
+  const key = S.playerColor === "accent" ? "accent|" + accent : "cover|" + cover;
+  if (key === cardCover) return;
+  cardCover = key;
   const apply = (rgb) => {
     const c = vivid(rgb);
     cardColor = c;
     document.querySelector("#music").style.setProperty("--mp-c", `hsl(${c.h} ${c.s}% ${c.l}%)`);
     drawMosaic(c);
   };
+  if (S.playerColor === "accent") return apply(cssRgb(accent));
   if (!cover) return apply(null);
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -169,6 +239,13 @@ function cardLook(cover) {
   img.src = cover;
 }
 
+function cssRgb(c) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(c);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  const r = /rgba?\(([^)]+)\)/.exec(c);
+  return r ? r[1].split(",").slice(0, 3).map(Number) : null;
+}
+
 function vivid(rgb) {
   if (!rgb) return { h: 122, s: 62, l: 48 }; // vert du modèle
   const [r, g, b] = rgb.map((v) => v / 255);
@@ -176,7 +253,9 @@ function vivid(rgb) {
   let h = 0;
   if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
   h = Math.round((h * 60 + 360) % 360);
-  const s = d ? Math.max(55, Math.round((d / (1 - Math.abs(mx + mn - 1))) * 100)) : 10;
+  // Couleur presque grise (accent blanc, pochette noir et blanc) : on garde un gris argent
+  if (d < 0.08) return { h, s: 4, l: 62 };
+  const s = Math.max(55, Math.round((d / (1 - Math.abs(mx + mn - 1))) * 100));
   return { h, s: Math.min(s, 85), l: 48 };
 }
 

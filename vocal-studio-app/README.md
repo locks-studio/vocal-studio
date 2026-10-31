@@ -54,11 +54,13 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 
 ## Le lecteur musique
 
-Il est toujours en bas à droite, dans toutes les dispositions : pochette, titre, onde sonore, vinyle qui tourne, temps écoulé et restant. Sa couleur et sa mosaïque de fond suivent la couleur de la pochette.
+Il est toujours en bas à droite, dans toutes les dispositions, derrière les avatars : pochette, titre, onde sonore, vinyle qui tourne, temps écoulé et restant.
+
+**Couleur du lecteur** : la bordure et la mosaïque de fond prennent soit la couleur de la **pochette**, soit la **couleur d'accent** de l'ambiance.
 
 Dans les paramètres, **Lecteur musique** propose quatre sources :
 
-- **Mes sons** : importe tes propres fichiers (MP3, M4A, WAV, OGG, FLAC) avec **Ajouter des sons** ou le **+** du lecteur. Le titre, l'artiste et la pochette sont lus dans le fichier. Les boutons du lecteur (précédent, lecture/pause, suivant) et la barre de progression marchent. Les sons sont copiés dans l'appli : tu peux supprimer les originaux.
+- **Mes sons** : importe tes propres fichiers (MP3, M4A, WAV, OGG, FLAC, MP4, WebM) avec **Ajouter des sons** ou le **+** du lecteur, ou **enregistre un son au micro** avec **Enregistrer au micro** (clique à nouveau pour arrêter). Dans la liste : clique sur un titre pour le renommer, 🖼 pour choisir sa pochette, ♪ pour ses paroles. Le titre, l'artiste et la pochette sont lus dans le fichier. Les boutons du lecteur (précédent, lecture/pause, suivant) et la barre de progression marchent. Les sons sont copiés dans l'appli : tu peux supprimer les originaux.
 - **Ce PC** (par défaut) : lit ce que Windows sait de la musique en cours. Ça marche avec l'appli Deezer, Deezer dans le navigateur, Spotify, YouTube… Rien à connecter. Si plusieurs choses jouent, Deezer passe en premier. Si rien ne joue, la carte se cache.
 - **Compte Spotify** : lit directement ton compte, même si la musique joue sur ton téléphone. Il faut une appli Spotify (une fois) :
   1. Va sur <https://developer.spotify.com/dashboard> et crée une appli (coche **Web API**).
