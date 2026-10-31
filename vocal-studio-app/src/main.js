@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const { VoiceSession } = require("./voice");
+const { BotLink } = require("./botlink");
 const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 
 // ——— Réglages enregistrés (le secret et le jeton sont chiffrés par Windows quand c'est possible) ———
@@ -37,6 +38,13 @@ const store = {
   }),
   getToken: () => unseal(data.token),
   setToken: (t) => { data.token = seal(t); persist(); },
+};
+
+// Mode bot : adresse du serveur Vocal Studio et session de l'appli sur ce serveur
+const botStore = {
+  getServer: () => data.botServer || "",
+  getToken: () => unseal(data.botToken),
+  setToken: (t) => { if (t) data.botToken = seal(t); else delete data.botToken; persist(); },
 };
 
 const spotifyStore = {
@@ -86,7 +94,13 @@ function setMusicSource(src) {
 }
 
 // ——— Fenêtre ———
-let win, session;
+// « session » est la source active : le bot (par défaut) ou la connexion directe RPC
+let win, session, localSession, botLink;
+function useMode(mode) {
+  if (session) session.stop();
+  data.mode = mode === "local" ? "local" : "bot";
+  session = data.mode === "local" ? localSession : botLink;
+}
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
@@ -109,7 +123,7 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://discord.com/")) shell.openExternal(url);
+    if (url.startsWith("https://discord.com/") || url.startsWith("https://developer.spotify.com/")) shell.openExternal(url);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -119,14 +133,17 @@ function createWindow() {
 
 app.whenReady().then(() => {
   load();
-  session = new VoiceSession(store, (state) => send("voice:state", state));
+  localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
+  botLink = new BotLink(botStore, (url) => shell.openExternal(url), (state) => { if (session === botLink) send("voice:state", state); });
+  useMode(data.mode);
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
   });
   createWindow();
 });
 app.on("window-all-closed", () => {
-  if (session) session.stop();
+  if (localSession) localSession.stop();
+  if (botLink) botLink.stop();
   stopPcMedia();
   if (spotify) spotify.stop();
   app.quit();
@@ -135,23 +152,35 @@ app.on("window-all-closed", () => {
 // ——— Échanges avec l'interface ———
 ipcMain.handle("config:get", () => {
   const c = store.getConfig();
-  return { clientId: c.clientId, redirectUri: c.redirectUri, hasSecret: !!c.clientSecret };
+  return {
+    mode: data.mode, botServer: botStore.getServer(), botConnected: !!botStore.getToken(),
+    clientId: c.clientId, redirectUri: c.redirectUri, hasSecret: !!c.clientSecret,
+  };
 });
-ipcMain.handle("config:save", (_e, { clientId, clientSecret, redirectUri }) => {
-  if (clientId !== data.clientId) delete data.token;
-  data.clientId = String(clientId || "").trim();
-  data.redirectUri = String(redirectUri || "http://localhost").trim();
-  if (clientSecret) data.clientSecret = seal(String(clientSecret).trim());
+ipcMain.handle("config:save", (_e, { mode, botServer, clientId, clientSecret, redirectUri }) => {
+  if (mode === "local") {
+    if (clientId !== data.clientId) delete data.token;
+    data.clientId = String(clientId || "").trim();
+    data.redirectUri = String(redirectUri || "http://localhost").trim();
+    if (clientSecret) data.clientSecret = seal(String(clientSecret).trim());
+  } else {
+    const server = String(botServer || "").trim().replace(/\/$/, "");
+    if (server !== data.botServer) delete data.botToken;
+    data.botServer = server;
+  }
+  useMode(mode);
   persist();
-  session.stop();
   session.start();
 });
 ipcMain.handle("config:logout", () => {
+  if (session === botLink) return botLink.logout();
   delete data.token;
   persist();
   session.stop();
   session.start();
 });
+ipcMain.handle("bot:login", () => botLink.login());
+ipcMain.handle("voice:summon", () => session.summon && session.summon());
 
 ipcMain.handle("voice:start", () => { session.stop(); session.start(); });
 ipcMain.handle("voice:stop", () => session.stop());

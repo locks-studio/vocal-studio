@@ -104,6 +104,7 @@ body.no-names .name{display:none}
 .card input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--f-mono);font-size:13px;user-select:text}
 .card .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .card a{color:var(--accent)}
+.setup-box{display:flex;flex-direction:column;gap:12px}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .cta{border:0;background:var(--accent);color:#fff;padding:11px 18px;border-radius:12px;font-weight:600}

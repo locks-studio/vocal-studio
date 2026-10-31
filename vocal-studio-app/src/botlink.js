@@ -1,0 +1,102 @@
+// Mode « bot » : l'appli se connecte au serveur Vocal Studio (bot Discord) au lieu du RPC local.
+// Même interface que VoiceSession pour que le reste de l'appli n'y voie pas de différence.
+const crypto = require("crypto");
+const WebSocket = require("ws");
+
+const LOGIN_TIMEOUT_MS = 10 * 60_000;
+
+class BotLink {
+  // store : { getServer(), getToken(), setToken(t) } ; openUrl(url) ; onState(etat)
+  constructor(store, openUrl, onState) {
+    this.store = store;
+    this.openUrl = openUrl;
+    this.onState = onState;
+    this.ws = null;
+    this.retry = null;
+    this.loginTimer = null;
+    this.stopped = true;
+    this.state = this.blank("idle");
+  }
+
+  blank(status, error = null) {
+    return { mode: "bot", controls: false, status, error, me: null, channel: null, members: [], settings: { mute: false, deaf: false } };
+  }
+
+  set(state) { this.state = state; this.onState(state); }
+  snapshot() { return this.state; }
+  server() { return (this.store.getServer() || "").replace(/\/$/, ""); }
+
+  start() {
+    this.stop();
+    this.stopped = false;
+    if (!this.server()) return this.set(this.blank("needs-config"));
+    if (!this.store.getToken()) return this.set(this.blank("needs-login"));
+    this.set({ ...this.blank("connecting"), me: this.state.me });
+
+    const ws = new WebSocket(this.server().replace(/^http/, "ws") + "/ws");
+    this.ws = ws;
+    ws.on("open", () => ws.send(JSON.stringify({ type: "auth", token: this.store.getToken() })));
+    ws.on("message", (raw) => {
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      if (msg.type === "state") this.set({ ...msg.state, error: null });
+      else if (msg.type === "error") this.set({ ...this.state, error: msg.message });
+    });
+    ws.on("close", (code) => {
+      if (this.ws !== ws || this.stopped) return;
+      if (code === 4001) {
+        // Session inconnue du serveur : il faut se reconnecter avec Discord
+        this.store.setToken(null);
+        return this.set(this.blank("needs-login"));
+      }
+      this.set(this.blank("disconnected", "Serveur Vocal Studio injoignable. Nouvelle tentative dans 5 s."));
+      this.retry = setTimeout(() => this.start(), 5000);
+    });
+    ws.on("error", () => {}); // l'événement « close » suit et gère la suite
+  }
+
+  stop() {
+    this.stopped = true;
+    clearTimeout(this.retry);
+    if (this.ws) { const ws = this.ws; this.ws = null; ws.terminate(); }
+  }
+
+  // « Se connecter avec Discord » : ouvre le navigateur, puis attend que le serveur ait reçu la réponse
+  login() {
+    if (!this.server()) return this.set(this.blank("needs-config"));
+    clearInterval(this.loginTimer);
+    const state = crypto.randomBytes(18).toString("base64url");
+    this.openUrl(`${this.server()}/auth/login?state=${state}`);
+    this.set(this.blank("authorizing"));
+    const started = Date.now();
+    this.loginTimer = setInterval(async () => {
+      if (Date.now() - started > LOGIN_TIMEOUT_MS) {
+        clearInterval(this.loginTimer);
+        return this.set(this.blank("needs-login", "La connexion a pris trop de temps. Réessaie."));
+      }
+      try {
+        const r = await fetch(`${this.server()}/auth/poll?state=${state}`).then((x) => x.json());
+        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.start(); }
+        else if (r.error) { clearInterval(this.loginTimer); this.set(this.blank("needs-login", r.error)); }
+      } catch {} // serveur momentanément injoignable : on réessaie au prochain tour
+    }, 2000);
+  }
+
+  logout() {
+    clearInterval(this.loginTimer);
+    this.stop();
+    this.store.setToken(null);
+    this.set(this.blank("needs-login"));
+  }
+
+  send(msg) { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg)); }
+  summon() { this.send({ type: "summon" }); }
+  dismiss() { this.send({ type: "dismiss" }); }
+
+  // Le bot ne peut pas toucher à ton micro ni à ta sourdine personnels
+  setMute() { return Promise.resolve(); }
+  setDeaf() { return Promise.resolve(); }
+  leave() { this.dismiss(); return Promise.resolve(); }
+}
+
+module.exports = { BotLink };

@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld("studio", {
     save: (c) => ipcRenderer.invoke("config:save", c),
     logout: () => ipcRenderer.invoke("config:logout"),
   },
+  bot: {
+    login: () => ipcRenderer.invoke("bot:login"),
+  },
   voice: {
     start: () => ipcRenderer.invoke("voice:start"),
     stop: () => ipcRenderer.invoke("voice:stop"),
@@ -13,6 +16,7 @@ contextBridge.exposeInMainWorld("studio", {
     mute: (v) => ipcRenderer.invoke("voice:mute", v),
     deaf: (v) => ipcRenderer.invoke("voice:deaf", v),
     leave: () => ipcRenderer.invoke("voice:leave"),
+    summon: () => ipcRenderer.invoke("voice:summon"),
     onState: (fn) => ipcRenderer.on("voice:state", (_e, s) => fn(s)),
   },
   music: {

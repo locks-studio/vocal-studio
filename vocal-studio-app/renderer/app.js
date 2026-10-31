@@ -89,7 +89,7 @@ function syncTiles() {
 
 /* ——— En-tête, barre d'appel, écrans ——— */
 const STATUS = {
-  idle: ["", "Hors ligne"], "needs-config": ["warn", "À configurer"], connecting: ["warn", "Connexion…"],
+  idle: ["", "Hors ligne"], "needs-config": ["warn", "À configurer"], "needs-login": ["warn", "Connexion requise"], "bot-absent": ["warn", "Bot absent du salon"], connecting: ["warn", "Connexion…"],
   authorizing: ["warn", "Autorisation…"], ready: ["ok", "Connecté à Discord"], disconnected: ["err", "Discord fermé"],
   error: ["err", "Erreur"], demo: ["ok", "Mode démo"],
 };
@@ -106,6 +106,11 @@ function renderChrome() {
 
   const inCall = !!ch;
   ["#mic", "#deaf", "#leave"].forEach((id) => ($(id).disabled = !inCall));
+  // Mode bot : il ne peut pas toucher à ton micro ; « Quitter » fait partir le bot
+  const controls = state.controls !== false;
+  $("#mic").hidden = $("#deaf").hidden = !controls;
+  $("#leave").title = controls ? "Quitter le salon" : "Faire partir le bot du salon";
+  $("#leave").setAttribute("aria-label", $("#leave").title);
   const { mute, deaf } = state.settings;
   $("#mic").classList.toggle("off", mute || deaf);
   $("#mic").setAttribute("aria-label", mute ? "Réactiver le micro" : "Couper le micro");
@@ -137,24 +142,47 @@ async function renderScreen() {
   const screen = $("#screen"), card = $("#screenCard");
   const s = state.status;
   // Ne redessine que si l'écran change (sinon le formulaire perdrait ce qui est tapé)
-  const key = editingConfig || s === "needs-config" ? "setup" : `${s}|${!!state.channel}|${state.error}`;
+  const key = editingConfig || s === "needs-config" ? "setup" : `${s}|${!!state.channel}|${state.error}|${state.canJoin}|${state.mode}`;
   if (key === screenKey) return;
   screenKey = key;
   card.textContent = "";
   if (editingConfig || s === "needs-config") return renderSetup(card, screen);
   if (s === "demo" || (s === "ready" && state.channel)) { screen.hidden = true; return; }
   screen.hidden = false;
+  const isBot = state.mode === "bot";
   if (s === "connecting" || s === "idle") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, "Connexion à Discord…"), el("p", {}, "Garde l'application Discord ouverte sur ce PC."));
+    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Connexion au serveur Vocal Studio…" : "Connexion à Discord…"),
+      el("p", {}, isBot ? "Ça ne prend que quelques secondes." : "Garde l'application Discord ouverte sur ce PC."));
+  } else if (s === "needs-login") {
+    card.append(el("h3", {}, "Connecte-toi avec Discord"),
+      el("p", {}, "Vocal Studio a besoin de savoir qui tu es pour trouver ton salon vocal. Il ne voit ni tes messages ni tes serveurs."));
+    if (state.error) card.append(el("p", { class: "err" }, state.error));
+    card.append(actions(button("Se connecter avec Discord", "cta", () => window.studio.bot.login()),
+      button("Modifier la connexion", "ghost", () => { editingConfig = true; renderScreen(); }),
+      button("Mode démo", "ghost", () => setDemo(true))));
+  } else if (s === "bot-absent") {
+    card.append(el("h3", {}, `Vocal Studio n'est pas dans « ${state.channel.name} »`));
+    if (state.canJoin) {
+      card.append(el("p", {}, "Fais venir le bot dans ton salon pour afficher tout le monde. Tu peux aussi taper /studio dans Discord."));
+      if (state.error) card.append(el("p", { class: "err" }, state.error));
+      card.append(actions(button("Faire venir le bot", "cta", () => window.studio.voice.summon())));
+    } else {
+      card.append(el("p", {}, "Le bot n'a pas le droit de rejoindre ce salon. Demande à un admin du serveur de lui donner les permissions « Voir le salon » et « Se connecter »."));
+    }
   } else if (s === "authorizing") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, "Regarde dans Discord"),
-      el("p", {}, "Une fenêtre te demande d'autoriser Vocal Studio à voir ton salon vocal. Clique sur « Autoriser ». Il ne le demandera qu'une fois."));
+    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Termine dans ton navigateur" : "Regarde dans Discord"),
+      el("p", {}, isBot
+        ? "Une page Discord s'est ouverte : clique sur « Autoriser ». Vocal Studio continue tout seul ensuite."
+        : "Une fenêtre te demande d'autoriser Vocal Studio à voir ton salon vocal. Clique sur « Autoriser ». Il ne le demandera qu'une fois."));
+    if (isBot) card.append(actions(button("Annuler", "ghost", () => window.studio.voice.start())));
   } else if (s === "ready") {
     card.append(el("h3", {}, "Tu n'es dans aucun salon vocal"),
-      el("p", {}, "Rejoins un salon vocal ou un appel dans Discord : il s'affichera ici tout seul."));
+      el("p", {}, isBot
+        ? "Rejoins un salon vocal sur un serveur où le bot Vocal Studio est invité : il s'affichera ici tout seul."
+        : "Rejoins un salon vocal ou un appel dans Discord : il s'affichera ici tout seul."));
   } else if (s === "disconnected") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, "Discord est fermé"),
-      el("p", {}, "Ouvre Discord sur ce PC. Vocal Studio se reconnecte toutes les 5 secondes."),
+    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Serveur Vocal Studio injoignable" : "Discord est fermé"),
+      el("p", {}, isBot ? "Vérifie ta connexion internet. Vocal Studio réessaie toutes les 5 secondes." : "Ouvre Discord sur ce PC. Vocal Studio se reconnecte toutes les 5 secondes."),
       actions(button("Essayer le mode démo", "ghost", () => setDemo(true))));
   } else if (s === "error") {
     card.append(el("h3", {}, "La connexion a échoué"), el("p", { class: "err" }, state.error || "Erreur inconnue"),
@@ -170,31 +198,61 @@ async function renderSetup(card, screen) {
   card.textContent = "";
   const form = el("form");
   form.style.cssText = "display:flex;flex-direction:column;gap:14px";
-  const intro = el("p");
-  intro.append("Crée une application gratuite sur le ");
-  const link = el("a", { href: "https://discord.com/developers/applications", target: "_blank" }, "portail développeur Discord");
-  intro.append(link, ", puis colle ses identifiants ici (page OAuth2). Tout reste sur ce PC.");
   const f = (label, id, value, extra = {}) => {
     const l = el("label", { for: id }, label);
     const i = el("input", { id, value: value || "", autocomplete: "off", spellcheck: "false", ...extra });
     l.appendChild(i);
     return l;
   };
-  form.append(el("h3", {}, "Connecter Discord"), intro,
-    f("Client ID", "cfgId", cfg.clientId, { required: "", inputmode: "numeric", placeholder: "123456789012345678" }),
-    f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret ? "Déjà enregistré (laisse vide pour le garder)" : "Colle le secret ici", ...(cfg.hasSecret ? {} : { required: "" }) }),
+  let mode = cfg.mode === "local" ? "local" : "bot";
+  const seg = el("div", { class: "seg two", role: "group", "aria-label": "Mode de connexion" });
+  const segBtn = (v, label) => {
+    const b = button(label, "", () => { mode = v; show(); });
+    b.dataset.v = v;
+    seg.appendChild(b);
+  };
+  segBtn("bot", "Avec le bot");
+  segBtn("local", "Connexion directe");
+
+  // Mode bot : juste l'adresse du serveur Vocal Studio
+  const botBox = el("div", { class: "setup-box" });
+  botBox.append(el("p", {}, "Le bot Vocal Studio rejoint ton salon vocal et transmet qui parle. Ça marche pour tout le monde, il suffit que le bot soit invité sur le serveur."),
+    f("Adresse du serveur Vocal Studio", "cfgServer", cfg.botServer || "http://localhost:8787", { placeholder: "https://…" }));
+
+  // Mode direct (RPC) : réservé à toi et à tes testeurs
+  const localBox = el("div", { class: "setup-box" });
+  const intro = el("p");
+  intro.append("Réservé au propriétaire de l'appli Discord et à ses testeurs. Colle les identifiants de la page OAuth2 du ");
+  intro.append(el("a", { href: "https://discord.com/developers/applications", target: "_blank" }, "portail développeur Discord"), ".");
+  localBox.append(intro,
+    f("Client ID", "cfgId", cfg.clientId, { inputmode: "numeric", placeholder: "123456789012345678" }),
+    f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret ? "Déjà enregistré (laisse vide pour le garder)" : "Colle le secret ici" }),
     f("URL de redirection (la même que sur le portail)", "cfgRedirect", cfg.redirectUri));
+
+  function show() {
+    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === mode));
+    botBox.hidden = mode !== "bot";
+    localBox.hidden = mode !== "local";
+    $("#cfgServer").required = mode === "bot";
+    $("#cfgId").required = mode === "local";
+    $("#cfgSecret").required = mode === "local" && !cfg.hasSecret;
+  }
+
+  form.append(el("h3", {}, "Connecter Discord"), seg, botBox, localBox);
   const submit = el("button", { class: "cta", type: "submit" }, "Enregistrer et connecter");
   const row = actions(submit, button("Mode démo", "ghost", () => { editingConfig = false; setDemo(true); }));
-  if (cfg.clientId) row.appendChild(button("Annuler", "ghost", () => { editingConfig = false; renderScreen(); }));
+  if (cfg.clientId || cfg.botServer) row.appendChild(button("Annuler", "ghost", () => { editingConfig = false; screenKey = ""; renderScreen(); }));
   form.appendChild(row);
   form.onsubmit = async (e) => {
     e.preventDefault();
     editingConfig = false;
     if (S.demo) setDemo(false, true);
-    await window.studio.config.save({ clientId: $("#cfgId").value, clientSecret: $("#cfgSecret").value, redirectUri: $("#cfgRedirect").value });
+    await window.studio.config.save(mode === "bot"
+      ? { mode, botServer: $("#cfgServer").value }
+      : { mode, clientId: $("#cfgId").value, clientSecret: $("#cfgSecret").value, redirectUri: $("#cfgRedirect").value });
   };
   card.appendChild(form);
+  show();
 }
 
 /* ——— Source des données : Discord ou démo ——— */
