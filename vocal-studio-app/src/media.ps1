@@ -33,7 +33,9 @@ function Read-Cover($ref) {
 
 $lastKey = $null; $lastCover = $null; $lastLine = $null; $lastApp = $null; $s = $null
 # Commandes envoyées par Hush sur l'entrée standard : toggle, next, prev (lues sans bloquer)
-$stdin = [Console]::In
+# Attention : [Console]::In.ReadLineAsync() bloque sous Windows PowerShell 5.1. On lit donc le flux brut,
+# dont la lecture asynchrone tourne vraiment en arrière-plan.
+$stdin = New-Object System.IO.StreamReader([Console]::OpenStandardInput(), [Text.Encoding]::UTF8)
 $cmdTask = $stdin.ReadLineAsync()
 function Run-Command($cmd) {
   if (-not $script:s) { return }

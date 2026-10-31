@@ -2,7 +2,9 @@
 
 Le bot rejoint un salon vocal et transmet en direct à l'appli Hush qui est là, qui est muet et qui parle. C'est ce qui permet à tout le monde d'utiliser l'appli, sans la connexion directe (RPC) réservée aux testeurs.
 
-Le bot **n'écoute pas et n'enregistre rien** : il reçoit seulement le signal « untel commence / arrête de parler ».
+Le bot **n'enregistre rien** : pour savoir qui parle le plus fort, il mesure le volume de chaque voix (en décibels) au moment où elle arrive, puis jette le son. Seul un niveau entre 0 et 1 est gardé et envoyé à l'appli. Il transmet aussi si quelqu'un a sa caméra ou un live allumé, et l'avatar animé (GIF) quand il y en a un.
+
+Discord ne permet pas aux bots de recevoir la vidéo : les caméras et les partages d'écran ne peuvent pas s'afficher dans Hush, seulement un badge « caméra » ou « LIVE » sur l'avatar.
 
 ## 1. Créer le bot sur Discord (une fois)
 

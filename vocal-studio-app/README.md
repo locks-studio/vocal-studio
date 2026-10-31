@@ -63,6 +63,15 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 - le fond **Vignette** (sombre teinté de rouge). Avec **Image**, tu peux mettre ta propre image de fond ;
 - le **lecteur musique** en bas à droite.
 
+## Voix, caméra et anneau
+
+- **Anneau « Aura »** (par défaut, Paramètres › Style) : des halos doux et décalés qui ondulent autour de l'avatar. Plus la voix est forte, plus l'anneau est grand et visible ; une voix faible le rend petit et discret. Les anneaux « Dégradé » et « Plein » suivent aussi le volume.
+- **Volume réel** : avec le bot, Hush connaît le volume (dB) de chaque voix. Les plus fortes sont affichées en priorité et la caméra se pose sur la plus forte.
+- **Avatars GIF** : ils ne s'animent que quand la personne parle.
+- **Caméra / live** : un badge caméra ou « LIVE » apparaît sur l'avatar. Discord ne laisse pas les bots recevoir la vidéo, donc les flux eux-mêmes ne peuvent pas s'afficher.
+- **Plusieurs personnes parlent** (mode Bande) : la caméra reste posée sur le groupe de ceux qui ont parlé ces dernières secondes et dézoome pour les cadrer. Si le groupe est trop étalé, elle garde les voix les plus fortes, et les autres apparaissent en **loupes** juste au-dessus de la barre d'appel.
+- **Disposition Discord** : la grille de tuiles façon appel Discord, avec le contour vert quand on parle.
+
 ## Raccourcis et petites commandes
 
 - **Nom du salon** : clique sur le nom en haut à gauche pour le renommer (Entrée pour valider, Échap pour annuler, vide pour reprendre celui de Discord). Le nouveau nom ne s'affiche que dans Hush.

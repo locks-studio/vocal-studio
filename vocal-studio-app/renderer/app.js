@@ -15,10 +15,9 @@ const SKINS = {
 const SHAPES = {
   round: { r: "50%", c: "none" },
   squircle: { r: "30%", c: "none" },
-  hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, autoHide: true, musicTitle: "MADARA-OST", musicCover: null };
+  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -40,7 +39,7 @@ function hue(id) {
 function createTile(m) {
   const el = document.createElement("div");
   el.className = "tile";
-  el.innerHTML = `<div class="av-wrap"><div class="ring"></div><div class="av"></div><div class="mute-badge"><svg viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg></div></div>
+  el.innerHTML = `<div class="av-wrap"><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
     <div class="bars">${"<i></i>".repeat(5)}</div>
     <div class="name"><span></span><span class="chips"></span></div>`;
   const t = { el, bars: [...el.querySelectorAll(".bars i")], chips: el.querySelector(".chips"), lvl: 0, seed: Math.random() * 10, data: {} };
@@ -50,7 +49,7 @@ function createTile(m) {
 
 function updateTile(t, m) {
   const av = t.el.querySelector(".av");
-  if (t.data.avatar !== m.avatar || t.data.name !== m.name) {
+  if (t.data.avatar !== m.avatar || t.data.avatarAnim !== m.avatarAnim || t.data.name !== m.name) {
     av.textContent = "";
     const img = document.createElement("img");
     img.alt = "";
@@ -59,6 +58,14 @@ function updateTile(t, m) {
     if (m.avatar) { av.classList.remove("default"); img.src = m.avatar; img.onerror = fallback; }
     else fallback();
     av.appendChild(img);
+    // Avatar animé (GIF) : il ne bouge que quand la personne parle (image fixe le reste du temps)
+    if (m.avatarAnim) {
+      const anim = document.createElement("img");
+      anim.alt = "";
+      anim.className = "anim";
+      anim.src = m.avatarAnim;
+      av.appendChild(anim);
+    }
     t.el.querySelector(".name span").textContent = m.name;
     t.el.title = m.name;
   }
@@ -66,21 +73,27 @@ function updateTile(t, m) {
   t.el.classList.toggle("muted", m.muted || m.deaf);
   t.el.classList.toggle("deaf", m.deaf);
   t.el.classList.toggle("me", !!(state.me && m.id === state.me.id));
+  t.el.classList.toggle("video", !!m.video);
+  t.el.classList.toggle("live", !!m.stream);
   t.data = { ...m };
 }
 
 const PLAYER_HUES = [235, 8, 150, 45, 285, 192, 330, 100, 25, 260, 170, 350, 60, 210, 305, 125];
 let lastOrder = "";
 const lastSpoke = new Map();
+const peak = new Map(); // id → volume récent le plus fort (décroît doucement)
 function syncTiles() {
   const meId = state.me && state.me.id;
   // Toi en premier, puis l'ordre du salon, limité au nombre de joueurs choisi.
   // Ceux qui parlent (ou ont parlé il y a moins de 10 s) passent devant les muets pour avoir leur place.
   const now = Date.now();
   for (const m of state.members) if (m.speaking) lastSpoke.set(m.id, now);
+  for (const m of state.members) if (typeof m.level === "number") peak.set(m.id, Math.max(m.level, (peak.get(m.id) || 0) * 0.97));
   const ordered = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId));
   const recent = (m) => m.id === meId || now - (lastSpoke.get(m.id) || 0) < 10_000;
-  const keep = new Set([...ordered.filter(recent), ...ordered.filter((m) => !recent(m))].slice(0, S.players).map((m) => m.id));
+  // Les plus forts (en dB) d'abord parmi ceux qui viennent de parler, puis les autres
+  const loudFirst = ordered.filter(recent).sort((a, b) => (b.id === meId) - (a.id === meId) || (peak.get(b.id) || 0) - (peak.get(a.id) || 0));
+  const keep = new Set([...loudFirst, ...ordered.filter((m) => !recent(m))].slice(0, S.players).map((m) => m.id));
   const list = ordered.filter((m) => keep.has(m.id));
   const ids = new Set(list.map((m) => m.id));
   for (const [id, t] of tiles) if (!ids.has(id)) { t.el.remove(); tiles.delete(id); }
@@ -329,6 +342,7 @@ function setDemo(on, silent) {
         if (m.muted || m.deaf) { m.speaking = false; return; }
         if (m.speaking) { if (Math.random() < 0.22) m.speaking = false; }
         else if (talking < 2 && Math.random() < 0.1) m.speaking = true;
+        m.level = m.speaking ? Math.max(0.1, Math.min(1, (m.level || 0.5) + (Math.random() - 0.5) * 0.5)) : 0;
       });
     }, 380);
     syncTiles(); renderChrome();
@@ -372,6 +386,11 @@ $("#setPin").onclick = togglePin;
 $("#setFull").onclick = () => window.studio.win.fullscreen();
 document.querySelectorAll("#tabs [data-tab]").forEach((b) => (b.onclick = () => { S.tab = b.dataset.tab; apply(); }));
 $("#settingsClose").onclick = () => { S.panel = false; apply(); };
+// Dès qu'on touche à un réglage visuel, la fenêtre se range sur le côté pour voir le résultat en direct
+$("#panel").addEventListener("input", dockSettings);
+$("#panel").addEventListener("click", (e) => { if (e.target.closest(".tab-panel .seg button, .tab-panel .switch, .skin, #accentReset")) dockSettings(); });
+function dockSettings() { $("#settingsWrap").classList.add("docked"); }
+$("#settingsCenter").onclick = () => $("#settingsWrap").classList.remove("docked");
 // Clic à côté de la fenêtre : on la ferme
 $("#settingsWrap").addEventListener("pointerdown", (e) => { if (e.target === e.currentTarget) { S.panel = false; apply(); } });
 $("#zoomRange").oninput = (e) => setZoom(+e.target.value, true);
@@ -403,7 +422,16 @@ function layout() {
     size = Math.max(size, Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35));
   }
   if (S.layout === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
-  stage.style.setProperty("--tile", Math.round(Math.max(60, Math.min(size * S.zoom, 320 * S.zoom))) + "px");
+  stage.style.setProperty("--tile", Math.round(Math.max(36, Math.min(size * S.zoom, 320 * S.zoom))) + "px");
+  // Disposition Discord classique : tuiles 16:9, on cherche le nombre de colonnes qui les rend les plus grandes
+  if (S.layout === "discord") {
+    let dw = 0;
+    for (let cols = 1; cols <= n; cols++) {
+      const rows = Math.ceil(n / cols);
+      dw = Math.max(dw, Math.min((W - (cols - 1) * 8) / cols, ((H - (rows - 1) * 8) / rows) * 16 / 9));
+    }
+    stage.style.setProperty("--dw", Math.round(Math.max(120, dw * Math.min(1, S.zoom))) + "px");
+  }
   const ring = $("#ring");
   const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || S.layout !== "orbit");
   for (const t of tiles.values()) {
@@ -412,14 +440,14 @@ function layout() {
   }
   $("#music").hidden = !(S.musicOn && hasMusic());
   $("#lyricsScene").hidden = S.layout !== "lyrics";
-  for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = "";
+  for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
   if (S.layout === "cinema") {
-    const c = Math.round(Math.max(80, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
+    const c = Math.round(Math.max(40, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else if (S.layout === "strip") {
     // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
     const fit = S.camera ? Math.min(n, 5) : n;
-    const c = Math.round(Math.max(60, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400) * S.zoom));
+    const c = Math.round(Math.max(30, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -653,7 +681,7 @@ $("#presetMontage").onclick = () => {
   apply();
 };
 $("#presetBase").onclick = () => {
-  Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "solid", bg: "space", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
+  Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "space", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
   apply();
 };
 $("#presetBande").onclick = () => {
@@ -671,7 +699,23 @@ $("#players").oninput = (e) => {
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
-const SWITCHES = ["camera", "names", "pixel", "cards", "hideMuted", "autoHide"];
+$("#ringColor").oninput = (e) => { S.ringColor = e.target.value; apply(); };
+$("#ringColorReset").onclick = () => { S.ringColor = null; apply(); };
+const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide"];
+// Polices proposées (Google Fonts), chargées à la demande
+const FONTS = ["Syne", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
+const fontSel = $("#fontSel");
+FONTS.forEach((f) => { const o = document.createElement("option"); o.value = o.textContent = f; o.style.fontFamily = `"${f}"`; fontSel.appendChild(o); });
+fontSel.onchange = () => { S.font = fontSel.value; apply(); };
+function loadFont(f) {
+  if (!f || document.querySelector(`link[data-font="${f}"]`)) return;
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.dataset.font = f;
+  l.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;600;700;800&display=swap`;
+  document.head.appendChild(l);
+  l.onload = () => requestAnimationFrame(layout);
+}
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
 
 let colors = null;
@@ -682,10 +726,29 @@ function apply() {
   b.style.setProperty("--radius", SHAPES[S.shape].r);
   b.style.setProperty("--clip", SHAPES[S.shape].c);
   if (S.accent) b.style.setProperty("--accent", S.accent); else b.style.removeProperty("--accent");
+  // Couleur de l'anneau, indépendante du fond et de l'accent (trois nuances pour les halos de l'Aura)
+  const rc = S.ringColor;
+  const ringVars = rc ? {
+    "--ring1": rc,
+    "--ring2": `color-mix(in srgb, ${rc} 55%, white)`,
+    "--aura1": `color-mix(in srgb, ${rc} 85%, transparent)`,
+    "--aura2": `color-mix(in srgb, color-mix(in srgb, ${rc} 60%, white) 60%, transparent)`,
+    "--aura3": `color-mix(in srgb, color-mix(in srgb, ${rc} 40%, white) 40%, transparent)`,
+  } : {};
+  for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3"]) {
+    if (ringVars[k]) b.style.setProperty(k, ringVars[k]); else b.style.removeProperty(k);
+  }
+  $("#ringColor").value = rc || (S.ring === "aura" ? "#5cff6e" : S.accent || SKINS[S.skin].a);
   b.classList.toggle("no-names", !S.names);
   b.classList.toggle("cards", S.cards);
   b.classList.toggle("hide-muted", S.hideMuted);
   $("#settingsWrap").hidden = !S.panel;
+  if (!S.panel) $("#settingsWrap").classList.remove("docked");
+  if (!SHAPES[S.shape]) S.shape = "round";
+  loadFont(S.font);
+  document.body.style.setProperty("--f-user", `"${S.font}"`);
+  fontSel.value = S.font;
+  b.classList.toggle("hide-me", !S.showMe);
   $("#music").style.width = S.playerW ? S.playerW + "px" : "";
   if (!S.autoHide) document.body.classList.remove("hud-hidden");
   document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
@@ -693,6 +756,7 @@ function apply() {
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
   $("#setPin").setAttribute("aria-checked", pinned);
   b.classList.toggle("ring-solid", S.ring === "solid");
+  b.classList.toggle("ring-aura", S.ring === "aura");
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
   $("#bgPick").textContent = S.bgImage ? "Changer l'image de fond" : "Choisir une image de fond";
@@ -737,9 +801,10 @@ function drawBg(t, energy) {
     // Dégradé sans motif : clair au centre, sombre sur les bords, dans la couleur d'accent
     const c = hexHsl(colors.a);
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.55);
-    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${Math.min(62, 40 + c.l * 0.12 + energy * 4)}%)`);
-    g.addColorStop(0.55, `hsl(${c.h} ${c.s}% 26%)`);
-    g.addColorStop(1, `hsl(${c.h} ${Math.min(c.s, 80)}% 11%)`);
+    const L = (v) => Math.max(0, Math.min(100, v));
+    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${L(c.l + 8 + energy * 4)}%)`);
+    g.addColorStop(0.55, `hsl(${c.h} ${c.s}% ${L(c.l * 0.62)}%)`);
+    g.addColorStop(1, `hsl(${c.h} ${c.s}% ${L(c.l * 0.28)}%)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   } else if (["space", "stars", "topo", "grid", "auto"].includes(S.bg)) {
@@ -819,6 +884,20 @@ function cinema(t) {
     const y = 8 * Math.sin(t * 0.0009 * sp + it.seed);
     it.el.style.transform = `rotateZ(${roll}deg) rotateY(${yaw}deg) translate3d(${x}px, ${y}px, ${z}px) scale(${k})`;
   });
+  hideClipped(items.map((it) => it.tile));
+}
+
+// Aucun avatar coupé : celui qui ne tient pas ENTIÈREMENT dans l'image (avatar + pseudo) s'efface en douceur,
+// et réapparaît dès qu'il rentre en entier. S'il parle, il est montré dans une loupe à la place.
+function hideClipped(list) {
+  const sr = stage.getBoundingClientRect();
+  for (const x of list) {
+    const r = x.el.getBoundingClientRect();
+    const inside = r.left >= sr.left + 2 && r.right <= sr.right - 2 && r.top >= sr.top + 2 && r.bottom <= sr.bottom - 2;
+    x.vis = (x.vis ?? 1) + ((inside ? 1 : 0) - (x.vis ?? 1)) * (reduced ? 1 : 0.25);
+    x.el.style.opacity = x.vis > 0.98 ? "" : x.vis.toFixed(3);
+    x.el.style.visibility = x.vis < 0.02 ? "hidden" : "";
+  }
 }
 
 /* ——— Changement de plan (nouvelle personne qui parle) ——— */
@@ -836,6 +915,7 @@ function onCut() {
      même pendant les rotations.
    - Si plusieurs personnes parlent, on centre le groupe et on dézoome juste assez pour les voir en entier. */
 let stripX = null, stripV = 0, zoomKick = 0, zoom = 1, groupZoom = 1, flashLvl = 0;
+const MIN_GROUP_ZOOM = 0.45; // en dessous, les avatars deviennent trop petits : on passe aux loupes
 const frameFix = { x: 0, y: 0 };
 const shot = { yaw: 0, pitch: 12, curYaw: 0, curPitch: 12 };
 function newShot() { shot.pitch = 9 + Math.random() * 7; }
@@ -846,21 +926,35 @@ function strip(t) {
   if (!list.length) return;
   const cam = S.camera && !reduced;
   const gap = c * 1.4;
-  const live = new Map(state.members.map((m) => [m.id, m]));
-  const talking = list.map((x, i) => ((live.get(x.data.id) || {}).speaking ? i : -1)).filter((i) => i >= 0);
+  // Ceux qui ont parlé dans les 3,5 dernières secondes : le groupe ne change pas à chaque respiration,
+  // donc la caméra reste posée et dézoome au lieu de sauter d'une personne à l'autre
+  const nowMs = Date.now();
+  const talking = list.map((x, i) => (nowMs - (lastSpoke.get(x.data.id) || 0) < 3500 ? i : -1)).filter((i) => i >= 0);
   const fi = Math.max(0, list.findIndex((x) => x.data.id === focusId));
 
   // Cible : verrou (Ctrl+clic) > groupe qui parle > celui qui parle ; caméra coupée : tout le salon
   const lockI = list.findIndex((x) => x.data.id === view.lock);
-  const group = lockI < 0 && talking.length >= 2 ? talking : null;
-  const aim = lockI >= 0 ? lockI : !cam ? (list.length - 1) / 2 : group ? (Math.min(...group) + Math.max(...group)) / 2 : fi;
+  // Groupe trop étalé pour tenir à l'écran même dézoomé : on garde les deux plus forts, les autres passent en loupe
+  // On garde, du plus fort au moins fort, ceux qui tiennent ensemble à l'écran sans descendre sous 45 % de zoom
+  let group = null;
+  if (lockI < 0 && talking.length >= 2) {
+    const maxSpan = ((stage.clientWidth * 0.75) / MIN_GROUP_ZOOM - c * 1.5) / gap;
+    const kept = [];
+    for (const i of [...talking].sort((a, b) => list[b].lvl - list[a].lvl)) {
+      const span = Math.max(i, ...kept) - Math.min(i, ...kept);
+      if (!kept.length || span <= maxSpan) kept.push(i);
+    }
+    group = kept.length >= 2 ? kept.sort((a, b) => a - b) : null;
+  }
+  const loudest = talking.length ? [...talking].sort((a, b) => list[b].lvl - list[a].lvl)[0] : fi;
+  const aim = lockI >= 0 ? lockI : !cam ? (list.length - 1) / 2 : group ? (Math.min(...group) + Math.max(...group)) / 2 : talking.length ? loudest : fi;
   const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.26));
 
   if (stripX === null) { stripX = aim; stripV = 0; }
   if (viewFree() && view.x !== null) { stripX = view.x; stripV = 0; }
   else {
     // Ressort amorti : rapide au départ, arrive en douceur, sans dépasser la cible
-    const spring = 0.012 * S.speed;
+    const spring = (group ? 0.006 : 0.012) * S.speed;
     stripV += (aim - stripX) * spring;
     stripV *= 1 - 2 * Math.sqrt(spring);
     stripX += stripV;
@@ -897,14 +991,14 @@ function strip(t) {
       const px = (i - stripX) * c * 1.26 * k;
       x.el.style.transform = `translate(${px}px, ${y}px) scale(${x.fs * k})`;
     }
-    x.el.style.opacity = "";
     x.el.style.filter = blur > 1.2 ? `blur(${blur.toFixed(1)}px)` : "";
     x.el.style.zIndex = String(100 - Math.round(Math.abs(i - stripX) * 2));
   });
 
+  hideClipped(list);
   // Mesure : où sont vraiment affichés ceux qu'on veut voir ? On recentre et on ajuste le dézoom.
   if (!cam) { frameFix.x = frameFix.y = 0; return; }
-  const targets = (lockI >= 0 ? [lockI] : group || [fi]).map((i) => list[i].el.querySelector(".av-wrap").getBoundingClientRect());
+  const targets = (lockI >= 0 ? [lockI] : group || [talking.length ? loudest : fi]).map((i) => list[i].el.querySelector(".av-wrap").getBoundingClientRect());
   const sr = stage.getBoundingClientRect();
   const box = {
     l: Math.min(...targets.map((r) => r.left)), r: Math.max(...targets.map((r) => r.right)),
@@ -917,8 +1011,55 @@ function strip(t) {
   if (group) {
     // Le groupe doit tenir dans 75 % de la largeur et 70 % de la hauteur, avec une marge pour les pseudos
     const fill = Math.max((box.r - box.l) / (sr.width * 0.75), (box.b - box.t + c * 0.4) / (sr.height * 0.7));
-    groupZoom = Math.max(0.45, Math.min(1, groupZoom * (1 + (1 - fill) * 0.06)));
+    groupZoom = Math.max(MIN_GROUP_ZOOM, Math.min(1, groupZoom * (1 + (1 - fill) * 0.04)));
   }
+}
+
+/* ——— Verre liquide : le reflet suit la souris ——— */
+addEventListener("pointermove", (e) => {
+  for (const g of document.querySelectorAll(".glass")) {
+    const r = g.getBoundingClientRect();
+    if (!r.width) continue;
+    g.style.setProperty("--mx", ((e.clientX - r.left) / r.width) * 100 + "%");
+    g.style.setProperty("--my", ((e.clientY - r.top) / r.height) * 100 + "%");
+  }
+}, { passive: true });
+
+/* ——— Loupes ———
+   Ceux qui parlent mais que la caméra ne montre pas (trop loin dans la rangée, ou hors champ)
+   apparaissent dans de petites bulles en bas, avec leur anneau. */
+const loupes = new Map();
+function updateLoupes() {
+  const box = $("#loupes");
+  const now = Date.now();
+  const wanted = new Set();
+  if (camLayout() && S.camera) {
+    const sr = stage.getBoundingClientRect();
+    for (const t of tiles.values()) {
+      if (now - (lastSpoke.get(t.data.id) || 0) > 2500) continue;
+      const r = t.el.querySelector(".av-wrap").getBoundingClientRect();
+      const op = parseFloat(t.el.style.opacity || "1");
+      const out = r.right < sr.left + 4 || r.left > sr.right - 4 || r.bottom < sr.top + 4 || r.top > sr.bottom - 4 || op < 0.3;
+      if (out) wanted.add(t.data.id);
+    }
+  }
+  for (const [id, el] of loupes) if (!wanted.has(id)) { el.remove(); loupes.delete(id); }
+  for (const id of wanted) {
+    const t = tiles.get(id);
+    let el = loupes.get(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "loupe";
+      el.innerHTML = `<div class="loupe-av"><div class="aura"><i></i><i></i><i></i></div></div><span></span>`;
+      el.querySelector(".loupe-av").appendChild(t.el.querySelector(".av").cloneNode(true));
+      el.querySelector("span").textContent = t.data.name;
+      box.appendChild(el);
+      loupes.set(id, el);
+    }
+    el.style.setProperty("--lvl", t.lvl.toFixed(3));
+    el.classList.toggle("speaking", t.el.classList.contains("speaking"));
+  }
+  box.hidden = !loupes.size;
 }
 
 /* ——— Caméra libre ———
@@ -972,7 +1113,7 @@ addEventListener("pointerup", () => {
 });
 // Molette : zoom avant / arrière, gardé tel quel (et enregistré) jusqu'à ce que tu le changes. Ctrl+0 : retour à 100 %
 function setZoom(z, quiet) {
-  S.zoom = Math.round(Math.max(0.6, Math.min(1.8, z)) * 100) / 100;
+  S.zoom = Math.round(Math.max(0.3, Math.min(1.8, z)) * 100) / 100;
   save();
   layout();
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
@@ -1004,8 +1145,14 @@ function frame(t) {
   for (const tile of tiles.values()) {
     const m = live.get(tile.data.id);
     const speaking = !!(m && m.speaking);
-    const n = 0.55 + 0.45 * Math.sin(t * 0.011 * S.speed + tile.seed) * Math.sin(t * 0.0047 * S.speed + tile.seed * 2);
-    const target = speaking ? 0.35 + 0.65 * Math.abs(n) : 0;
+    if (speaking) lastSpoke.set(tile.data.id, Date.now());
+    // Volume réel (bot) si on l'a, sinon une animation qui imite une voix
+    let target;
+    if (m && typeof m.level === "number") target = speaking || m.level > 0.04 ? Math.max(speaking ? 0.12 : 0, m.level) : 0;
+    else {
+      const n = 0.55 + 0.45 * Math.sin(t * 0.011 * S.speed + tile.seed) * Math.sin(t * 0.0047 * S.speed + tile.seed * 2);
+      target = speaking ? 0.35 + 0.65 * Math.abs(n) : 0;
+    }
     tile.lvl += (target - tile.lvl) * (reduced ? 1 : 0.2);
     tile.el.style.setProperty("--lvl", tile.lvl.toFixed(3));
     tile.el.classList.toggle("speaking", speaking);
@@ -1026,6 +1173,7 @@ function frame(t) {
   }
   if (S.layout === "cinema") cinema(t);
   if (S.layout === "strip") strip(t);
+  updateLoupes();
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }
   stage.style.transform = Math.abs(view.y) > 0.5 ? `translateY(${view.y.toFixed(1)}px)` : "";

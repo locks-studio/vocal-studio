@@ -208,13 +208,13 @@ function cardLook(cover) {
   const key = (S.playerColor === "accent" ? "accent|" + accent : "cover|" + cover) + "|" + S.playerBg;
   if (key === cardCover) return;
   cardCover = key;
-  const apply = (rgb) => {
-    const c = vivid(rgb);
+  const apply = (rgb, exact) => {
+    const c = vivid(rgb, exact);
     cardColor = c;
     document.querySelector("#music").style.setProperty("--mp-c", `hsl(${c.h} ${c.s}% ${c.l}%)`);
     drawMosaic(c);
   };
-  if (S.playerColor === "accent") return apply(cssRgb(accent));
+  if (S.playerColor === "accent") return apply(cssRgb(accent), true);
   if (!cover) return apply(null);
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -246,18 +246,22 @@ function cssRgb(c) {
   return r ? r[1].split(",").slice(0, 3).map(Number) : null;
 }
 
-function vivid(rgb) {
+// Couleur → teinte / saturation / luminosité.
+// exact : on garde la couleur telle quelle (choix de l'utilisateur, même très foncée ou très claire).
+// Sinon (couleur moyenne d'une pochette) : on la ravive un peu sans changer sa clarté de plus de raison.
+function vivid(rgb, exact) {
   if (!rgb) return { h: 122, s: 62, l: 48 }; // vert du modèle
   const [r, g, b] = rgb.map((v) => v / 255);
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
   let h = 0;
   if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
   h = Math.round((h * 60 + 360) % 360);
-  // Couleur presque grise (accent blanc, pochette noir et blanc) : on garde un gris argent
-  if (d < 0.08) return { h, s: 4, l: 62 };
-  const s = Math.max(55, Math.round((d / (1 - Math.abs(mx + mn - 1))) * 100));
-  return { h, s: Math.min(s, 85), l: 48 };
+  const s = d ? Math.round((d / (1 - Math.abs(2 * l - 1))) * 100) : 0;
+  if (exact) return { h, s, l: Math.round(l * 100) };
+  return { h, s: d < 0.08 ? s : Math.min(90, Math.max(s, 50)), l: Math.max(18, Math.min(78, Math.round(l * 100))) };
 }
+// Garde une valeur de luminosité dans 0–100
+const clampL = (v) => Math.max(0, Math.min(100, v));
 
 // Mosaïque façon vitrail : une grille de points décalés au hasard, chaque cellule coupée en deux triangles
 function drawMosaic(c) {
@@ -271,9 +275,9 @@ function drawMosaic(c) {
   if (S.playerBg === "gradient") {
     // Fond sans motif : dégradé radial dans la couleur du lecteur
     const g = x.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.hypot(W, H) * 0.55);
-    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${Math.min(c.l + 6, 58)}%)`);
-    g.addColorStop(0.6, `hsl(${c.h} ${c.s}% 30%)`);
-    g.addColorStop(1, `hsl(${c.h} ${c.s}% 15%)`);
+    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${clampL(c.l + 10)}%)`);
+    g.addColorStop(0.6, `hsl(${c.h} ${c.s}% ${clampL(c.l * 0.7)}%)`);
+    g.addColorStop(1, `hsl(${c.h} ${c.s}% ${clampL(c.l * 0.4)}%)`);
     x.fillStyle = g;
     x.fillRect(0, 0, W, H);
     return;
@@ -286,14 +290,14 @@ function drawMosaic(c) {
       pts[j][i] = [i * cw + (edge ? 0 : (Math.random() - 0.5) * cw * 0.7), j * ch + (edge ? 0 : (Math.random() - 0.5) * ch * 0.7)];
     }
   }
-  x.fillStyle = `hsl(${c.h} ${c.s}% 10%)`;
+  x.fillStyle = `hsl(${c.h} ${c.s}% ${clampL(c.l * 0.25)}%)`;
   x.fillRect(0, 0, W, H);
   x.lineJoin = "round";
   x.lineWidth = 3 * dpr;
-  x.strokeStyle = `hsl(${c.h} ${c.s}% 8%)`;
+  x.strokeStyle = `hsl(${c.h} ${c.s}% ${clampL(c.l * 0.2)}%)`;
   const tri = (a, b, d) => {
     x.beginPath(); x.moveTo(...a); x.lineTo(...b); x.lineTo(...d); x.closePath();
-    x.fillStyle = `hsl(${c.h + (Math.random() - 0.5) * 16} ${c.s}% ${18 + Math.random() * 38}%)`;
+    x.fillStyle = `hsl(${c.h + (Math.random() - 0.5) * 16} ${c.s}% ${clampL(c.l - 22 + Math.random() * 40)}%)`;
     x.fill(); x.stroke();
   };
   for (let j = 0; j < rows; j++) {

@@ -60,7 +60,7 @@ button{cursor:pointer}
 
 .tile{pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px 14px;border-radius:20px;position:relative;--lvl:0;animation:pop .5s both;min-width:0}
 body.cards .tile{background:var(--surface);border:1px solid var(--line);backdrop-filter:blur(8px)}
-.tile.speaking{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.tile.speaking{border-color:color-mix(in srgb,var(--ring1,var(--accent)) 55%,transparent)}
 .tile.me .name span:first-child::after{content:" (toi)";color:var(--muted);font-weight:400}
 body.hide-muted .tile.muted:not(.me){display:none}
 .stage.scene .tile{grid-row:2}
@@ -73,9 +73,9 @@ body.hide-muted .tile.muted:not(.me){display:none}
 .stage.scene .tile:not(.focus) .bars{display:none}
 @keyframes pop{from{opacity:0;transform:scale(.85)}}
 
-.av-wrap{width:calc(var(--tile) * .6);height:calc(var(--tile) * .6);position:relative;transition:width .4s,height .4s;filter:drop-shadow(0 0 calc(var(--glow) * var(--lvl) * 26px) var(--accent))}
+.av-wrap{width:calc(var(--tile) * .6);height:calc(var(--tile) * .6);position:relative;transition:width .4s,height .4s;filter:drop-shadow(0 0 calc(var(--glow) * var(--lvl) * 26px) var(--ring1,var(--accent)))}
 .ring{position:absolute;inset:-7px;border-radius:var(--radius);clip-path:var(--clip);
-  background:conic-gradient(from calc(var(--lvl) * 360deg),var(--accent),var(--accent2),var(--accent));
+  background:conic-gradient(from calc(var(--lvl) * 360deg),var(--ring1,var(--accent)),var(--ring2,var(--accent2)),var(--ring1,var(--accent)));
   opacity:calc(var(--lvl) * 1.4);transform:scale(calc(1 + var(--lvl) * .08))}
 .av{position:absolute;inset:0;border-radius:var(--radius);clip-path:var(--clip);display:grid;place-items:center;overflow:hidden;
   font-family:var(--f-display);font-weight:700;font-size:calc(var(--tile) * .2);color:#fff;
@@ -183,10 +183,10 @@ input[type=color]{width:44px;height:30px;border:1px solid var(--line);border-rad
 .presets .cta{width:100%}
 
 /* ——— Anneau plein (comme l'indicateur de Discord, mais en plus lumineux) ——— */
-body.ring-solid .ring{background:var(--accent);inset:calc(var(--ctile, var(--tile)) * -.045);opacity:0;transform:none;transition:opacity .18s}
+body.ring-solid .ring{background:var(--ring1,var(--accent));inset:calc(var(--ctile, var(--tile)) * -.045);opacity:0;transform:none;transition:opacity .18s}
 body.ring-solid .tile.speaking .ring{opacity:1}
 body.ring-solid .av-wrap{filter:none}
-body.ring-solid .tile.speaking .av-wrap{filter:drop-shadow(0 0 calc(var(--glow) * (8px + var(--lvl) * 22px)) var(--accent)) drop-shadow(0 0 calc(var(--glow) * 4px) var(--accent))}
+body.ring-solid .tile.speaking .av-wrap{filter:drop-shadow(0 0 calc(var(--glow) * (8px + var(--lvl) * 22px)) var(--ring1,var(--accent))) drop-shadow(0 0 calc(var(--glow) * 4px) var(--ring1,var(--accent)))}
 
 /* ——— Cinéma 3D : avatars dans l'espace, caméra qui flotte et suit celui qui parle ——— */
 .stage.cinema{display:block;perspective:1000px;perspective-origin:50% 45%;overflow:hidden;transform-style:preserve-3d}
@@ -319,22 +319,36 @@ body.pixel .name{font-family:"Silkscreen",var(--f-mono);font-weight:700;letter-s
 }
 
 /* ——— Verre liquide ———
-   Fond translucide très flouté et saturé, reflet clair en haut, bord lumineux en dégradé et ombre douce :
-   utilisé pour tout ce qui flotte au-dessus de la scène (barre d'appel, paramètres, messages, écrans). */
-.glass{isolation:isolate;
-  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05) 45%,rgba(255,255,255,.08));
-  -webkit-backdrop-filter:blur(26px) saturate(1.8);backdrop-filter:blur(26px) saturate(1.8);
-  border:1px solid rgba(255,255,255,.18);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(255,255,255,.06),0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.2)}
+   Comme une lentille de verre : le fond reste net et coloré mais se DÉFORME légèrement à travers (réfraction,
+   filtre SVG #liquid), très peu de flou, couleurs ravivées. Bords fins et lumineux (plus clairs en haut à gauche),
+   reflet qui suit la souris (--mx/--my), légère ombre portée. Utilisé pour tout ce qui flotte au-dessus de la scène. */
+.glass{isolation:isolate;--mx:30%;--my:0%;
+  background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 40%,rgba(255,255,255,.05));
+  -webkit-backdrop-filter:url(#liquid) blur(3px) saturate(1.9) brightness(1.06);backdrop-filter:url(#liquid) blur(3px) saturate(1.9) brightness(1.06);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:
+    inset 1.5px 1.5px 0 rgba(255,255,255,.55),
+    inset -1px -1px 0 rgba(255,255,255,.12),
+    inset 0 0 18px rgba(255,255,255,.08),
+    0 10px 30px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.2)}
+/* Reflet : une tache de lumière qui suit la souris + un éclat le long du bord du haut */
 .glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
-  background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.22),transparent 55%),radial-gradient(80% 50% at 90% 100%,rgba(255,255,255,.08),transparent 60%)}
-body[data-skin="papier"] .glass{background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.45));border-color:rgba(255,255,255,.8)}
+  background:
+    radial-gradient(260px circle at var(--mx) var(--my),rgba(255,255,255,.16),transparent 60%),
+    linear-gradient(180deg,rgba(255,255,255,.18),transparent 22%);
+  mix-blend-mode:screen}
+/* Bord liquide : un fin dégradé lumineux qui fait le tour (plus fort en haut à gauche et en bas à droite) */
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;padding:1px;
+  background:linear-gradient(135deg,rgba(255,255,255,.75),rgba(255,255,255,.08) 35%,rgba(255,255,255,0) 60%,rgba(255,255,255,.35));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+body[data-skin="papier"] .glass{background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.25));border-color:rgba(255,255,255,.7)}
 
 /* Fenêtre des paramètres, au centre */
 .settings-wrap{position:fixed;inset:0;z-index:50;transform:translateZ(0);display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.28);
   -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:fade .2s both}
 @keyframes fade{from{opacity:0}}
-.settings{position:relative;width:min(780px,100%);background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 50%,rgba(255,255,255,.08)),rgba(12,16,28,.58);height:min(640px,100%);border-radius:28px;display:flex;flex-direction:column;overflow:hidden;color:var(--fg);animation:pop .28s cubic-bezier(.2,.8,.2,1) both}
+.settings{position:relative;width:min(780px,100%);background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 45%,rgba(255,255,255,.05)),rgba(10,14,24,.42);
+  -webkit-backdrop-filter:url(#liquid) blur(14px) saturate(1.8);backdrop-filter:url(#liquid) blur(14px) saturate(1.8);height:min(640px,100%);border-radius:28px;display:flex;flex-direction:column;overflow:hidden;color:var(--fg);animation:pop .28s cubic-bezier(.2,.8,.2,1) both}
 .settings-head{display:flex;align-items:center;gap:16px;padding:18px 18px 14px 24px;border-bottom:1px solid rgba(255,255,255,.1)}
 .settings-head h2{font-family:var(--f-display);font-size:20px;font-weight:700;margin:0}
 .settings-close{margin-left:auto}
@@ -349,3 +363,72 @@ body[data-skin="papier"] .glass{background:linear-gradient(160deg,rgba(255,255,2
 .settings .seg,.settings .switch,.settings input[type=range]{accent-color:var(--accent)}
 .settings .ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16)}
 @media (max-width:640px){.settings-head{flex-wrap:wrap}.tabs{order:3;width:100%}}
+
+/* ——— Police choisie (pseudos et titres) ——— */
+.name,.chan b,.orbit-core strong{font-family:var(--f-user),var(--f-display)}
+body.pixel .name{font-family:"Silkscreen",var(--f-mono)}
+body.hide-me .tile.me .name span:first-child::after{content:none}
+
+/* ——— Avatar animé : visible seulement quand la personne parle ——— */
+.av img.anim{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .15s}
+.tile.speaking .av img.anim{opacity:1}
+
+/* ——— Badges caméra et live ——— */
+.cam-badge,.live-badge{position:absolute;z-index:3;display:none}
+.tile.video .cam-badge{display:grid}
+.tile.live .live-badge{display:block}
+.cam-badge{left:2%;bottom:2%;width:30%;height:30%;border-radius:50%;place-items:center;background:rgba(20,22,28,.85);box-shadow:0 0 0 3px rgba(0,0,0,.35)}
+.cam-badge svg{width:56%;height:56%;fill:#fff}
+.live-badge{left:50%;top:-6%;transform:translateX(-50%);font:800 clamp(8px,calc(var(--tile,120px) * .07),13px)/1 var(--f-body);letter-spacing:.06em;color:#fff;background:#ed4245;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+
+/* ——— Anneau « Aura » : halos doux et décalés qui ondulent (comme la vidéo), taille et visibilité = volume ——— */
+.aura{position:absolute;inset:0;pointer-events:none;display:none}
+body.ring-aura .aura{display:block}
+body.ring-aura .ring{display:none}
+.aura i{position:absolute;inset:calc(-3% - var(--lvl) * 9%);border-radius:50%;opacity:calc(var(--lvl) * 1.6);
+  box-shadow:inset 0 0 0 calc(1.5px + var(--lvl) * 8px) var(--ac),0 0 calc(var(--lvl) * 22px) var(--ac);filter:blur(calc(.6px + var(--lvl) * 1.2px));
+  transition:opacity .12s}
+.aura i:nth-child(1){--ac:var(--aura1,rgba(92,255,110,.85));animation:aura1 3.1s ease-in-out infinite}
+.aura i:nth-child(2){--ac:var(--aura2,rgba(120,245,215,.6));animation:aura2 4.3s ease-in-out infinite}
+.aura i:nth-child(3){--ac:var(--aura3,rgba(170,255,200,.4));animation:aura3 5.6s ease-in-out infinite}
+@keyframes aura1{0%,100%{transform:translate(1.5%,-1%) rotate(0);border-radius:48% 52% 50% 50%/50% 47% 53% 50%}50%{transform:translate(-1.5%,1.5%) rotate(160deg);border-radius:52% 48% 46% 54%/47% 53% 50% 50%}}
+@keyframes aura2{0%,100%{transform:translate(-2%,1%) rotate(40deg);border-radius:53% 47% 52% 48%}50%{transform:translate(2%,-1.5%) rotate(220deg);border-radius:47% 53% 48% 52%}}
+@keyframes aura3{0%,100%{transform:translate(0,2%) rotate(90deg) scale(1.02)}50%{transform:translate(1.5%,-2%) rotate(270deg) scale(.98)}}
+@media (prefers-reduced-motion:reduce){.aura i{animation:none}}
+/* Anneau plein : il grandit et s'allume avec le volume au lieu d'être tout ou rien */
+body.ring-solid .tile.speaking .ring{opacity:calc(.25 + var(--lvl) * .9);inset:calc(-2% - var(--lvl) * 6%)}
+
+/* ——— Loupes : ceux qui parlent hors du cadre ——— */
+.loupes{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);z-index:4;display:flex;gap:14px;pointer-events:none}
+.loupes[hidden]{display:none}
+.loupe{display:flex;flex-direction:column;align-items:center;gap:4px;animation:pop .3s both}
+.loupe-av{position:relative;width:64px;height:64px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.35),0 8px 20px rgba(0,0,0,.45)}
+.loupe-av .av{position:absolute;inset:0;border-radius:50%;overflow:hidden;font-size:20px}
+.loupe span{font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ——— Disposition Discord classique ——— */
+.stage.discord{display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:8px}
+.stage.discord .tile{width:var(--dw);height:calc(var(--dw) * 9 / 16);padding:0;justify-content:center;border-radius:10px;
+  background:#2b2d31 !important;border:0 !important;backdrop-filter:none !important;box-shadow:inset 0 0 0 0 transparent;transition:box-shadow .15s}
+.stage.discord .tile.speaking{box-shadow:inset 0 0 0 3px var(--ring1,#23a559)}
+.stage.discord .av-wrap{width:calc(var(--dw) * .2);height:calc(var(--dw) * .2);filter:none}
+.stage.discord .av{font-size:calc(var(--dw) * .06)}
+.stage.discord .ring,.stage.discord .aura,.stage.discord .bars{display:none}
+.stage.discord .name{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55);border-radius:6px;padding:3px 8px;font-size:13px;color:#fff}
+.stage.discord .mute-badge{display:grid}
+.stage.discord .tile:not(.muted) .mute-badge{display:none}
+
+/* ——— Paramètres rangés sur le côté pendant les réglages visuels ——— */
+.settings-center{display:none}
+.settings-wrap.docked{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:none;place-items:stretch end;padding:12px}
+.settings-wrap.docked .settings{pointer-events:auto;width:min(400px,100%);height:100%;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.02)),rgba(10,14,24,.62);animation:slideIn .25s cubic-bezier(.2,.8,.2,1) both}
+.settings-wrap.docked .settings-center{display:grid}
+.settings-wrap.docked .tab-panel{grid-template-columns:1fr}
+.settings-wrap.docked .settings-head{flex-wrap:wrap}
+.settings-wrap.docked .tabs{order:3;width:100%}
+@keyframes slideIn{from{opacity:.4;transform:translateX(30px)}}
+
+/* Badge : micro barré quand on est muet, casque barré quand on est en sourdine */
+.mute-badge .i-deaf{display:none}
+.tile.deaf .mute-badge .i-mic{display:none}
+.tile.deaf .mute-badge .i-deaf{display:block}

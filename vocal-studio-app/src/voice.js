@@ -12,6 +12,8 @@ function toMember(vs) {
     id: u.id,
     name: vs.nick || u.global_name || u.username || "?",
     avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=256` : null,
+    // Avatar animé : son identifiant commence par « a_ »
+    avatarAnim: u.avatar && u.avatar.startsWith("a_") ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.gif?size=256` : null,
     muted: !!(s.mute || s.self_mute || s.suppress),
     deaf: !!(s.deaf || s.self_deaf),
     speaking: false,

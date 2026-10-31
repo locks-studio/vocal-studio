@@ -1,7 +1,9 @@
 // Le bot Discord : rejoint un salon vocal à la demande et suit qui est là, qui est muet et qui parle.
-// Il n'écoute pas l'audio : il ne garde que le signal « untel commence / arrête de parler ».
+// Pour savoir qui parle le plus fort, il mesure le VOLUME de chaque voix (en décibels) au fil de l'eau.
+// Le son n'est ni enregistré, ni conservé, ni envoyé ailleurs : seul un niveau entre 0 et 1 est gardé.
 const { Client, GatewayIntentBits, Events, MessageFlags, PermissionFlagsBits } = require("discord.js");
-const { joinVoiceChannel, getVoiceConnection, VoiceConnectionStatus, entersState } = require("@discordjs/voice");
+const { joinVoiceChannel, getVoiceConnection, VoiceConnectionStatus, entersState, EndBehaviorType } = require("@discordjs/voice");
+const prism = require("prism-media");
 const { EventEmitter } = require("events");
 
 const EMPTY_LEAVE_MS = 30_000;
@@ -11,6 +13,8 @@ class StudioBot extends EventEmitter {
     super();
     this.token = token;
     this.speaking = new Map(); // guildId → Set(userId)
+    this.levels = new Map(); // userId → volume lissé, de 0 (silence) à 1 (très fort)
+    this.levelTimer = null;
     this.emptyTimers = new Map();
     this.client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
@@ -65,14 +69,22 @@ class StudioBot extends EventEmitter {
     const speaking = this.speaking.get(guild.id) || new Set();
     const members = [...channel.members.values()]
       .filter((m) => m.id !== this.client.user.id)
-      .map((m) => ({
-        id: m.id,
-        name: m.displayName,
-        avatar: m.displayAvatarURL({ size: 256, extension: "png" }),
-        muted: !!(m.voice.selfMute || m.voice.serverMute || m.voice.suppress),
-        deaf: !!(m.voice.selfDeaf || m.voice.serverDeaf),
-        speaking: speaking.has(m.id),
-      }));
+      .map((m) => {
+        // Avatar animé (GIF) : son identifiant commence par « a_ »
+        const hash = m.avatar || m.user.avatar;
+        return {
+          id: m.id,
+          name: m.displayName,
+          avatar: m.displayAvatarURL({ size: 256, extension: "png", forceStatic: true }),
+          avatarAnim: hash && hash.startsWith("a_") ? m.displayAvatarURL({ size: 256, extension: "gif" }) : null,
+          muted: !!(m.voice.selfMute || m.voice.serverMute || m.voice.suppress),
+          deaf: !!(m.voice.selfDeaf || m.voice.serverDeaf),
+          video: !!m.voice.selfVideo,
+          stream: !!m.voice.streaming,
+          speaking: speaking.has(m.id),
+          level: Math.round((this.levels.get(m.id) || 0) * 100) / 100,
+        };
+      });
     return { ...base, status: "ready", channel: info, members, settings };
   }
 
@@ -90,7 +102,31 @@ class StudioBot extends EventEmitter {
     });
     const set = new Set();
     this.speaking.set(guild.id, set);
-    conn.receiver.speaking.on("start", (id) => { set.add(id); this.emit("change"); });
+    // Mesure du volume : on décode la voix en direct, on calcule son niveau (RMS en dB), puis on jette le son
+    const listening = new Set();
+    const listen = (id) => {
+      if (listening.has(id) || id === this.client.user.id) return;
+      let stream;
+      try { stream = conn.receiver.subscribe(id, { end: { behavior: EndBehaviorType.AfterSilence, duration: 400 } }); }
+      catch { return; }
+      listening.add(id);
+      const dec = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+      stream.on("error", () => {});
+      dec.on("error", () => {});
+      stream.pipe(dec);
+      dec.on("data", (pcm) => {
+        let sum = 0;
+        for (let i = 0; i + 1 < pcm.length; i += 2) { const v = pcm.readInt16LE(i) / 32768; sum += v * v; }
+        const db = 20 * Math.log10(Math.sqrt(sum / Math.max(1, pcm.length / 2)) + 1e-9);
+        const lvl = Math.max(0, Math.min(1, (db + 55) / 45)); // -55 dB → 0, -10 dB → 1
+        this.levels.set(id, (this.levels.get(id) || 0) * 0.6 + lvl * 0.4);
+        this.levelChanged();
+      });
+      const done = () => { if (!listening.delete(id)) return; this.levels.set(id, 0); this.levelChanged(); };
+      stream.once("end", done);
+      stream.once("close", done);
+    };
+    conn.receiver.speaking.on("start", (id) => { set.add(id); listen(id); this.emit("change"); });
     conn.receiver.speaking.on("end", (id) => { set.delete(id); this.emit("change"); });
     conn.on("stateChange", (_o, n) => {
       if (n.status === VoiceConnectionStatus.Destroyed) this.speaking.delete(guild.id);
@@ -111,6 +147,12 @@ class StudioBot extends EventEmitter {
       conn.destroy();
       throw new Error("Impossible de rejoindre le salon vocal (permissions ou réseau).");
     }
+  }
+
+  // Les niveaux changent 50 fois par seconde : on prévient l'appli au plus 12 fois par seconde
+  levelChanged() {
+    if (this.levelTimer) return;
+    this.levelTimer = setTimeout(() => { this.levelTimer = null; this.emit("change"); }, 80);
   }
 
   leave(guildId) {
