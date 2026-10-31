@@ -70,6 +70,8 @@ Dans les paramètres, **Lecteur musique** propose quatre sources :
 
 Deezer ne permet plus de créer d'applications développeur, c'est pour ça qu'il passe par « Ce PC ».
 
+Quand la source ne donne pas d'image (certains navigateurs, comme Opera GX, envoient une miniature vide pour YouTube), l'appli cherche la pochette dans le catalogue public de Deezer à partir du titre et de l'artiste. Elle ne l'affiche que si l'artiste correspond, pour éviter une mauvaise pochette.
+
 Les sons de **Mes sons** sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran (ou la fenêtre Vocal Studio) avec le son dans Discord. La musique Spotify ou Deezer, elle, ne peut pas être rediffusée : pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify).
 
 ## Le mode Paroles

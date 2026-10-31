@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld("studio", {
   lyrics: {
     get: (q) => ipcRenderer.invoke("lyrics:get", q),
   },
+  cover: {
+    find: (q) => ipcRenderer.invoke("cover:find", q),
+  },
   spotify: {
     get: () => ipcRenderer.invoke("spotify:get"),
     save: (clientId) => ipcRenderer.invoke("spotify:save", clientId),

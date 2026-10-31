@@ -434,7 +434,7 @@ function updateMusicCard() {
   const t = liveTrack();
   $("#musicTitle").textContent = t ? t.title : S.musicSource === "manual" ? S.musicTitle : "";
   $("#musicArtist").textContent = t ? t.artist || "" : "";
-  const cover = t ? t.cover : S.musicSource === "manual" ? S.musicCover : null;
+  const cover = t ? t.cover || fallbackCover(t) : S.musicSource === "manual" ? S.musicCover : null;
   $("#musicCover").style.backgroundImage = cover ? `url("${cover}")` : "";
   $("#musicLabel").style.backgroundImage = cover ? `url("${cover}")` : "";
   $("#musicBrand").textContent = sourceLabel(t);
@@ -453,6 +453,21 @@ function updateMusicCard() {
   else if (t) st.textContent = `♪ ${t.title}${t.artist ? " · " + t.artist : ""}${t.playing ? "" : " (en pause)"}`;
   else st.textContent = "Rien en lecture pour l'instant.";
   $("#music").hidden = !(S.musicOn && hasMusic());
+}
+// Pochette trouvée en ligne pour un morceau qui n'en a pas (vidéo YouTube dans un navigateur…)
+const foundCovers = new Map();
+function fallbackCover(t) {
+  // Un enregistrement perso sans artiste n'a aucune chance d'être dans le catalogue
+  if (S.musicSource === "files" && !t.artist) return null;
+  const key = `${t.artist}|${t.title}`;
+  if (foundCovers.has(key)) return foundCovers.get(key);
+  foundCovers.set(key, null);
+  window.studio.cover.find({ title: t.title, artist: t.artist }).then((url) => {
+    if (!url) return foundCovers.delete(key); // réessaiera plus tard
+    foundCovers.set(key, url);
+    updateMusicCard();
+  });
+  return null;
 }
 function fmtTime(sec) { sec = Math.max(0, Math.floor(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
 window.studio.music.onState((s) => {

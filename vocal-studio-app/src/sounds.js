@@ -152,6 +152,26 @@ class SoundLibrary {
     return this.list();
   }
 
+  // Pochette de secours quand la source n'en donne pas (ex. Opera GX envoie une miniature vide) :
+  // recherche dans le catalogue public de Deezer, en n'acceptant que le bon artiste
+  async findCover({ title, artist }) {
+    const clean = (s) => String(s || "").replace(/\s*[([].*?[)\]]/g, "").replace(/\s+(feat|ft)\..*$/i, "").trim();
+    const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const text = `${clean(artist)} ${clean(title)}`.replace(/ - /g, " ").trim();
+    if (!text) return null;
+    const key = "cover|" + norm(text);
+    if (this.lyricsCache.has(key)) return this.lyricsCache.get(key);
+    let url = null;
+    try {
+      const j = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(text)}&limit=5`).then((r) => r.json());
+      const hay = norm(`${artist} ${title}`);
+      const hit = (j.data || []).find((x) => x.album && x.album.cover_xl && hay.includes(norm(x.artist && x.artist.name)));
+      url = hit ? hit.album.cover_xl : null;
+    } catch { return null; } // pas de réseau : on réessaiera au prochain morceau
+    this.lyricsCache.set(key, url);
+    return url;
+  }
+
   // Paroles : { synced: "[mm:ss.xx] ligne…" | null, plain: string | null, source, error? }
   async lyrics({ title, artist, duration, soundId }) {
     const item = soundId && this.items.find((s) => s.id === soundId);

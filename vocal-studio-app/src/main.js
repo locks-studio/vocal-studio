@@ -211,6 +211,7 @@ ipcMain.handle("sounds:cover", (_e, id) => sounds.setCover(win, id));
 ipcMain.handle("sounds:record", (_e, data, duration) => sounds.addRecording(data, duration));
 ipcMain.handle("sounds:rename", (_e, id, title) => sounds.rename(id, title));
 ipcMain.handle("lyrics:get", (_e, q) => sounds.lyrics(q || {}));
+ipcMain.handle("cover:find", (_e, q) => sounds.findCover(q || {}));
 ipcMain.handle("spotify:get", () => ({ clientId: spotifyStore.getClientId(), connected: !!spotifyStore.getToken(), redirect: SPOTIFY_REDIRECT }));
 ipcMain.handle("spotify:save", (_e, clientId) => {
   const id = String(clientId || "").trim();
