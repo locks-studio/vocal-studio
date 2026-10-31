@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://cdn.discordapp.com https://i.scdn.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+<title>Vocal Studio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="cards">
+<div class="app" id="app">
+  <canvas id="bg" aria-hidden="true"></canvas>
+
+  <header class="titlebar">
+    <div class="chan"><span>#</span> <b id="chanName">Vocal Studio</b></div>
+    <div class="meta"><span id="status"><i class="dot"></i> Hors ligne</span><span id="guild"></span><span id="count"></span></div>
+    <div class="winbtns">
+      <button class="wb" id="togglePanel" title="Paramètres" aria-label="Ouvrir ou fermer les paramètres"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="wb" id="fullscreen" title="Plein écran (F11)" aria-label="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="wb" id="pin" title="Toujours au premier plan" aria-label="Garder la fenêtre au premier plan"><svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg></button>
+      <button class="wb" id="min" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button class="wb" id="max" title="Agrandir" aria-label="Agrandir"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>
+      <button class="wb close" id="close" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="stage" class="stage grid" aria-label="Participants">
+      <div class="orbit-ring" id="ring"></div>
+      <div class="orbit-core"><strong id="coreName">Vocal Studio</strong><small id="talkers">personne ne parle</small></div>
+      <div class="flash" id="flash"></div>
+      <div class="music" id="music" hidden>
+        <div class="cover" id="musicCover"></div>
+        <div class="mtitle" id="musicTitle"></div>
+        <div class="martist" id="musicArtist"></div>
+        <div class="mbar"><i id="musicProgress"></i></div>
+        <div class="mtimes"><span id="musicNow">0:00</span><span id="musicLen">3:00</span></div>
+        <div class="mctrl"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg><svg viewBox="0 0 24 24"><path d="M18 6L9 12l9 6zM6 6v12"/></svg><b><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg></b><svg viewBox="0 0 24 24"><path d="M6 6l9 6-9 6zM18 6v12"/></svg><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></div>
+      </div>
+    </section>
+
+    <!-- Écrans d'état (connexion, configuration, salon vide) -->
+    <div class="screen" id="screen" hidden>
+      <div class="card" id="screenCard"></div>
+    </div>
+
+    <nav class="dock" id="dock" aria-label="Contrôles d'appel">
+      <button class="btn" id="mic" aria-label="Couper le micro" title="Micro"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="slash" d="M4 4l16 16"/></svg></button>
+      <button class="btn" id="deaf" aria-label="Mettre en sourdine" title="Sourdine"><svg viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/><path class="slash" d="M4 4l16 16"/></svg></button>
+      <span class="sep"></span>
+      <button class="btn emo" data-emo="🔥" title="Réaction (visible seulement chez toi)">🔥</button>
+      <button class="btn emo" data-emo="😂" title="Réaction (visible seulement chez toi)">😂</button>
+      <button class="btn emo" data-emo="💜" title="Réaction (visible seulement chez toi)">💜</button>
+      <button class="btn emo" data-emo="👏" title="Réaction (visible seulement chez toi)">👏</button>
+      <span class="sep"></span>
+      <button class="btn leave" id="leave" aria-label="Quitter le salon" title="Quitter le salon"><svg viewBox="0 0 24 24"><path d="M3 14c5-5 13-5 18 0l-2.5 2.5-3.5-2v-2.5a12 12 0 0 0-6 0v2.5l-3.5 2z"/></svg></button>
+    </nav>
+  </main>
+
+  <aside class="panel" id="panel" aria-label="Personnalisation">
+    <div><h2>Personnaliser</h2><p class="hint">Tes réglages sont enregistrés automatiquement.</p></div>
+    <div class="presets">
+      <button class="cta" id="presetBase">Style de base · Espace</button>
+      <button class="cta" id="presetMontage">Style montage 1 · Cinéma</button>
+      <button class="cta alt" id="presetBande">Style montage 2 · Bande</button>
+    </div>
+    <div class="group"><div class="label">Ambiance</div><div class="skins" id="skins"></div></div>
+    <div class="group"><div class="label">Disposition</div>
+      <div class="seg" id="layoutSeg"><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="cinema">Cinéma 3D</button><button data-v="strip">Bande</button></div></div>
+    <div class="group">
+      <div class="row"><span>Caméra qui suit celui qui parle</span><button class="switch" id="camera" role="switch" aria-label="Caméra qui suit celui qui parle"></button></div>
+      <p class="hint" style="margin:0">Modes Cinéma 3D et Bande. Désactivée, tout le salon reste cadré.</p>
+    </div>
+    <div class="group"><div class="label">Forme des avatars</div>
+      <div class="seg" id="shapeSeg"><button data-v="round">Rond</button><button data-v="squircle">Carré</button><button data-v="hex">Hexagone</button></div></div>
+    <div class="group"><div class="label">Anneau quand on parle</div>
+      <div class="seg two" id="ringSeg"><button data-v="gradient">Dégradé animé</button><button data-v="solid">Plein lumineux</button></div></div>
+    <div class="group"><div class="label">Fond animé</div>
+      <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="aurora">Aurore</button><button data-v="particles">Particules</button><button data-v="vignette">Vignette</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="grid">Grille néon</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image</button><button data-v="none">Aucun</button></div>
+      <button class="ghost" id="bgPick" hidden>Choisir une image de fond</button>
+      <input type="file" id="bgFile" accept="image/*" hidden>
+    </div>
+    <div class="group">
+      <div class="row"><span>Carte musique (Cinéma 3D et Bande)</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher la carte musique"></button></div>
+      <div class="music-box" id="musicFields">
+        <div class="seg" id="musicSrcSeg"><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
+        <div class="music-fields" data-src="pc">
+          <p class="hint">Affiche ce qui joue sur ce PC : Deezer en priorité, sinon Spotify, le navigateur… Rien à connecter.</p>
+        </div>
+        <div class="music-fields" data-src="spotify">
+          <input type="text" id="spotifyId" placeholder="Client ID de ton appli Spotify" aria-label="Client ID Spotify" spellcheck="false">
+          <div class="row" style="justify-content:flex-start;flex-wrap:wrap">
+            <button class="ghost" id="spotifyLogin">Connecter Spotify</button>
+            <button class="linkbtn" id="spotifyLogout" hidden>Déconnecter</button>
+          </div>
+          <p class="hint" id="spotifyHelp"></p>
+        </div>
+        <div class="music-fields" data-src="manual">
+          <input type="text" id="musicTitleIn" maxlength="40" placeholder="Titre affiché" aria-label="Titre de la musique">
+          <button class="ghost" id="musicPick">Choisir la pochette</button>
+          <input type="file" id="musicFile" accept="image/*" hidden>
+        </div>
+        <p class="hint music-status" id="musicStatus"></p>
+      </div>
+    </div>
+    <div class="group">
+      <div class="label"><label for="glow">Intensité du halo</label><output id="glowOut"></output></div>
+      <input type="range" id="glow" min="0" max="100">
+    </div>
+    <div class="group">
+      <div class="label"><label for="speed">Vitesse des animations</label><output id="speedOut"></output></div>
+      <input type="range" id="speed" min="0.4" max="2" step="0.1">
+    </div>
+    <div class="group">
+      <div class="row"><label class="label" for="accent">Couleur d'accent</label><input type="color" id="accent"></div>
+      <button class="linkbtn" id="accentReset">Revenir à la couleur de l'ambiance</button>
+    </div>
+    <div class="group">
+      <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
+      <div class="row"><span>Pseudos en police pixel</span><button class="switch" id="pixel" role="switch" aria-label="Pseudos en police pixel"></button></div>
+      <div class="row"><span>Cartes derrière les avatars</span><button class="switch" id="cards" role="switch" aria-label="Cartes derrière les avatars"></button></div>
+      <div class="row"><span>Masquer les membres muets</span><button class="switch" id="hideMuted" role="switch" aria-label="Masquer les membres muets"></button></div>
+    </div>
+    <div class="group account">
+      <div class="label">Connexion Discord</div>
+      <div class="row"><button class="ghost" id="openSetup">Modifier la connexion</button><button class="ghost" id="demoToggle">Mode démo</button></div>
+    </div>
+  </aside>
+</div>
+<script src="patterns.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

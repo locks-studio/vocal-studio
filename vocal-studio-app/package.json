@@ -1,0 +1,16 @@
+{
+  "name": "vocal-studio",
+  "version": "0.1.0",
+  "description": "Interface d'appel vocal Discord personnalisable",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.4.0"
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}
