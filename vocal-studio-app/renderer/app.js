@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -126,6 +126,9 @@ function renderChrome() {
   $("#deaf").classList.toggle("off", deaf);
   $("#deaf").setAttribute("aria-label", deaf ? "Retirer la sourdine" : "Mettre en sourdine");
   $("#demoToggle").textContent = S.demo ? "Quitter le mode démo" : "Mode démo";
+  // Onglet Compte : qui est connecté, et comment
+  const how = S.demo ? "Mode démo (joueurs fictifs)" : state.mode === "bot" ? "Avec le bot Hush" : "Connexion directe (RPC)";
+  $("#accountInfo").textContent = `${how} · ${(STATUS[state.status] || STATUS.idle)[1]}${state.me ? ` · connecté en tant que ${state.me.name}` : ""}`;
   renderScreen();
 }
 
@@ -336,7 +339,16 @@ $("#leave").onclick = () => {
 
 /* ——— Fenêtre ——— */
 let pinned = false;
-$("#pin").onclick = async () => { pinned = await window.studio.win.pin(!pinned); $("#pin").classList.toggle("on", pinned); };
+const togglePin = async () => { pinned = await window.studio.win.pin(!pinned); $("#pin").classList.toggle("on", pinned); $("#setPin").setAttribute("aria-checked", pinned); };
+$("#pin").onclick = togglePin;
+$("#setPin").onclick = togglePin;
+$("#setFull").onclick = () => window.studio.win.fullscreen();
+document.querySelectorAll("#tabs [data-tab]").forEach((b) => (b.onclick = () => { S.tab = b.dataset.tab; apply(); }));
+$("#settingsClose").onclick = () => { S.panel = false; apply(); };
+// Clic à côté de la fenêtre : on la ferme
+$("#settingsWrap").addEventListener("pointerdown", (e) => { if (e.target === e.currentTarget) { S.panel = false; apply(); } });
+$("#zoomRange").oninput = (e) => setZoom(+e.target.value, true);
+$("#logoutBtn").onclick = () => window.studio.config.logout();
 $("#min").onclick = () => window.studio.win.minimize();
 $("#max").onclick = () => window.studio.win.maximize();
 $("#close").onclick = () => window.studio.win.close();
@@ -346,7 +358,7 @@ addEventListener("keydown", (e) => {
   if (e.key === "F11") { e.preventDefault(); window.studio.win.fullscreen(); }
   if (e.key === "Escape" && S.panel) { S.panel = false; apply(); }
 });
-$("#openSetup").onclick = () => { editingConfig = true; renderScreen(); };
+$("#openSetup").onclick = () => { editingConfig = true; S.panel = false; apply(); screenKey = ""; renderScreen(); };
 $("#demoToggle").onclick = () => setDemo(!S.demo);
 
 /* ——— Disposition ——— */
@@ -364,7 +376,7 @@ function layout() {
     size = Math.max(size, Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35));
   }
   if (S.layout === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
-  stage.style.setProperty("--tile", Math.round(Math.max(70, Math.min(size, 320))) + "px");
+  stage.style.setProperty("--tile", Math.round(Math.max(60, Math.min(size * S.zoom, 320 * S.zoom))) + "px");
   const ring = $("#ring");
   const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || S.layout !== "orbit");
   for (const t of tiles.values()) {
@@ -375,12 +387,12 @@ function layout() {
   $("#lyricsScene").hidden = S.layout !== "lyrics";
   for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = "";
   if (S.layout === "cinema") {
-    const c = Math.round(Math.max(100, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420)));
+    const c = Math.round(Math.max(80, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else if (S.layout === "strip") {
     // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
     const fit = S.camera ? Math.min(n, 5) : n;
-    const c = Math.round(Math.max(80, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400)));
+    const c = Math.round(Math.max(60, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -538,7 +550,7 @@ $("#musicSeek").onclick = (e) => {
 };
 const addSounds = async () => {
   Sounds.list = await window.studio.sounds.add();
-  S.musicSource = "files"; S.musicOn = true; S.panel = true;
+  S.musicSource = "files"; S.musicOn = true; S.panel = true; S.tab = "sound";
   apply();
   renderSoundList();
 };
@@ -583,7 +595,11 @@ function apply() {
   b.classList.toggle("no-names", !S.names);
   b.classList.toggle("cards", S.cards);
   b.classList.toggle("hide-muted", S.hideMuted);
-  b.classList.toggle("panel-off", !S.panel);
+  $("#settingsWrap").hidden = !S.panel;
+  document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
+  document.querySelectorAll(".tab-panel").forEach((x) => (x.hidden = x.dataset.tab !== S.tab));
+  $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
+  $("#setPin").setAttribute("aria-checked", pinned);
   b.classList.toggle("ring-solid", S.ring === "solid");
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
@@ -698,7 +714,7 @@ function cinema(t) {
   const roll = cam ? 3 * Math.sin(t * 0.00023 * sp) : 0;
   const dolly = cam ? 50 * Math.sin(t * 0.00027 * sp) : 0;
   // Celui qui parle est placé un peu à gauche du centre, les autres filent vers la droite
-  const shift = cam ? -c * 0.45 : 0;
+  const shift = 0;
   const gap = cam ? 1.65 : 1.25;
   view.slotPx = c * gap * k;
   items.forEach((it, i) => {
@@ -721,94 +737,96 @@ function onCut() {
 }
 
 /* ——— Caméra du mode Bande ———
-   La caméra vise celui qui parle (ou le milieu quand plusieurs parlent, en dézoomant pour les cadrer).
-   Pour aller vers quelqu'un, elle PIVOTE d'abord (rotation autour de l'objectif), puis glisse doucement
-   pour rattraper : le pivot revient à zéro quand elle est arrivée. Elle se penche aussi à la verticale
-   (léger balancement, inclinaison pendant les mouvements et quand elle cadre un groupe).
-   La rangée est un plan 3D : tous les avatars tournent ensemble, donc ils ne se chevauchent jamais. */
-let stripX = null, stripV = 0, slideX = null, zoomKick = 0, zoom = 1, groupZoom = 1, flashLvl = 0;
-// Angle du « plan » en cours (plongée + orientation), tiré au hasard à chaque nouvelle prise de parole
-const shot = { yaw: 18, pitch: 20, curYaw: 18, curPitch: 20 };
-function newShot() {
-  shot.yaw = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 16);
-  shot.pitch = 10 + Math.random() * 22; // caméra plongeante : on regarde la rangée d'au-dessus
-  if (Math.random() < 0.2) shot.pitch = -8 - Math.random() * 8; // de temps en temps, contre-plongée
-}
+   Règle d'or : celui qui parle est TOUJOURS au centre de l'image, quel que soit l'angle de la caméra.
+   - La caméra glisse vers lui sans à-coup (amortie, sans dépasser) et la rangée est un plan 3D
+     légèrement plongeant, qui s'enfonce du côté où il reste le plus de monde.
+   - Après chaque image, on mesure où il est vraiment affiché et on corrige l'écart : il reste centré
+     même pendant les rotations.
+   - Si plusieurs personnes parlent, on centre le groupe et on dézoome juste assez pour les voir en entier. */
+let stripX = null, stripV = 0, zoomKick = 0, zoom = 1, groupZoom = 1, flashLvl = 0;
+const frameFix = { x: 0, y: 0 };
+const shot = { yaw: 0, pitch: 12, curYaw: 0, curPitch: 12 };
+function newShot() { shot.pitch = 9 + Math.random() * 7; }
+
 function strip(t) {
   const c = parseFloat(stage.style.getPropertyValue("--ctile")) || 160;
   const list = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
+  if (!list.length) return;
   const cam = S.camera && !reduced;
-  const fi = Math.max(0, list.findIndex((x) => x.data.id === focusId));
-  const gap = c * 1.45;
-
-  // Plusieurs personnes parlent : on vise le milieu et on dézoome juste assez pour les voir toutes
+  const gap = c * 1.4;
   const live = new Map(state.members.map((m) => [m.id, m]));
   const talking = list.map((x, i) => ((live.get(x.data.id) || {}).speaking ? i : -1)).filter((i) => i >= 0);
-  let aimTalk = fi, wantZoom = 1;
-  if (cam && talking.length >= 2) {
-    const lo = Math.min(...talking), hi = Math.max(...talking);
-    aimTalk = (lo + hi) / 2;
-    wantZoom = Math.max(0.5, Math.min(1, (stage.clientWidth * 0.8) / ((hi - lo) * gap + c * 1.5)));
-  }
-  groupZoom += (wantZoom - groupZoom) * 0.04;
+  const fi = Math.max(0, list.findIndex((x) => x.data.id === focusId));
 
-  // Caméra désactivée : rangée fixe, centrée et réduite pour que tout le monde rentre
+  // Cible : verrou (Ctrl+clic) > groupe qui parle > celui qui parle ; caméra coupée : tout le salon
   const lockI = list.findIndex((x) => x.data.id === view.lock);
-  const aim = lockI >= 0 ? lockI : cam ? aimTalk : (list.length - 1) / 2;
+  const group = lockI < 0 && talking.length >= 2 ? talking : null;
+  const aim = lockI >= 0 ? lockI : !cam ? (list.length - 1) / 2 : group ? (Math.min(...group) + Math.max(...group)) / 2 : fi;
   const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.26));
-  if (stripX === null) { stripX = slideX = aim; stripV = 0; }
+
+  if (stripX === null) { stripX = aim; stripV = 0; }
   if (viewFree() && view.x !== null) { stripX = view.x; stripV = 0; }
   else {
-    stripV += (aim - stripX) * 0.018 * S.speed;
-    stripV *= 0.82;
+    // Ressort amorti : rapide au départ, arrive en douceur, sans dépasser la cible
+    const spring = 0.012 * S.speed;
+    stripV += (aim - stripX) * spring;
+    stripV *= 1 - 2 * Math.sqrt(spring);
     stripX += stripV;
   }
-  // La glissière suit plus lentement que le regard : l'écart entre les deux est rattrapé en pivotant
-  slideX += (stripX - slideX) * (cam ? 0.045 * S.speed : 1);
-  zoomKick = cam ? zoomKick * 0.94 : 0;
-  zoom += (1 + zoomKick * 0.22 - zoom) * 0.15;
+  zoomKick = cam && !group ? zoomKick * 0.94 : 0;
+  zoom += (1 + zoomKick * 0.12 - zoom) * 0.12;
+  if (!group) groupZoom += (1 - groupZoom) * 0.05;
   const z = zoom * (cam ? groupZoom : 1);
   view.slotPx = gap * z;
 
-  const blur = cam ? Math.min(5, Math.abs(stripV) * 30) : 0;
-  const roll = cam ? 1.5 * Math.sin(t * 0.0004 * S.speed) + stripV * 30 : 0;
-  // Le plan de la rangée pivote quand celui qu'on regarde est vers un bout, plus l'angle du plan en cours.
-  // Combiné à la plongée (rotation verticale autour de celui qu'on regarde), la rangée part en diagonale
-  // dans la profondeur : les avatars lointains montent ou descendent en s'éloignant.
-  shot.curYaw += (shot.yaw - shot.curYaw) * 0.03 * S.speed;
-  shot.curPitch += (shot.pitch - shot.curPitch) * 0.03 * S.speed;
-  const mid = (list.length - 1) / 2;
-  const rel = mid > 0 ? Math.max(-1, Math.min(1, (stripX - mid) / mid)) : 0;
-  const yaw = cam ? Math.max(-55, Math.min(55, -rel * 30 + shot.curYaw)) : 0;
-  const plunge = cam ? shot.curPitch + 5 * Math.sin(t * 0.00027 * S.speed) : 0;
-  // Rotation de la caméra elle-même (autour de l'objectif) : horizontale vers la cible, verticale qui balance
-  const P = c * 7.5; // même distance que la perspective CSS
-  const panYaw = cam ? (Math.atan(((stripX - slideX) * gap * z) / P) * 180) / Math.PI : 0;
-  const pitch = cam ? 2.5 * Math.sin(t * 0.00033 * S.speed) - Math.max(-6, Math.min(6, stripV * 80)) + (1 - groupZoom) * 8 : 0;
+  // Angle : la rangée s'enfonce du côté où il reste le plus de monde, avec une plongée légère
+  const center = Math.round(stripX);
+  const balance = (list.length - 1 - center - center) / Math.max(1, list.length - 1); // >0 : plus de monde à droite
+  shot.yaw = cam ? Math.max(-1, Math.min(1, balance * 1.6)) * 24 : 0;
+  shot.curYaw += (shot.yaw - shot.curYaw) * 0.04 * S.speed;
+  shot.curPitch += ((cam ? shot.pitch : 0) - shot.curPitch) * 0.04 * S.speed;
+  const plunge = shot.curPitch + (cam ? 2 * Math.sin(t * 0.00025 * S.speed) : 0);
+  const roll = cam ? 0.8 * Math.sin(t * 0.0003 * S.speed) : 0;
+  const blur = cam ? Math.min(3, Math.abs(stripV) * 25) : 0;
 
   list.forEach((x, i) => {
-    // Celui qui parle grossit un peu, même caméra fixe
-    const isTalk = talking.includes(i);
-    const near = x.data.id === focusId || isTalk ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
-    x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.28 : 0.12) - (x.fs ?? 1)) * 0.12;
-    const y = 5 * Math.sin(t * 0.001 * S.speed + x.seed);
+    const isTalk = talking.includes(i) || x.data.id === focusId;
+    x.fs = (x.fs ?? 1) + ((isTalk ? (cam ? 1.22 : 1.1) : 1) - (x.fs ?? 1)) * 0.12;
+    const y = 4 * Math.sin(t * 0.001 * S.speed + x.seed);
     if (cam) {
-      const px = (i - slideX) * gap * z;
-      // Lecture de droite à gauche : 1) la caméra pivote/balance autour de son objectif,
-      // 2) la rangée est plongée et orientée autour de celui qu'on regarde, 3) l'avatar est placé sur la rangée
-      // puis retourné en grande partie vers la caméra pour rester bien rond.
+      const px = (i - stripX) * gap * z;
+      // Correction mesurée (frameFix) en premier : elle s'applique à l'écran, après toute la 3D
       x.el.style.transform =
-        `translateZ(${P.toFixed(0)}px) rotateX(${pitch.toFixed(2)}deg) rotateY(${panYaw.toFixed(2)}deg) translateZ(${(-P).toFixed(0)}px) ` +
-        `rotate(${roll.toFixed(2)}deg) rotateX(${(-plunge).toFixed(2)}deg) rotateY(${yaw.toFixed(2)}deg) ` +
-        `translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateY(${(-yaw * 0.6).toFixed(2)}deg) rotateX(${(plunge * 0.75).toFixed(2)}deg) scale(${(x.fs * z).toFixed(3)})`;
+        `translate(${frameFix.x.toFixed(1)}px, ${frameFix.y.toFixed(1)}px) rotate(${roll.toFixed(2)}deg) ` +
+        `rotateX(${(-plunge).toFixed(2)}deg) rotateY(${shot.curYaw.toFixed(2)}deg) ` +
+        `translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateY(${(-shot.curYaw * 0.7).toFixed(2)}deg) rotateX(${(plunge * 0.8).toFixed(2)}deg) ` +
+        `scale(${(x.fs * z).toFixed(3)})`;
     } else {
-      const px = (i - stripX) * c * 1.26 * zoom * k;
-      x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
+      const px = (i - stripX) * c * 1.26 * k;
+      x.el.style.transform = `translate(${px}px, ${y}px) scale(${x.fs * k})`;
     }
     x.el.style.opacity = "";
-    x.el.style.filter = blur > 1.5 ? `blur(${blur.toFixed(1)}px)` : "";
+    x.el.style.filter = blur > 1.2 ? `blur(${blur.toFixed(1)}px)` : "";
     x.el.style.zIndex = String(100 - Math.round(Math.abs(i - stripX) * 2));
   });
+
+  // Mesure : où sont vraiment affichés ceux qu'on veut voir ? On recentre et on ajuste le dézoom.
+  if (!cam) { frameFix.x = frameFix.y = 0; return; }
+  const targets = (lockI >= 0 ? [lockI] : group || [fi]).map((i) => list[i].el.querySelector(".av-wrap").getBoundingClientRect());
+  const sr = stage.getBoundingClientRect();
+  const box = {
+    l: Math.min(...targets.map((r) => r.left)), r: Math.max(...targets.map((r) => r.right)),
+    t: Math.min(...targets.map((r) => r.top)), b: Math.max(...targets.map((r) => r.bottom)),
+  };
+  if (!viewFree()) {
+    frameFix.x += (sr.left + sr.width / 2 - (box.l + box.r) / 2) * 0.2;
+    frameFix.y += (sr.top + sr.height * 0.52 - (box.t + box.b) / 2) * 0.2;
+  }
+  if (group) {
+    // Le groupe doit tenir dans 75 % de la largeur et 70 % de la hauteur, avec une marge pour les pseudos
+    const fill = Math.max((box.r - box.l) / (sr.width * 0.75), (box.b - box.t + c * 0.4) / (sr.height * 0.7));
+    groupZoom = Math.max(0.45, Math.min(1, groupZoom * (1 + (1 - fill) * 0.06)));
+  }
 }
 
 /* ——— Caméra libre ———
@@ -861,13 +879,15 @@ addEventListener("pointerup", () => {
   mainEl.classList.remove("grabbing");
 });
 // Molette : zoom avant / arrière, gardé tel quel (et enregistré) jusqu'à ce que tu le changes. Ctrl+0 : retour à 100 %
-function setZoom(z) {
-  S.zoom = Math.round(Math.max(0.4, Math.min(2.5, z)) * 100) / 100;
+function setZoom(z, quiet) {
+  S.zoom = Math.round(Math.max(0.6, Math.min(1.8, z)) * 100) / 100;
   save();
-  showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
+  layout();
+  $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
+  if (!quiet) showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
 }
 mainEl.addEventListener("wheel", (e) => {
-  if (e.target.closest(".panel, .screen, .mp") || S.layout === "lyrics") return;
+  if (e.target.closest(".screen, .mp") || S.layout === "lyrics") return;
   e.preventDefault();
   setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
@@ -916,9 +936,7 @@ function frame(t) {
   if (S.layout === "strip") strip(t);
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }
-  view.zoom += (S.zoom - view.zoom) * (reduced ? 1 : 0.18);
-  const moved = Math.abs(view.y) > 0.5 || Math.abs(view.zoom - 1) > 0.002;
-  stage.style.transform = moved ? `translateY(${view.y.toFixed(1)}px) scale(${view.zoom.toFixed(3)})` : "";
+  stage.style.transform = Math.abs(view.y) > 0.5 ? `translateY(${view.y.toFixed(1)}px)` : "";
   for (const x of tiles.values()) x.el.classList.toggle("locked", x.data.id === view.lock);
   flashLvl *= 0.8;
   $("#flash").style.opacity = flashLvl > 0.01 ? flashLvl.toFixed(3) : "0";
@@ -943,7 +961,7 @@ function frame(t) {
 }
 
 /* ——— Démarrage ——— */
-if (innerWidth < 760) S.panel = false;
+S.panel = false; // les paramètres s'ouvrent avec l'engrenage
 loadBgImg();
 apply();
 refreshSpotify();

@@ -35,11 +35,11 @@ Sans configuration, le bouton **Mode démo** affiche un faux salon pour essayer 
 
 ## Les styles prêts à l'emploi
 
-L'engrenage en haut à droite ouvre les paramètres (Échap les ferme). F11 ou l'icône à côté passe en plein écran, net jusqu'en 2K et au-delà.
+L'engrenage en haut à droite ouvre les **paramètres** au centre de l'écran, avec cinq onglets : **Général** (styles prêts, disposition, joueurs, caméra), **Style** (ambiance, couleurs, fond, avatars), **Son** (lecteur musique et sources), **Vidéo** (zoom, vitesse, plein écran, premier plan) et **Compte** (connexion Discord, mode démo). Échap, la croix ou un clic à côté les ferme. Les paramètres, la barre d'appel et les messages sont en style « verre liquide ». F11 ou l'icône à côté passe en plein écran, net jusqu'en 2K et au-delà.
 
 - **Style de base · Espace** (par défaut) : fond noir étoilé avec des étoiles filantes, rangée d'avatars, anneau blanc lumineux autour de celui qui parle.
 
-En mode **Bande** avec la caméra active, la caméra est vraiment en 3D : la rangée part en diagonale dans la profondeur (caméra plongeante, parfois contre-plongée), et l'angle change à chaque nouvelle prise de parole, comme un nouveau plan. Pour aller vers quelqu'un, la caméra pivote d'abord vers lui puis glisse pour rattraper, même tout au bout de la rangée. Quand plusieurs personnes parlent, elle se place entre elles et dézoome pour les cadrer toutes. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
+En mode **Bande** avec la caméra active, celui qui parle est **toujours au centre de l'image**, même tout au bout de la rangée et quel que soit l'angle : l'appli mesure à chaque image où il est affiché et corrige l'écart. La caméra glisse vers lui sans à-coup, la rangée est un plan 3D légèrement plongeant qui s'enfonce du côté où il reste le plus de monde. Quand plusieurs personnes parlent, la caméra centre le groupe et dézoome juste assez pour les voir en entier. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
 
 **Fond Dégradé** : un fond sans motif, clair au centre et sombre sur les bords, dans la couleur d'accent. Le lecteur musique a aussi un réglage **Fond du lecteur** : Mosaïque ou Dégradé.
 - **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, grille néon).
@@ -50,7 +50,7 @@ Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements 
 **Piloter la caméra à la main** (modes Cinéma 3D et Bande) :
 
 - **Clic-glisser** sur la scène : déplace la caméra (gauche/droite le long des joueurs, haut/bas).
-- **Molette** : zoom avant ou arrière, dans toutes les dispositions. Le zoom reste tel quel jusqu'à ce que tu le changes ; **Ctrl+0** le remet à 100 %.
+- **Molette** : zoom avant ou arrière (de 60 % à 180 %), dans toutes les dispositions. Le zoom agrandit ou réduit les avatars eux-mêmes, donc rien n'est coupé. Il reste tel quel jusqu'à ce que tu le changes ; **Ctrl+0** le remet à 100 %. Aussi réglable dans Paramètres › Vidéo.
 - **Ctrl+clic sur un joueur** : verrouille la caméra sur lui (badge « CAM »). Ctrl+clic à nouveau, ou sur le fond, pour la libérer.
 - Sans action pendant **2,5 secondes**, la caméra repart toute seule sur celui qui parle (ou sur le joueur verrouillé).
 

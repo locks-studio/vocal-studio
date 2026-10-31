@@ -25,9 +25,7 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
 
-.app{height:100%;display:grid;grid-template-columns:1fr 320px;grid-template-rows:auto 1fr;position:relative}
-body.panel-off .app{grid-template-columns:1fr}
-body.panel-off .panel{display:none}
+.app{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;position:relative}
 #bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 
 /* ——— Barre de titre (sert à déplacer la fenêtre) ——— */
@@ -97,7 +95,7 @@ body.no-names .name{display:none}
 
 /* ——— Écrans d'état ——— */
 .screen{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:20px}
-.card{width:min(440px,100%);background:color-mix(in srgb,var(--bg) 80%,transparent);border:1px solid var(--line);border-radius:22px;padding:26px;backdrop-filter:blur(16px);display:flex;flex-direction:column;gap:14px;user-select:text}
+.card{position:relative;width:min(440px,100%);border-radius:26px;padding:26px;display:flex;flex-direction:column;gap:14px;user-select:text}
 .card h3{font-family:var(--f-display);font-size:24px;margin:0;line-height:1.1;text-wrap:balance}
 .card p{margin:0;color:var(--muted);line-height:1.5}
 .card .err{color:var(--danger);font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere}
@@ -114,14 +112,14 @@ body.no-names .name{display:none}
 .tile.locked .av-wrap::before{content:"CAM";position:absolute;left:50%;top:-12%;transform:translateX(-50%);z-index:3;
   font:700 11px/1 var(--f-mono);letter-spacing:.12em;padding:4px 9px;border-radius:99px;background:var(--accent);color:var(--bg);box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:8;max-width:calc(100% - 32px);
-  background:rgba(0,0,0,.72);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;backdrop-filter:blur(8px);pointer-events:none;text-align:center}
+  color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;pointer-events:none;text-align:center}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .cta{border:0;background:var(--accent);color:#fff;padding:11px 18px;border-radius:12px;font-weight:600}
 .ghost{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:11px;font-weight:500}
 
 /* ——— Barre d'appel ——— */
-.dock{align-self:center;display:flex;gap:8px;padding:8px;border-radius:22px;background:var(--surface);border:1px solid var(--line);backdrop-filter:blur(14px);flex-wrap:wrap;justify-content:center;position:relative;z-index:7}
+.dock{align-self:center;display:flex;gap:8px;padding:8px;border-radius:24px;flex-wrap:wrap;justify-content:center;position:relative;z-index:7}
 .dock .sep{width:1px;background:var(--line);margin-inline:4px}
 .btn{width:46px;height:46px;border-radius:15px;border:0;background:transparent;display:grid;place-items:center;transition:background .2s,transform .15s}
 .btn:hover{background:var(--surface)}
@@ -135,8 +133,6 @@ body.no-names .name{display:none}
 .btn.leave:hover{background:#ff1f26}
 
 /* ——— Panneau ——— */
-.panel{position:relative;z-index:2;border-left:1px solid var(--line);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(16px);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:22px}
-.panel h2{font-family:var(--f-display);font-size:18px;font-weight:700;margin:0}
 .hint{margin:4px 0 0;color:var(--muted);font-size:12.5px}
 .group{display:flex;flex-direction:column;gap:9px}
 .label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);display:flex;justify-content:space-between}
@@ -293,7 +289,6 @@ body.pixel .name{font-family:"Silkscreen",var(--f-mono);font-weight:700;letter-s
 
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
-  .panel{position:absolute;right:0;top:51px;bottom:0;width:min(320px,100%);z-index:8}
   .meta #guild{display:none}
   .btn{width:42px;height:42px}
   .dock .sep{display:none}
@@ -302,3 +297,35 @@ body.pixel .name{font-family:"Silkscreen",var(--f-mono);font-weight:700;letter-s
   .tile,.spinner{animation:none}
   .stage.orbit .tile{transition:none}
 }
+
+/* ——— Verre liquide ———
+   Fond translucide très flouté et saturé, reflet clair en haut, bord lumineux en dégradé et ombre douce :
+   utilisé pour tout ce qui flotte au-dessus de la scène (barre d'appel, paramètres, messages, écrans). */
+.glass{isolation:isolate;
+  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05) 45%,rgba(255,255,255,.08));
+  -webkit-backdrop-filter:blur(26px) saturate(1.8);backdrop-filter:blur(26px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(255,255,255,.06),0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.2)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.22),transparent 55%),radial-gradient(80% 50% at 90% 100%,rgba(255,255,255,.08),transparent 60%)}
+body[data-skin="papier"] .glass{background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.45));border-color:rgba(255,255,255,.8)}
+
+/* Fenêtre des paramètres, au centre */
+.settings-wrap{position:fixed;inset:0;z-index:50;transform:translateZ(0);display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.28);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:fade .2s both}
+@keyframes fade{from{opacity:0}}
+.settings{position:relative;width:min(780px,100%);background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 50%,rgba(255,255,255,.08)),rgba(12,16,28,.58);height:min(640px,100%);border-radius:28px;display:flex;flex-direction:column;overflow:hidden;color:var(--fg);animation:pop .28s cubic-bezier(.2,.8,.2,1) both}
+.settings-head{display:flex;align-items:center;gap:16px;padding:18px 18px 14px 24px;border-bottom:1px solid rgba(255,255,255,.1)}
+.settings-head h2{font-family:var(--f-display);font-size:20px;font-weight:700;margin:0}
+.settings-close{margin-left:auto}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:14px;background:rgba(0,0,0,.18);box-shadow:inset 0 1px 2px rgba(0,0,0,.25);overflow-x:auto}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:8px 14px;border-radius:10px;font-weight:600;font-size:13px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);background:linear-gradient(160deg,rgba(255,255,255,.28),rgba(255,255,255,.1));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 8px rgba(0,0,0,.25)}
+.settings-body{flex:1;overflow-y:auto;padding:22px 24px 28px}
+.tab-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px 28px;align-content:start}
+.tab-panel[hidden]{display:none}
+.tab-panel .hint{margin:0}
+.account-info{margin:0;line-height:1.5}
+.settings .seg,.settings .switch,.settings input[type=range]{accent-color:var(--accent)}
+.settings .ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16)}
+@media (max-width:640px){.settings-head{flex-wrap:wrap}.tabs{order:3;width:100%}}
