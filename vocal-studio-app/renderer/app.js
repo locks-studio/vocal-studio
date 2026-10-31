@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -71,10 +71,17 @@ function updateTile(t, m) {
 
 const PLAYER_HUES = [235, 8, 150, 45, 285, 192, 330, 100, 25, 260, 170, 350, 60, 210, 305, 125];
 let lastOrder = "";
+const lastSpoke = new Map();
 function syncTiles() {
   const meId = state.me && state.me.id;
-  // Toi en premier, puis l'ordre du salon, limité au nombre de joueurs choisi
-  const list = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId)).slice(0, S.players);
+  // Toi en premier, puis l'ordre du salon, limité au nombre de joueurs choisi.
+  // Ceux qui parlent (ou ont parlé il y a moins de 10 s) passent devant les muets pour avoir leur place.
+  const now = Date.now();
+  for (const m of state.members) if (m.speaking) lastSpoke.set(m.id, now);
+  const ordered = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId));
+  const recent = (m) => m.id === meId || now - (lastSpoke.get(m.id) || 0) < 10_000;
+  const keep = new Set([...ordered.filter(recent), ...ordered.filter((m) => !recent(m))].slice(0, S.players).map((m) => m.id));
+  const list = ordered.filter((m) => keep.has(m.id));
   const ids = new Set(list.map((m) => m.id));
   for (const [id, t] of tiles) if (!ids.has(id)) { t.el.remove(); tiles.delete(id); }
   for (const m of list) {
@@ -346,6 +353,8 @@ $("#demoToggle").onclick = () => setDemo(!S.demo);
 let focusId = null, focusAt = 0;
 function layout() {
   stage.className = "stage " + S.layout;
+  mainEl.classList.toggle("cam-move", camLayout());
+  if (!camLayout()) { stage.style.transform = ""; view.lock = null; }
   const n = Math.max(1, tiles.size);
   const W = stage.clientWidth, H = stage.clientHeight;
   // Grille : on cherche le nombre de colonnes qui donne les plus grands avatars
@@ -364,12 +373,14 @@ function layout() {
   }
   $("#music").hidden = !(S.musicOn && hasMusic());
   $("#lyricsScene").hidden = S.layout !== "lyrics";
-  for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = "";
+  for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = "";
   if (S.layout === "cinema") {
     const c = Math.round(Math.max(100, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420)));
     stage.style.setProperty("--ctile", c + "px");
   } else if (S.layout === "strip") {
-    const c = Math.round(Math.max(80, Math.min(H * 0.55, (W * 0.9) / (n * 1.18), 400)));
+    // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
+    const fit = S.camera ? Math.min(n, 5) : n;
+    const c = Math.round(Math.max(80, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400)));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -403,7 +414,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"]];
+const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -614,7 +625,16 @@ function drawBg(t, energy) {
     colors = { a: cs.getPropertyValue("--accent").trim(), b: cs.getPropertyValue("--accent2").trim() };
   }
   ctx.clearRect(0, 0, w, h);
-  if (["space", "stars", "topo", "grid", "auto"].includes(S.bg)) {
+  if (S.bg === "gradient") {
+    // Dégradé sans motif : clair au centre, sombre sur les bords, dans la couleur d'accent
+    const c = hexHsl(colors.a);
+    const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.55);
+    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${Math.min(62, 40 + c.l * 0.12 + energy * 4)}%)`);
+    g.addColorStop(0.55, `hsl(${c.h} ${c.s}% 26%)`);
+    g.addColorStop(1, `hsl(${c.h} ${Math.min(c.s, 80)}% 11%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  } else if (["space", "stars", "topo", "grid", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
   } else if (S.bg === "vignette" || (S.bg === "image" && bgImg)) {
     if (S.bg === "image") {
@@ -668,7 +688,11 @@ function cinema(t) {
   const fi = cam ? Math.max(0, items.findIndex((x) => x.id === focusId)) : -1;
   const aim = cam ? fi : (total - 1) / 2;
   const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.92) / (total * c * 1.25));
-  camX += (aim - camX) * (reduced ? 1 : 0.035);
+  // Caméra verrouillée sur quelqu'un (Ctrl+clic) ou déplacée à la main (clic-glisser)
+  const lockI = items.findIndex((x) => x.id === view.lock);
+  const target = lockI >= 0 ? lockI : aim;
+  if (viewFree() && view.x !== null) camX = view.x;
+  else camX += (target - camX) * (reduced ? 1 : 0.035);
   const sp = reduced ? 0 : S.speed;
   const yaw = cam ? 12 * Math.sin(t * 0.00031 * sp) + 10 + (fi - camX) * 4 : 8;
   const roll = cam ? 3 * Math.sin(t * 0.00023 * sp) : 0;
@@ -676,6 +700,7 @@ function cinema(t) {
   // Celui qui parle est placé un peu à gauche du centre, les autres filent vers la droite
   const shift = cam ? -c * 0.45 : 0;
   const gap = cam ? 1.4 : 1.25;
+  view.slotPx = c * gap * k;
   items.forEach((it, i) => {
     const target = i;
     it.tile.slot = it.tile.slot === undefined || reduced ? target : it.tile.slot + (target - it.tile.slot) * 0.06;
@@ -705,27 +730,120 @@ function strip(t) {
   const cam = S.camera && !reduced;
   const fi = Math.max(0, list.findIndex((x) => x.data.id === focusId));
   // Caméra désactivée : rangée fixe, centrée et réduite pour que tout le monde rentre
-  const aim = cam ? fi : (list.length - 1) / 2;
+  const lockI = list.findIndex((x) => x.data.id === view.lock);
+  const aim = lockI >= 0 ? lockI : cam ? fi : (list.length - 1) / 2;
   const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.18));
-  if (stripX === null || !cam) { stripX = aim; stripV = 0; }
-  stripV += (aim - stripX) * 0.018 * S.speed;
-  stripV *= 0.82;
-  stripX += stripV;
+  if (stripX === null) { stripX = aim; stripV = 0; }
+  if (viewFree() && view.x !== null) { stripX = view.x; stripV = 0; }
+  else {
+    // Ressort vers la cible (plus doux quand on revient d'un déplacement à la main ou caméra fixe)
+    stripV += (aim - stripX) * 0.018 * S.speed;
+    stripV *= 0.82;
+    stripX += stripV;
+  }
+  view.slotPx = c * 1.18 * zoom * k;
   zoomKick = cam ? zoomKick * 0.94 : 0;
   zoom += (1 + zoomKick * 0.22 - zoom) * 0.15;
   const blur = cam ? Math.min(6, Math.abs(stripV) * 40) : 0;
   const roll = cam ? 1.5 * Math.sin(t * 0.0004 * S.speed) : 0;
+  // Caméra 3D : les avatars sont posés sur un arc autour de la caméra, qui pivote vers celui qu'elle vise.
+  // Les voisins s'éloignent en profondeur et tournent (ils deviennent ovales), comme dans les montages.
+  // Pendant un déplacement, la caméra « penche » un peu dans le sens du mouvement.
+  const R = c * 4.4;
+  const step = Math.atan((c * 1.18) / R);
+  const swing = cam ? Math.max(-18, Math.min(18, stripV * 260)) : 0;
   list.forEach((x, i) => {
     const d = i - stripX;
     // Celui qui parle grossit un peu, même caméra fixe
     const near = x.data.id === focusId ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
     x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.32 : 0.12) - (x.fs ?? 1)) * 0.12;
-    const px = d * c * 1.18 * zoom * k;
     const y = 5 * Math.sin(t * 0.001 * S.speed + x.seed);
-    x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
+    if (cam) {
+      const a = d * step;
+      const px = R * Math.sin(a) * zoom;
+      const pz = R * (Math.cos(a) - 1) * zoom;
+      const turn = (-a * 180) / Math.PI * 0.75 - swing;
+      x.el.style.transform = `rotate(${roll}deg) translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, ${pz.toFixed(1)}px) rotateY(${turn.toFixed(2)}deg) scale(${(x.fs * zoom).toFixed(3)})`;
+      // Ceux qui passent « derrière » la caméra s'effacent au lieu d'apparaître à l'envers
+      const deg = Math.abs((a * 180) / Math.PI);
+      x.el.style.opacity = deg > 70 ? Math.max(0, (100 - deg) / 30).toFixed(2) : "";
+    } else {
+      x.el.style.opacity = "";
+      const px = d * c * 1.18 * zoom * k;
+      x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
+    }
     x.el.style.filter = blur > 1.5 ? `blur(${blur.toFixed(1)}px)` : "";
     x.el.style.zIndex = String(100 - Math.round(Math.abs(i - fi)));
   });
+}
+
+/* ——— Caméra libre ———
+   Clic-glisser : déplace la caméra. Molette : zoom. Ctrl+clic sur quelqu'un : verrouille la caméra sur lui
+   (Ctrl+clic à nouveau, ou sur le fond, pour libérer). Sans action pendant 2,5 s, la caméra repart toute seule. */
+const FREE_MS = 2500;
+const view = { dragging: false, px: 0, py: 0, until: 0, x: null, y: 0, zoom: 1, lock: null, slotPx: 200 };
+const camLayout = () => S.layout === "strip" || S.layout === "cinema";
+const viewFree = () => view.dragging || performance.now() < view.until;
+const mainEl = document.querySelector(".main");
+
+function showToast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => (t.hidden = true), 2600);
+}
+
+mainEl.addEventListener("pointerdown", (e) => {
+  if (!camLayout() || e.button !== 0 || e.target.closest(".dock, .mp, .screen")) return;
+  const tileEl = e.target.closest(".tile");
+  if (e.ctrlKey) {
+    const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
+    if (t && view.lock !== t.data.id) {
+      view.lock = t.data.id;
+      showToast(`Caméra verrouillée sur ${t.data.name} · Ctrl+clic pour libérer`);
+    } else if (view.lock) {
+      view.lock = null;
+      showToast("Caméra libérée : elle suit de nouveau celui qui parle");
+    }
+    return;
+  }
+  e.preventDefault();
+  view.dragging = true;
+  view.px = e.clientX; view.py = e.clientY;
+  view.x = S.layout === "strip" ? stripX : camX;
+  mainEl.classList.add("grabbing");
+});
+addEventListener("pointermove", (e) => {
+  if (!view.dragging) return;
+  view.x -= (e.clientX - view.px) / Math.max(40, view.slotPx);
+  view.y = Math.max(-300, Math.min(300, view.y + (e.clientY - view.py)));
+  view.px = e.clientX; view.py = e.clientY;
+});
+addEventListener("pointerup", () => {
+  if (!view.dragging) return;
+  view.dragging = false;
+  view.until = performance.now() + FREE_MS;
+  mainEl.classList.remove("grabbing");
+});
+mainEl.addEventListener("wheel", (e) => {
+  if (!camLayout() || e.target.closest(".panel, .screen")) return;
+  e.preventDefault();
+  view.zoom = Math.max(0.5, Math.min(2.5, view.zoom * (1 - e.deltaY * 0.0012)));
+  if (view.x === null) view.x = S.layout === "strip" ? stripX : camX;
+  view.until = performance.now() + FREE_MS;
+}, { passive: false });
+
+// Couleur d'accent (#rrggbb) en teinte/saturation/luminosité, avec une saturation minimale pour le dégradé
+function hexHsl(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return { h: 210, s: 80, l: 50 };
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+  return { h: Math.round((h * 60 + 360) % 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
 /* ——— Boucle d'animation ——— */
@@ -757,6 +875,13 @@ function frame(t) {
   }
   if (S.layout === "cinema") cinema(t);
   if (S.layout === "strip") strip(t);
+  if (camLayout()) {
+    // 2,5 s sans toucher : la vue revient doucement en place et la caméra reprend celui qui parle
+    if (!viewFree()) { view.x = null; view.y *= 0.88; view.zoom += (1 - view.zoom) * 0.12; }
+    const moved = Math.abs(view.y) > 0.5 || Math.abs(view.zoom - 1) > 0.002;
+    stage.style.transform = moved ? `translateY(${view.y.toFixed(1)}px) scale(${view.zoom.toFixed(3)})` : "";
+  }
+  for (const x of tiles.values()) x.el.classList.toggle("locked", x.data.id === view.lock);
   flashLvl *= 0.8;
   $("#flash").style.opacity = flashLvl > 0.01 ? flashLvl.toFixed(3) : "0";
   // Morceau en direct : on avance la position entre deux nouvelles de Deezer/Spotify

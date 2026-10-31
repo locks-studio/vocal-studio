@@ -79,6 +79,8 @@
       <div class="mp-bar" id="musicSeek"><i id="musicProgress"></i></div>
     </div>
 
+    <div class="toast" id="toast" role="status" hidden></div>
+
     <!-- Écrans d'état (connexion, configuration, salon vide) -->
     <div class="screen" id="screen" hidden>
       <div class="card" id="screenCard"></div>
@@ -109,14 +111,14 @@
       <div class="seg" id="layoutSeg"><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="cinema">Cinéma 3D</button><button data-v="strip">Bande</button><button data-v="lyrics">Paroles</button></div></div>
     <div class="group">
       <div class="row"><span>Caméra qui suit celui qui parle</span><button class="switch" id="camera" role="switch" aria-label="Caméra qui suit celui qui parle"></button></div>
-      <p class="hint" style="margin:0">Modes Cinéma 3D et Bande. Désactivée, tout le salon reste cadré.</p>
+      <p class="hint" style="margin:0">Modes Cinéma 3D et Bande. Désactivée, tout le salon reste cadré. Clic-glisser pour déplacer la caméra, molette pour zoomer, Ctrl+clic sur quelqu'un pour la verrouiller sur lui. Sans action pendant 2,5 s, elle repart sur celui qui parle.</p>
     </div>
     <div class="group"><div class="label">Forme des avatars</div>
       <div class="seg" id="shapeSeg"><button data-v="round">Rond</button><button data-v="squircle">Carré</button><button data-v="hex">Hexagone</button></div></div>
     <div class="group"><div class="label">Anneau quand on parle</div>
       <div class="seg two" id="ringSeg"><button data-v="gradient">Dégradé animé</button><button data-v="solid">Plein lumineux</button></div></div>
     <div class="group"><div class="label">Fond animé</div>
-      <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="aurora">Aurore</button><button data-v="particles">Particules</button><button data-v="vignette">Vignette</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="grid">Grille néon</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image</button><button data-v="none">Aucun</button></div>
+      <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="gradient">Dégradé</button><button data-v="aurora">Aurore</button><button data-v="particles">Particules</button><button data-v="vignette">Vignette</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="grid">Grille néon</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image</button><button data-v="none">Aucun</button></div>
       <button class="ghost" id="bgPick" hidden>Choisir une image de fond</button>
       <input type="file" id="bgFile" accept="image/*" hidden>
     </div>
@@ -125,6 +127,8 @@
       <div class="music-box" id="musicFields">
         <div class="label">Couleur du lecteur</div>
         <div class="seg two" id="playerColorSeg"><button data-v="cover">Pochette</button><button data-v="accent">Couleur d'accent</button></div>
+        <div class="label">Fond du lecteur</div>
+        <div class="seg two" id="playerBgSeg"><button data-v="mosaic">Mosaïque</button><button data-v="gradient">Dégradé</button></div>
         <div class="label">Source</div>
         <div class="seg two" id="musicSrcSeg"><button data-v="files">Mes sons</button><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
         <div class="music-fields" data-src="files">

@@ -38,10 +38,21 @@ Sans configuration, le bouton **Mode démo** affiche un faux salon pour essayer 
 L'engrenage en haut à droite ouvre les paramètres (Échap les ferme). F11 ou l'icône à côté passe en plein écran, net jusqu'en 2K et au-delà.
 
 - **Style de base · Espace** (par défaut) : fond noir étoilé avec des étoiles filantes, rangée d'avatars, anneau blanc lumineux autour de celui qui parle.
+
+En mode **Bande** avec la caméra active, les avatars sont posés sur un arc en 3D : la caméra pivote vers celui qui parle, même tout au bout de la rangée, et les autres s'enfoncent en perspective. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
+
+**Fond Dégradé** : un fond sans motif, clair au centre et sombre sur les bords, dans la couleur d'accent. Le lecteur musique a aussi un réglage **Fond du lecteur** : Mosaïque ou Dégradé.
 - **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, grille néon).
 - **Style montage 1 · Cinéma** : décrit ci-dessous.
 
 Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements de caméra (modes Cinéma 3D et Bande). Coupé, tout le salon reste cadré et seul celui qui parle grossit un peu.
+
+**Piloter la caméra à la main** (modes Cinéma 3D et Bande) :
+
+- **Clic-glisser** sur la scène : déplace la caméra (gauche/droite le long des joueurs, haut/bas).
+- **Molette** : zoom avant ou arrière.
+- **Ctrl+clic sur un joueur** : verrouille la caméra sur lui (badge « CAM »). Ctrl+clic à nouveau, ou sur le fond, pour la libérer.
+- Sans action pendant **2,5 secondes**, la caméra repart toute seule sur celui qui parle (ou sur le joueur verrouillé).
 
 ## Le style « montage 1 » (Cinéma 3D)
 

@@ -205,7 +205,7 @@ let cardCover = undefined, cardColor = vivid(null);
 // Couleur du lecteur : celle de la pochette, ou la couleur d'accent de l'ambiance (réglage « Couleur du lecteur »)
 function cardLook(cover) {
   const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
-  const key = S.playerColor === "accent" ? "accent|" + accent : "cover|" + cover;
+  const key = (S.playerColor === "accent" ? "accent|" + accent : "cover|" + cover) + "|" + S.playerBg;
   if (key === cardCover) return;
   cardCover = key;
   const apply = (rgb) => {
@@ -268,6 +268,16 @@ function drawMosaic(c) {
   cv.height = Math.max(1, box.height * dpr);
   const x = cv.getContext("2d");
   const W = cv.width, H = cv.height, cols = 10, rows = 6, cw = W / cols, ch = H / rows;
+  if (S.playerBg === "gradient") {
+    // Fond sans motif : dégradé radial dans la couleur du lecteur
+    const g = x.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.hypot(W, H) * 0.55);
+    g.addColorStop(0, `hsl(${c.h} ${c.s}% ${Math.min(c.l + 6, 58)}%)`);
+    g.addColorStop(0.6, `hsl(${c.h} ${c.s}% 30%)`);
+    g.addColorStop(1, `hsl(${c.h} ${c.s}% 15%)`);
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+    return;
+  }
   const pts = [];
   for (let j = 0; j <= rows; j++) {
     pts[j] = [];
