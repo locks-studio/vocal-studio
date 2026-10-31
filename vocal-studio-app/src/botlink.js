@@ -1,4 +1,4 @@
-// Mode « bot » : l'appli se connecte au serveur Vocal Studio (bot Discord) au lieu du RPC local.
+// Mode « bot » : l'appli se connecte au serveur Hush (bot Discord) au lieu du RPC local.
 // Même interface que VoiceSession pour que le reste de l'appli n'y voie pas de différence.
 const crypto = require("crypto");
 const WebSocket = require("ws");
@@ -49,7 +49,7 @@ class BotLink {
         this.store.setToken(null);
         return this.set(this.blank("needs-login"));
       }
-      this.set(this.blank("disconnected", "Serveur Vocal Studio injoignable. Nouvelle tentative dans 5 s."));
+      this.set(this.blank("disconnected", "Serveur Hush injoignable. Nouvelle tentative dans 5 s."));
       this.retry = setTimeout(() => this.start(), 5000);
     });
     ws.on("error", () => {}); // l'événement « close » suit et gère la suite

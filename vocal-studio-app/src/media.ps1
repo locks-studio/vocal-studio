@@ -33,7 +33,7 @@ function Read-Cover($ref) {
 
 $lastKey = $null; $lastCover = $null; $lastLine = $null
 while ($true) {
-  # S'arrête tout seul si Vocal Studio a été fermé brutalement
+  # S'arrête tout seul si Hush a été fermé brutalement
   if ($ParentPid -and -not (Get-Process -Id $ParentPid -ErrorAction SilentlyContinue)) { exit }
   try {
     $sessions = @($mgr.GetSessions())

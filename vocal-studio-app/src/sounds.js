@@ -183,7 +183,7 @@ class SoundLibrary {
     if (this.lyricsCache.has(key)) return this.lyricsCache.get(key);
     // On nettoie « (Official Video) », « [Clip] », « feat. … » qui gênent la recherche
     const clean = (s) => String(s || "").replace(/\s*[([].*?[)\]]/g, "").replace(/\s+(feat|ft)\..*$/i, "").trim();
-    const headers = { "User-Agent": "VocalStudio/0.1" };
+    const headers = { "User-Agent": "Hush/0.1" };
     try {
       const q = new URLSearchParams({ track_name: clean(title), artist_name: clean(artist) });
       if (duration) q.set("duration", String(Math.round(duration / 1000)));

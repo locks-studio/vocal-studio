@@ -1,7 +1,7 @@
 {
   "name": "vocal-studio-bot",
   "version": "0.1.0",
-  "description": "Bot Discord qui transmet l'état des salons vocaux à l'appli Vocal Studio",
+  "description": "Bot Discord qui transmet l'état des salons vocaux à l'appli Hush",
   "main": "src/index.js",
   "private": true,
   "type": "commonjs",

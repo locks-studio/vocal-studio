@@ -1,12 +1,12 @@
-# Serveur du bot Vocal Studio
+# Serveur du bot Hush
 
-Le bot rejoint un salon vocal et transmet en direct à l'appli Vocal Studio qui est là, qui est muet et qui parle. C'est ce qui permet à tout le monde d'utiliser l'appli, sans la connexion directe (RPC) réservée aux testeurs.
+Le bot rejoint un salon vocal et transmet en direct à l'appli Hush qui est là, qui est muet et qui parle. C'est ce qui permet à tout le monde d'utiliser l'appli, sans la connexion directe (RPC) réservée aux testeurs.
 
 Le bot **n'écoute pas et n'enregistre rien** : il reçoit seulement le signal « untel commence / arrête de parler ».
 
 ## 1. Créer le bot sur Discord (une fois)
 
-Tu peux réutiliser l'application Discord que tu as déjà créée pour Vocal Studio.
+Tu peux réutiliser l'application Discord que tu as déjà créée pour Hush.
 
 1. Va sur <https://discord.com/developers/applications> et ouvre ton application.
 2. **Bot** : clique sur **Reset Token** et copie le jeton. Il ne doit jamais être partagé ni publié.
@@ -33,10 +33,10 @@ La console affiche le **lien d'invitation du bot** : ouvre-le pour l'ajouter à 
 
 ## 3. Utiliser l'appli avec le bot
 
-1. Dans Vocal Studio, choisis **Avec le bot** et garde l'adresse `http://localhost:8787`.
+1. Dans Hush, choisis **Avec le bot** et garde l'adresse `http://localhost:8787`.
 2. Clique sur **Se connecter avec Discord** et autorise dans le navigateur.
-3. Rejoins un salon vocal, puis clique sur **Faire venir le bot** dans l'appli, ou tape `/studio` dans Discord.
-4. `/studio-stop` ou le bouton rouge de l'appli fait partir le bot. Il part aussi tout seul 30 secondes après que tout le monde a quitté le salon.
+3. Rejoins un salon vocal, puis clique sur **Faire venir le bot** dans l'appli, ou tape `/hush` dans Discord.
+4. `/hush-stop` ou le bouton rouge de l'appli fait partir le bot. Il part aussi tout seul 30 secondes après que tout le monde a quitté le salon.
 
 En mode bot, les boutons micro et sourdine disparaissent : un bot ne peut pas toucher à ceux de chaque personne.
 
@@ -55,7 +55,7 @@ Au-delà de 100 serveurs, Discord demande de faire vérifier le bot.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/bot.js` | Le bot : rejoint les salons, suit les membres et qui parle, commandes `/studio` |
+| `src/bot.js` | Le bot : rejoint les salons, suit les membres et qui parle, commandes `/hush` |
 | `src/index.js` | Le serveur : connexion « Se connecter avec Discord » et liaison en direct avec l'appli |
 | `.env` | Tes secrets (jamais partagé, ignoré par git) |
 | `sessions.json` | Les applis connectées (créé automatiquement, ignoré par git) |

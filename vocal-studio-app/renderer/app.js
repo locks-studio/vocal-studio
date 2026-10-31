@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -107,11 +107,11 @@ function renderChrome() {
   $("#status").innerHTML = `<i class="dot ${cls}"></i> `;
   $("#status").append(label);
   const ch = state.channel;
-  $("#chanName").textContent = ch ? ch.name : "Vocal Studio";
-  $("#coreName").textContent = ch ? ch.name : "Vocal Studio";
+  $("#chanName").textContent = ch ? ch.name : "Hush";
+  $("#coreName").textContent = ch ? ch.name : "Hush";
   $("#guild").textContent = ch && ch.guild ? ch.guild : "";
   $("#count").textContent = ch ? `${state.members.length} dans le salon` : "";
-  document.title = ch ? `${ch.name} · Vocal Studio` : "Vocal Studio";
+  document.title = ch ? `${ch.name} · Hush` : "Hush";
 
   const inCall = !!ch;
   ["#mic", "#deaf", "#leave"].forEach((id) => ($(id).disabled = !inCall));
@@ -160,19 +160,19 @@ async function renderScreen() {
   screen.hidden = false;
   const isBot = state.mode === "bot";
   if (s === "connecting" || s === "idle") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Connexion au serveur Vocal Studio…" : "Connexion à Discord…"),
+    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Connexion au serveur Hush…" : "Connexion à Discord…"),
       el("p", {}, isBot ? "Ça ne prend que quelques secondes." : "Garde l'application Discord ouverte sur ce PC."));
   } else if (s === "needs-login") {
     card.append(el("h3", {}, "Connecte-toi avec Discord"),
-      el("p", {}, "Vocal Studio a besoin de savoir qui tu es pour trouver ton salon vocal. Il ne voit ni tes messages ni tes serveurs."));
+      el("p", {}, "Hush a besoin de savoir qui tu es pour trouver ton salon vocal. Il ne voit ni tes messages ni tes serveurs."));
     if (state.error) card.append(el("p", { class: "err" }, state.error));
     card.append(actions(button("Se connecter avec Discord", "cta", () => window.studio.bot.login()),
       button("Modifier la connexion", "ghost", () => { editingConfig = true; renderScreen(); }),
       button("Mode démo", "ghost", () => setDemo(true))));
   } else if (s === "bot-absent") {
-    card.append(el("h3", {}, `Vocal Studio n'est pas dans « ${state.channel.name} »`));
+    card.append(el("h3", {}, `Hush n'est pas dans « ${state.channel.name} »`));
     if (state.canJoin) {
-      card.append(el("p", {}, "Fais venir le bot dans ton salon pour afficher tout le monde. Tu peux aussi taper /studio dans Discord."));
+      card.append(el("p", {}, "Fais venir le bot dans ton salon pour afficher tout le monde. Tu peux aussi taper /hush dans Discord."));
       if (state.error) card.append(el("p", { class: "err" }, state.error));
       card.append(actions(button("Faire venir le bot", "cta", () => window.studio.voice.summon())));
     } else {
@@ -181,17 +181,17 @@ async function renderScreen() {
   } else if (s === "authorizing") {
     card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Termine dans ton navigateur" : "Regarde dans Discord"),
       el("p", {}, isBot
-        ? "Une page Discord s'est ouverte : clique sur « Autoriser ». Vocal Studio continue tout seul ensuite."
-        : "Une fenêtre te demande d'autoriser Vocal Studio à voir ton salon vocal. Clique sur « Autoriser ». Il ne le demandera qu'une fois."));
+        ? "Une page Discord s'est ouverte : clique sur « Autoriser ». Hush continue tout seul ensuite."
+        : "Une fenêtre te demande d'autoriser Hush à voir ton salon vocal. Clique sur « Autoriser ». Il ne le demandera qu'une fois."));
     if (isBot) card.append(actions(button("Annuler", "ghost", () => window.studio.voice.start())));
   } else if (s === "ready") {
     card.append(el("h3", {}, "Tu n'es dans aucun salon vocal"),
       el("p", {}, isBot
-        ? "Rejoins un salon vocal sur un serveur où le bot Vocal Studio est invité : il s'affichera ici tout seul."
+        ? "Rejoins un salon vocal sur un serveur où le bot Hush est invité : il s'affichera ici tout seul."
         : "Rejoins un salon vocal ou un appel dans Discord : il s'affichera ici tout seul."));
   } else if (s === "disconnected") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Serveur Vocal Studio injoignable" : "Discord est fermé"),
-      el("p", {}, isBot ? "Vérifie ta connexion internet. Vocal Studio réessaie toutes les 5 secondes." : "Ouvre Discord sur ce PC. Vocal Studio se reconnecte toutes les 5 secondes."),
+    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Serveur Hush injoignable" : "Discord est fermé"),
+      el("p", {}, isBot ? "Vérifie ta connexion internet. Hush réessaie toutes les 5 secondes." : "Ouvre Discord sur ce PC. Hush se reconnecte toutes les 5 secondes."),
       actions(button("Essayer le mode démo", "ghost", () => setDemo(true))));
   } else if (s === "error") {
     card.append(el("h3", {}, "La connexion a échoué"), el("p", { class: "err" }, state.error || "Erreur inconnue"),
@@ -223,10 +223,10 @@ async function renderSetup(card, screen) {
   segBtn("bot", "Avec le bot");
   segBtn("local", "Connexion directe");
 
-  // Mode bot : juste l'adresse du serveur Vocal Studio
+  // Mode bot : juste l'adresse du serveur Hush
   const botBox = el("div", { class: "setup-box" });
-  botBox.append(el("p", {}, "Le bot Vocal Studio rejoint ton salon vocal et transmet qui parle. Ça marche pour tout le monde, il suffit que le bot soit invité sur le serveur."),
-    f("Adresse du serveur Vocal Studio", "cfgServer", cfg.botServer || "http://localhost:8787", { placeholder: "https://…" }));
+  botBox.append(el("p", {}, "Le bot Hush rejoint ton salon vocal et transmet qui parle. Ça marche pour tout le monde, il suffit que le bot soit invité sur le serveur."),
+    f("Adresse du serveur Hush", "cfgServer", cfg.botServer || "http://localhost:8787", { placeholder: "https://…" }));
 
   // Mode direct (RPC) : réservé à toi et à tes testeurs
   const localBox = el("div", { class: "setup-box" });
@@ -354,7 +354,7 @@ let focusId = null, focusAt = 0;
 function layout() {
   stage.className = "stage " + S.layout;
   mainEl.classList.toggle("cam-move", camLayout());
-  if (!camLayout()) { stage.style.transform = ""; view.lock = null; }
+  if (!camLayout()) { view.lock = null; view.y = 0; }
   const n = Math.max(1, tiles.size);
   const W = stage.clientWidth, H = stage.clientHeight;
   // Grille : on cherche le nombre de colonnes qui donne les plus grands avatars
@@ -699,7 +699,7 @@ function cinema(t) {
   const dolly = cam ? 50 * Math.sin(t * 0.00027 * sp) : 0;
   // Celui qui parle est placé un peu à gauche du centre, les autres filent vers la droite
   const shift = cam ? -c * 0.45 : 0;
-  const gap = cam ? 1.4 : 1.25;
+  const gap = cam ? 1.65 : 1.25;
   view.slotPx = c * gap * k;
   items.forEach((it, i) => {
     const target = i;
@@ -716,64 +716,98 @@ function cinema(t) {
 /* ——— Changement de plan (nouvelle personne qui parle) ——— */
 function onCut() {
   if (S.bg === "auto") window.Patterns.cut();
-  if (S.layout === "strip" && S.camera) zoomKick = 1;
+  if (S.layout === "strip" && S.camera) { zoomKick = 1; newShot(); }
   if (S.bg === "auto" && !reduced) flashLvl = 0.35;
 }
 
 /* ——— Caméra du mode Bande ———
-   Un ressort amène la caméra sur celui qui parle : départ rapide, léger dépassement,
-   flou de mouvement pendant le trajet, et un zoom « punch » à chaque nouveau plan. */
-let stripX = null, stripV = 0, zoomKick = 0, zoom = 1, flashLvl = 0;
+   La caméra vise celui qui parle (ou le milieu quand plusieurs parlent, en dézoomant pour les cadrer).
+   Pour aller vers quelqu'un, elle PIVOTE d'abord (rotation autour de l'objectif), puis glisse doucement
+   pour rattraper : le pivot revient à zéro quand elle est arrivée. Elle se penche aussi à la verticale
+   (léger balancement, inclinaison pendant les mouvements et quand elle cadre un groupe).
+   La rangée est un plan 3D : tous les avatars tournent ensemble, donc ils ne se chevauchent jamais. */
+let stripX = null, stripV = 0, slideX = null, zoomKick = 0, zoom = 1, groupZoom = 1, flashLvl = 0;
+// Angle du « plan » en cours (plongée + orientation), tiré au hasard à chaque nouvelle prise de parole
+const shot = { yaw: 18, pitch: 20, curYaw: 18, curPitch: 20 };
+function newShot() {
+  shot.yaw = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 16);
+  shot.pitch = 10 + Math.random() * 22; // caméra plongeante : on regarde la rangée d'au-dessus
+  if (Math.random() < 0.2) shot.pitch = -8 - Math.random() * 8; // de temps en temps, contre-plongée
+}
 function strip(t) {
   const c = parseFloat(stage.style.getPropertyValue("--ctile")) || 160;
   const list = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
   const cam = S.camera && !reduced;
   const fi = Math.max(0, list.findIndex((x) => x.data.id === focusId));
+  const gap = c * 1.45;
+
+  // Plusieurs personnes parlent : on vise le milieu et on dézoome juste assez pour les voir toutes
+  const live = new Map(state.members.map((m) => [m.id, m]));
+  const talking = list.map((x, i) => ((live.get(x.data.id) || {}).speaking ? i : -1)).filter((i) => i >= 0);
+  let aimTalk = fi, wantZoom = 1;
+  if (cam && talking.length >= 2) {
+    const lo = Math.min(...talking), hi = Math.max(...talking);
+    aimTalk = (lo + hi) / 2;
+    wantZoom = Math.max(0.5, Math.min(1, (stage.clientWidth * 0.8) / ((hi - lo) * gap + c * 1.5)));
+  }
+  groupZoom += (wantZoom - groupZoom) * 0.04;
+
   // Caméra désactivée : rangée fixe, centrée et réduite pour que tout le monde rentre
   const lockI = list.findIndex((x) => x.data.id === view.lock);
-  const aim = lockI >= 0 ? lockI : cam ? fi : (list.length - 1) / 2;
-  const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.18));
-  if (stripX === null) { stripX = aim; stripV = 0; }
+  const aim = lockI >= 0 ? lockI : cam ? aimTalk : (list.length - 1) / 2;
+  const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.26));
+  if (stripX === null) { stripX = slideX = aim; stripV = 0; }
   if (viewFree() && view.x !== null) { stripX = view.x; stripV = 0; }
   else {
-    // Ressort vers la cible (plus doux quand on revient d'un déplacement à la main ou caméra fixe)
     stripV += (aim - stripX) * 0.018 * S.speed;
     stripV *= 0.82;
     stripX += stripV;
   }
-  view.slotPx = c * 1.18 * zoom * k;
+  // La glissière suit plus lentement que le regard : l'écart entre les deux est rattrapé en pivotant
+  slideX += (stripX - slideX) * (cam ? 0.045 * S.speed : 1);
   zoomKick = cam ? zoomKick * 0.94 : 0;
   zoom += (1 + zoomKick * 0.22 - zoom) * 0.15;
-  const blur = cam ? Math.min(6, Math.abs(stripV) * 40) : 0;
-  const roll = cam ? 1.5 * Math.sin(t * 0.0004 * S.speed) : 0;
-  // Caméra 3D : les avatars sont posés sur un arc autour de la caméra, qui pivote vers celui qu'elle vise.
-  // Les voisins s'éloignent en profondeur et tournent (ils deviennent ovales), comme dans les montages.
-  // Pendant un déplacement, la caméra « penche » un peu dans le sens du mouvement.
-  const R = c * 4.4;
-  const step = Math.atan((c * 1.18) / R);
-  const swing = cam ? Math.max(-18, Math.min(18, stripV * 260)) : 0;
+  const z = zoom * (cam ? groupZoom : 1);
+  view.slotPx = gap * z;
+
+  const blur = cam ? Math.min(5, Math.abs(stripV) * 30) : 0;
+  const roll = cam ? 1.5 * Math.sin(t * 0.0004 * S.speed) + stripV * 30 : 0;
+  // Le plan de la rangée pivote quand celui qu'on regarde est vers un bout, plus l'angle du plan en cours.
+  // Combiné à la plongée (rotation verticale autour de celui qu'on regarde), la rangée part en diagonale
+  // dans la profondeur : les avatars lointains montent ou descendent en s'éloignant.
+  shot.curYaw += (shot.yaw - shot.curYaw) * 0.03 * S.speed;
+  shot.curPitch += (shot.pitch - shot.curPitch) * 0.03 * S.speed;
+  const mid = (list.length - 1) / 2;
+  const rel = mid > 0 ? Math.max(-1, Math.min(1, (stripX - mid) / mid)) : 0;
+  const yaw = cam ? Math.max(-55, Math.min(55, -rel * 30 + shot.curYaw)) : 0;
+  const plunge = cam ? shot.curPitch + 5 * Math.sin(t * 0.00027 * S.speed) : 0;
+  // Rotation de la caméra elle-même (autour de l'objectif) : horizontale vers la cible, verticale qui balance
+  const P = c * 7.5; // même distance que la perspective CSS
+  const panYaw = cam ? (Math.atan(((stripX - slideX) * gap * z) / P) * 180) / Math.PI : 0;
+  const pitch = cam ? 2.5 * Math.sin(t * 0.00033 * S.speed) - Math.max(-6, Math.min(6, stripV * 80)) + (1 - groupZoom) * 8 : 0;
+
   list.forEach((x, i) => {
-    const d = i - stripX;
     // Celui qui parle grossit un peu, même caméra fixe
-    const near = x.data.id === focusId ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
-    x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.32 : 0.12) - (x.fs ?? 1)) * 0.12;
+    const isTalk = talking.includes(i);
+    const near = x.data.id === focusId || isTalk ? 1 : cam ? Math.max(0, 1 - Math.abs(i - fi) * 0.9) : 0;
+    x.fs = (x.fs ?? 1) + (1 + near * (cam ? 0.28 : 0.12) - (x.fs ?? 1)) * 0.12;
     const y = 5 * Math.sin(t * 0.001 * S.speed + x.seed);
     if (cam) {
-      const a = d * step;
-      const px = R * Math.sin(a) * zoom;
-      const pz = R * (Math.cos(a) - 1) * zoom;
-      const turn = (-a * 180) / Math.PI * 0.75 - swing;
-      x.el.style.transform = `rotate(${roll}deg) translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, ${pz.toFixed(1)}px) rotateY(${turn.toFixed(2)}deg) scale(${(x.fs * zoom).toFixed(3)})`;
-      // Ceux qui passent « derrière » la caméra s'effacent au lieu d'apparaître à l'envers
-      const deg = Math.abs((a * 180) / Math.PI);
-      x.el.style.opacity = deg > 70 ? Math.max(0, (100 - deg) / 30).toFixed(2) : "";
+      const px = (i - slideX) * gap * z;
+      // Lecture de droite à gauche : 1) la caméra pivote/balance autour de son objectif,
+      // 2) la rangée est plongée et orientée autour de celui qu'on regarde, 3) l'avatar est placé sur la rangée
+      // puis retourné en grande partie vers la caméra pour rester bien rond.
+      x.el.style.transform =
+        `translateZ(${P.toFixed(0)}px) rotateX(${pitch.toFixed(2)}deg) rotateY(${panYaw.toFixed(2)}deg) translateZ(${(-P).toFixed(0)}px) ` +
+        `rotate(${roll.toFixed(2)}deg) rotateX(${(-plunge).toFixed(2)}deg) rotateY(${yaw.toFixed(2)}deg) ` +
+        `translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateY(${(-yaw * 0.6).toFixed(2)}deg) rotateX(${(plunge * 0.75).toFixed(2)}deg) scale(${(x.fs * z).toFixed(3)})`;
     } else {
-      x.el.style.opacity = "";
-      const px = d * c * 1.18 * zoom * k;
+      const px = (i - stripX) * c * 1.26 * zoom * k;
       x.el.style.transform = `rotate(${roll}deg) translate(${px}px, ${y}px) scale(${x.fs * zoom * k})`;
     }
+    x.el.style.opacity = "";
     x.el.style.filter = blur > 1.5 ? `blur(${blur.toFixed(1)}px)` : "";
-    x.el.style.zIndex = String(100 - Math.round(Math.abs(i - fi)));
+    x.el.style.zIndex = String(100 - Math.round(Math.abs(i - stripX) * 2));
   });
 }
 
@@ -826,13 +860,18 @@ addEventListener("pointerup", () => {
   view.until = performance.now() + FREE_MS;
   mainEl.classList.remove("grabbing");
 });
+// Molette : zoom avant / arrière, gardé tel quel (et enregistré) jusqu'à ce que tu le changes. Ctrl+0 : retour à 100 %
+function setZoom(z) {
+  S.zoom = Math.round(Math.max(0.4, Math.min(2.5, z)) * 100) / 100;
+  save();
+  showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
+}
 mainEl.addEventListener("wheel", (e) => {
-  if (!camLayout() || e.target.closest(".panel, .screen")) return;
+  if (e.target.closest(".panel, .screen, .mp") || S.layout === "lyrics") return;
   e.preventDefault();
-  view.zoom = Math.max(0.5, Math.min(2.5, view.zoom * (1 - e.deltaY * 0.0012)));
-  if (view.x === null) view.x = S.layout === "strip" ? stripX : camX;
-  view.until = performance.now() + FREE_MS;
+  setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
+addEventListener("keydown", (e) => { if (e.ctrlKey && (e.key === "0" || e.code === "Numpad0")) { e.preventDefault(); setZoom(1); } });
 
 // Couleur d'accent (#rrggbb) en teinte/saturation/luminosité, avec une saturation minimale pour le dégradé
 function hexHsl(hex) {
@@ -875,12 +914,11 @@ function frame(t) {
   }
   if (S.layout === "cinema") cinema(t);
   if (S.layout === "strip") strip(t);
-  if (camLayout()) {
-    // 2,5 s sans toucher : la vue revient doucement en place et la caméra reprend celui qui parle
-    if (!viewFree()) { view.x = null; view.y *= 0.88; view.zoom += (1 - view.zoom) * 0.12; }
-    const moved = Math.abs(view.y) > 0.5 || Math.abs(view.zoom - 1) > 0.002;
-    stage.style.transform = moved ? `translateY(${view.y.toFixed(1)}px) scale(${view.zoom.toFixed(3)})` : "";
-  }
+  // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
+  if (!viewFree()) { view.x = null; view.y *= 0.88; }
+  view.zoom += (S.zoom - view.zoom) * (reduced ? 1 : 0.18);
+  const moved = Math.abs(view.y) > 0.5 || Math.abs(view.zoom - 1) > 0.002;
+  stage.style.transform = moved ? `translateY(${view.y.toFixed(1)}px) scale(${view.zoom.toFixed(3)})` : "";
   for (const x of tiles.values()) x.el.classList.toggle("locked", x.data.id === view.lock);
   flashLvl *= 0.8;
   $("#flash").style.opacity = flashLvl > 0.01 ? flashLvl.toFixed(3) : "0";

@@ -1,4 +1,4 @@
-# Vocal Studio
+# Hush
 
 Une fenêtre à côté de Discord qui affiche ton salon vocal avec une interface personnalisable : ambiances, dispositions (grille, orbite, scène), halos animés autour de ceux qui parlent, fond animé.
 
@@ -6,7 +6,7 @@ Elle passe par le **RPC local officiel de Discord** : elle lit le salon où tu e
 
 ## 1. Créer ton application Discord (une seule fois)
 
-1. Va sur <https://discord.com/developers/applications> et clique sur **New Application**. Nomme-la « Vocal Studio ».
+1. Va sur <https://discord.com/developers/applications> et clique sur **New Application**. Nomme-la « Hush ».
 2. Dans **OAuth2** :
    - copie le **Client ID** ;
    - clique sur **Reset Secret** et copie le **Client Secret** (garde-le pour toi) ;
@@ -21,15 +21,15 @@ npm install
 npm start
 ```
 
-Sous Windows, tu peux aussi double-cliquer sur `Lancer Vocal Studio.bat`.
+Sous Windows, tu peux aussi double-cliquer sur `Lancer Hush.bat`.
 
 Au premier lancement :
 
 1. Colle le Client ID et le Client Secret, puis clique sur **Enregistrer et connecter**.
-2. Discord ouvre une fenêtre qui demande d'autoriser Vocal Studio. Clique sur **Autoriser**.
+2. Discord ouvre une fenêtre qui demande d'autoriser Hush. Clique sur **Autoriser**.
 3. Rejoins un salon vocal : il s'affiche tout seul.
 
-Tes identifiants et ta connexion sont gardés sur ce PC, chiffrés par Windows (dans `%APPDATA%\vocal-studio\config.json`). Les réglages visuels sont enregistrés automatiquement.
+Tes identifiants et ta connexion sont gardés sur ce PC, chiffrés par Windows (dans `%APPDATA%\Hush\config.json`, ou `%APPDATA%\vocal-studio\` si tu utilisais déjà l'appli avant son changement de nom). Les réglages visuels sont enregistrés automatiquement.
 
 Sans configuration, le bouton **Mode démo** affiche un faux salon pour essayer les réglages.
 
@@ -39,7 +39,7 @@ L'engrenage en haut à droite ouvre les paramètres (Échap les ferme). F11 ou l
 
 - **Style de base · Espace** (par défaut) : fond noir étoilé avec des étoiles filantes, rangée d'avatars, anneau blanc lumineux autour de celui qui parle.
 
-En mode **Bande** avec la caméra active, les avatars sont posés sur un arc en 3D : la caméra pivote vers celui qui parle, même tout au bout de la rangée, et les autres s'enfoncent en perspective. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
+En mode **Bande** avec la caméra active, la caméra est vraiment en 3D : la rangée part en diagonale dans la profondeur (caméra plongeante, parfois contre-plongée), et l'angle change à chaque nouvelle prise de parole, comme un nouveau plan. Pour aller vers quelqu'un, la caméra pivote d'abord vers lui puis glisse pour rattraper, même tout au bout de la rangée. Quand plusieurs personnes parlent, elle se place entre elles et dézoome pour les cadrer toutes. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
 
 **Fond Dégradé** : un fond sans motif, clair au centre et sombre sur les bords, dans la couleur d'accent. Le lecteur musique a aussi un réglage **Fond du lecteur** : Mosaïque ou Dégradé.
 - **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, grille néon).
@@ -50,7 +50,7 @@ Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements 
 **Piloter la caméra à la main** (modes Cinéma 3D et Bande) :
 
 - **Clic-glisser** sur la scène : déplace la caméra (gauche/droite le long des joueurs, haut/bas).
-- **Molette** : zoom avant ou arrière.
+- **Molette** : zoom avant ou arrière, dans toutes les dispositions. Le zoom reste tel quel jusqu'à ce que tu le changes ; **Ctrl+0** le remet à 100 %.
 - **Ctrl+clic sur un joueur** : verrouille la caméra sur lui (badge « CAM »). Ctrl+clic à nouveau, ou sur le fond, pour la libérer.
 - Sans action pendant **2,5 secondes**, la caméra repart toute seule sur celui qui parle (ou sur le joueur verrouillé).
 
@@ -76,14 +76,14 @@ Dans les paramètres, **Lecteur musique** propose quatre sources :
 - **Compte Spotify** : lit directement ton compte, même si la musique joue sur ton téléphone. Il faut une appli Spotify (une fois) :
   1. Va sur <https://developer.spotify.com/dashboard> et crée une appli (coche **Web API**).
   2. Dans **Redirect URIs**, ajoute exactement `http://127.0.0.1:43821/callback`.
-  3. Copie le **Client ID** dans Vocal Studio, puis clique sur **Connecter Spotify** et accepte dans le navigateur.
+  3. Copie le **Client ID** dans Hush, puis clique sur **Connecter Spotify** et accepte dans le navigateur.
 - **À la main** : titre et pochette que tu choisis.
 
 Deezer ne permet plus de créer d'applications développeur, c'est pour ça qu'il passe par « Ce PC ».
 
 Quand la source ne donne pas d'image (certains navigateurs, comme Opera GX, envoient une miniature vide pour YouTube), l'appli cherche la pochette dans le catalogue public de Deezer à partir du titre et de l'artiste. Elle ne l'affiche que si l'artiste correspond, pour éviter une mauvaise pochette.
 
-Les sons de **Mes sons** sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran (ou la fenêtre Vocal Studio) avec le son dans Discord. La musique Spotify ou Deezer, elle, ne peut pas être rediffusée : pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify).
+Les sons de **Mes sons** sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran (ou la fenêtre Hush) avec le son dans Discord. La musique Spotify ou Deezer, elle, ne peut pas être rediffusée : pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify).
 
 ## Le mode Paroles
 
@@ -96,8 +96,8 @@ Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc l
 ## Ce qu'il faut savoir
 
 - **Qui peut l'utiliser ?** Discord réserve l'accès au salon vocal par RPC aux applications validées. Une application non validée marche pour son propriétaire (toi). Pour des amis, ajoute-les comme testeurs de l'application sur le portail développeur (**App Testers**), dans la limite fixée par Discord.
-- **Caméra et partage d'écran** : le RPC de Discord ne donne pas accès aux flux vidéo. Vocal Studio affiche donc les avatars, pas les vidéos.
-- **Réactions** (🔥😂💜👏) : elles ne sont visibles que dans ta fenêtre. Pratique si tu captures Vocal Studio dans OBS pour un stream.
+- **Caméra et partage d'écran** : le RPC de Discord ne donne pas accès aux flux vidéo. Hush affiche donc les avatars, pas les vidéos.
+- **Réactions** (🔥😂💜👏) : elles ne sont visibles que dans ta fenêtre. Pratique si tu captures Hush dans OBS pour un stream.
 - **Épingle** (dans la barre de titre) : garde la fenêtre au premier plan, par-dessus un jeu en mode fenêtré.
 
 ## Structure

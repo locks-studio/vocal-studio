@@ -68,10 +68,10 @@ class SpotifySession {
       }
       try {
         await this.tokenRequest({ grant_type: "authorization_code", code: url.searchParams.get("code"), redirect_uri: REDIRECT, code_verifier: verifier });
-        page("Spotify est connecté à Vocal Studio. Tu peux fermer cet onglet.");
+        page("Spotify est connecté à Hush. Tu peux fermer cet onglet.");
         this.start();
       } catch (e) {
-        page("La connexion a échoué. Reviens dans Vocal Studio pour voir l'erreur.");
+        page("La connexion a échoué. Reviens dans Hush pour voir l'erreur.");
         this.set({ status: "error", error: e.message });
       }
     });

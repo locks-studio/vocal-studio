@@ -131,7 +131,8 @@ body.no-names .name{display:none}
 .btn .slash{display:none;stroke:var(--danger);stroke-width:2.4}
 .btn.off{color:var(--danger)}
 .btn.off .slash{display:block}
-.btn.leave{background:var(--danger);color:#fff;width:58px}
+.btn.leave{background:#e5141c;color:#fff;width:58px;box-shadow:0 0 0 1px rgba(255,40,40,.5),0 4px 18px rgba(229,20,28,.45)}
+.btn.leave:hover{background:#ff1f26}
 
 /* ——— Panneau ——— */
 .panel{position:relative;z-index:2;border-left:1px solid var(--line);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(16px);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:22px}

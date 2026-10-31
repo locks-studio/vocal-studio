@@ -10,6 +10,13 @@ const { registerScheme, SoundLibrary } = require("./sounds");
 registerScheme();
 let sounds;
 
+// Le logiciel s'appelait « Vocal Studio » : si son dossier existe, Hush continue de l'utiliser
+// (réglages, sons importés, connexions), sinon tout serait perdu avec le changement de nom
+try {
+  const oldDir = path.join(app.getPath("appData"), "vocal-studio");
+  if (fs.existsSync(oldDir)) app.setPath("userData", oldDir);
+} catch {}
+
 // ——— Réglages enregistrés (le secret et le jeton sont chiffrés par Windows quand c'est possible) ———
 const file = () => path.join(app.getPath("userData"), "config.json");
 let data = {};
@@ -44,7 +51,7 @@ const store = {
   setToken: (t) => { data.token = seal(t); persist(); },
 };
 
-// Mode bot : adresse du serveur Vocal Studio et session de l'appli sur ce serveur
+// Mode bot : adresse du serveur Hush et session de l'appli sur ce serveur
 const botStore = {
   getServer: () => data.botServer || "",
   getToken: () => unseal(data.botToken),
@@ -118,7 +125,7 @@ function createWindow() {
     minHeight: 520,
     frame: false,
     backgroundColor: "#0d0b1a",
-    title: "Vocal Studio",
+    title: "Hush",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

@@ -24,8 +24,8 @@ class StudioBot extends EventEmitter {
   async onReady(c) {
     console.log(`Bot connecté : ${c.user.tag} (${c.guilds.cache.size} serveur·s)`);
     await c.application.commands.set([
-      { name: "studio", description: "Fait venir Vocal Studio dans ton salon vocal" },
-      { name: "studio-stop", description: "Fait partir Vocal Studio du salon vocal" },
+      { name: "hush", description: "Fait venir Hush dans ton salon vocal" },
+      { name: "hush-stop", description: "Fait partir Hush du salon vocal" },
     ]);
     this.emit("change");
   }
@@ -149,18 +149,18 @@ class StudioBot extends EventEmitter {
   async onInteraction(i) {
     if (!i.isChatInputCommand()) return;
     const voice = i.member && i.member.voice && i.member.voice.channel;
-    if (i.commandName === "studio") {
+    if (i.commandName === "hush") {
       if (!voice) return i.reply({ content: "Rejoins d'abord un salon vocal.", flags: MessageFlags.Ephemeral });
       await i.deferReply({ flags: MessageFlags.Ephemeral });
       try {
         await this.join(voice);
-        await i.editReply(`Vocal Studio est dans **${voice.name}**. Ouvre l'appli pour voir le salon.`);
+        await i.editReply(`Hush est dans **${voice.name}**. Ouvre l'appli pour voir le salon.`);
       } catch (e) {
         await i.editReply(e.message);
       }
-    } else if (i.commandName === "studio-stop") {
+    } else if (i.commandName === "hush-stop") {
       this.leave(i.guildId);
-      await i.reply({ content: "Vocal Studio a quitté le salon.", flags: MessageFlags.Ephemeral });
+      await i.reply({ content: "Hush a quitté le salon.", flags: MessageFlags.Ephemeral });
     }
   }
 }

@@ -110,7 +110,7 @@ class VoiceSession {
         } catch {}
       }
     }
-    // Première fois : Discord affiche une fenêtre « Autoriser Vocal Studio ? »
+    // Première fois : Discord affiche une fenêtre « Autoriser Hush ? »
     this.setStatus("authorizing");
     const { clientId, redirectUri } = this.store.getConfig();
     const { code } = await this.ipc.request("AUTHORIZE", { client_id: clientId, scopes: SCOPES });

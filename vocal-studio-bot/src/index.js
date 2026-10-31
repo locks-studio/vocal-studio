@@ -1,4 +1,4 @@
-// Serveur Vocal Studio : le bot Discord + une petite API pour l'appli.
+// Serveur Hush : le bot Discord + une petite API pour l'appli.
 //  - /auth/login, /auth/callback, /auth/poll : connexion « Se connecter avec Discord » (scope identify)
 //  - /ws : l'appli reçoit en direct l'état du salon vocal où se trouve son utilisateur
 const http = require("http");
@@ -30,7 +30,7 @@ const pending = new Map(); // state → { at, token?, error? }
 
 function page(res, title, text) {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(`<!doctype html><meta charset="utf-8"><title>Vocal Studio</title>
+  res.end(`<!doctype html><meta charset="utf-8"><title>Hush</title>
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#f4f5f8;font-family:system-ui,sans-serif;text-align:center">
 <div><h1 style="font-size:26px">${title}</h1><p style="color:#8a8d99">${text}</p></div></body>`);
 }
@@ -38,7 +38,7 @@ function page(res, title, text) {
 async function handleCallback(url, res) {
   const state = url.searchParams.get("state");
   const p = pending.get(state);
-  if (!p) return page(res, "Lien expiré", "Relance la connexion depuis Vocal Studio.");
+  if (!p) return page(res, "Lien expiré", "Relance la connexion depuis Hush.");
   const code = url.searchParams.get("code");
   if (!code) { p.error = "Connexion annulée."; return page(res, "Connexion annulée", "Tu peux fermer cet onglet."); }
   try {
@@ -54,10 +54,10 @@ async function handleCallback(url, res) {
     sessions[token] = { id: user.id, name: user.global_name || user.username, at: Date.now() };
     saveSessions();
     p.token = token;
-    page(res, "C'est bon !", "Vocal Studio est connecté à ton compte Discord. Tu peux fermer cet onglet.");
+    page(res, "C'est bon !", "Hush est connecté à ton compte Discord. Tu peux fermer cet onglet.");
   } catch (e) {
     p.error = `Connexion refusée : ${e.message}`;
-    page(res, "La connexion a échoué", "Reviens dans Vocal Studio pour voir l'erreur.");
+    page(res, "La connexion a échoué", "Reviens dans Hush pour voir l'erreur.");
   }
 }
 
@@ -77,7 +77,7 @@ const server = http.createServer((req, res) => {
     if (p && (p.token || p.error)) pending.delete(url.searchParams.get("state"));
     res.end(JSON.stringify(p ? { token: p.token || null, error: p.error || null } : { error: "Connexion inconnue ou expirée." }));
   } else if (url.pathname === "/") {
-    page(res, "Vocal Studio", "Le serveur du bot tourne.");
+    page(res, "Hush", "Le serveur du bot tourne.");
   } else {
     res.writeHead(404).end();
   }
@@ -130,7 +130,7 @@ bot.on("change", () => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Serveur Vocal Studio sur ${PUBLIC_URL} (port ${PORT})`);
+  console.log(`Serveur Hush sur ${PUBLIC_URL} (port ${PORT})`);
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);
   const invite = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${1024 + 1048576}`;
   console.log(`Lien d'invitation du bot : ${invite}`);

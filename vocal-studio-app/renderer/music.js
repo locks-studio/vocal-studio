@@ -336,7 +336,7 @@ function drawWave(t, playing) {
 function sourceLabel(t) {
   if (S.musicSource === "files") return "Mes sons";
   if (S.musicSource === "spotify") return "Spotify";
-  if (S.musicSource === "manual") return "Vocal Studio";
+  if (S.musicSource === "manual") return "Hush";
   const app = (t && t.app) || "";
   if (/deezer/i.test(app)) return "Deezer";
   if (/spotify/i.test(app)) return "Spotify";
