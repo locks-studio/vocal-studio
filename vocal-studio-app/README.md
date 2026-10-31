@@ -50,12 +50,15 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 - la disposition **Cinéma 3D** : les avatars flottent dans l'espace, la caméra pivote doucement et glisse vers celui qui parle ;
 - l'ambiance **Halo vert** avec l'anneau **Plein lumineux** autour de celui qui parle ;
 - le fond **Vignette** (sombre teinté de rouge). Avec **Image**, tu peux mettre ta propre image de fond ;
-- la **carte musique** : choisis la pochette et le titre affichés. Discord ne partage pas la musique en cours par ce moyen, donc c'est toi qui la remplis.
+- le **lecteur musique** en bas à droite.
 
-## La musique en cours (Deezer, Spotify)
+## Le lecteur musique
 
-Dans les paramètres, **Carte musique** propose trois sources :
+Il est toujours en bas à droite, dans toutes les dispositions : pochette, titre, onde sonore, vinyle qui tourne, temps écoulé et restant. Sa couleur et sa mosaïque de fond suivent la couleur de la pochette.
 
+Dans les paramètres, **Lecteur musique** propose quatre sources :
+
+- **Mes sons** : importe tes propres fichiers (MP3, M4A, WAV, OGG, FLAC) avec **Ajouter des sons** ou le **+** du lecteur. Le titre, l'artiste et la pochette sont lus dans le fichier. Les boutons du lecteur (précédent, lecture/pause, suivant) et la barre de progression marchent. Les sons sont copiés dans l'appli : tu peux supprimer les originaux.
 - **Ce PC** (par défaut) : lit ce que Windows sait de la musique en cours. Ça marche avec l'appli Deezer, Deezer dans le navigateur, Spotify, YouTube… Rien à connecter. Si plusieurs choses jouent, Deezer passe en premier. Si rien ne joue, la carte se cache.
 - **Compte Spotify** : lit directement ton compte, même si la musique joue sur ton téléphone. Il faut une appli Spotify (une fois) :
   1. Va sur <https://developer.spotify.com/dashboard> et crée une appli (coche **Web API**).
@@ -65,7 +68,15 @@ Dans les paramètres, **Carte musique** propose trois sources :
 
 Deezer ne permet plus de créer d'applications développeur, c'est pour ça qu'il passe par « Ce PC ».
 
-La musique n'est pas diffusée aux autres membres du salon : Spotify et Deezer interdisent de rediffuser leur son. Pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify) ou partage ton écran avec le son.
+Les sons de **Mes sons** sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran (ou la fenêtre Vocal Studio) avec le son dans Discord. La musique Spotify ou Deezer, elle, ne peut pas être rediffusée : pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify).
+
+## Le mode Paroles
+
+Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc lumineux tourne à gauche, et les paroles du morceau en cours apparaissent ligne par ligne à droite, synchronisées, avec des éclairs de lumière (sur les coups forts quand le son est joué dans l'appli).
+
+- Les paroles sont cherchées automatiquement dans la base libre [LRCLIB](https://lrclib.net) à partir du titre et de l'artiste. Ça marche avec toutes les sources (Mes sons, Deezer, Spotify…).
+- Pour un son importé, tu peux donner ton propre fichier de paroles `.lrc` : importe-le en même temps que le son (même nom de fichier), ou clique sur **♪** à côté du son dans la liste.
+- Si aucune parole n'est trouvée, l'appli l'indique à la place du texte.
 
 ## Ce qu'il faut savoir
 

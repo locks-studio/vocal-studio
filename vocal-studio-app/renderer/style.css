@@ -153,8 +153,6 @@ input[type=color]{width:44px;height:30px;border:1px solid var(--line);border-rad
 .music-fields{display:flex;gap:8px;flex-wrap:wrap}
 .music-fields .hint{margin:0;flex-basis:100%}
 .music-status{margin:0;color:var(--fg);overflow-wrap:anywhere}
-.martist{font-size:calc(var(--ctile) * .045);color:rgba(255,255,255,.7);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-4px}
-.martist:empty{display:none}
 .music-fields input{flex:1 1 100%;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;user-select:text}
 .presets .cta{width:100%}
 
@@ -166,22 +164,12 @@ body.ring-solid .tile.speaking .av-wrap{filter:drop-shadow(0 0 calc(var(--glow) 
 
 /* ——— Cinéma 3D : avatars dans l'espace, caméra qui flotte et suit celui qui parle ——— */
 .stage.cinema{display:block;perspective:1000px;perspective-origin:50% 45%;overflow:hidden;transform-style:preserve-3d}
-.stage.cinema .tile,.stage.cinema .music{position:absolute;left:50%;top:50%;will-change:transform;animation:none;backface-visibility:hidden}
+.stage.cinema .tile{position:absolute;left:50%;top:50%;will-change:transform;animation:none;backface-visibility:hidden}
 .stage.cinema .tile{width:var(--ctile);height:var(--ctile);margin-left:calc(var(--ctile) / -2);margin-top:calc(var(--ctile) / -2);padding:0;gap:0;background:none!important;border:0!important;backdrop-filter:none!important}
 .stage.cinema .av-wrap{width:var(--ctile);height:var(--ctile)}
 .stage.cinema .av{font-size:calc(var(--ctile) * .3);box-shadow:inset 0 0 0 calc(var(--ctile) * .02) #000}
 .stage.cinema .bars{display:none}
 .stage.cinema .name{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:18px}
-.music{display:none}
-.stage.cinema .music{display:flex;flex-direction:column;gap:8px;width:calc(var(--ctile) * .62);margin-left:calc(var(--ctile) * -.31);margin-top:calc(var(--ctile) * -.5)}
-.cover{aspect-ratio:3/4;border-radius:4px;background:linear-gradient(160deg,#ff2a2a,#5a0008 70%,#120003);background-size:cover;background-position:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
-.mtitle{font-family:var(--f-display);font-weight:800;color:#fff;font-size:calc(var(--ctile) * .06);text-align:center;letter-spacing:0;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 8px rgba(0,0,0,.6)}
-.mbar{height:3px;background:rgba(255,255,255,.25);border-radius:2px;overflow:hidden}
-.mbar i{display:block;height:100%;width:0;background:#fff}
-.mtimes{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:rgba(255,255,255,.7)}
-.mctrl{display:flex;justify-content:space-between;align-items:center;color:#fff}
-.mctrl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mctrl b{width:26px;height:26px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center}
 
 /* ——— Bande : rangée d'avatars, pseudos au-dessus, caméra qui file vers celui qui parle ——— */
 .stage.strip{display:block;overflow:hidden}
@@ -198,10 +186,93 @@ body.pixel .name{font-family:"Silkscreen",var(--f-mono);font-weight:700;letter-s
 .mute-badge svg{width:58%;height:58%;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round}
 .stage.strip .tile.muted .mute-badge,.stage.cinema .tile.muted .mute-badge{display:grid}
 
-.stage.strip .music{display:flex;flex-direction:column;gap:8px;position:absolute;right:3%;bottom:2%;width:calc(var(--ctile) * .62);z-index:120;animation:pop .5s both}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:50}
 .presets{display:flex;flex-direction:column;gap:8px}
 .cta.alt{background:var(--accent2);color:#111}
+
+/* ——— Lecteur musique : carte façon lecteur vinyle, toujours en bas à droite ———
+   Les tailles intérieures suivent la largeur de la carte (unités cqw). */
+.mp{position:absolute;right:16px;bottom:16px;z-index:30;width:clamp(290px,30vw,480px);aspect-ratio:1.9;border-radius:22px;
+  border:6px solid var(--mp-c,hsl(122 62% 48%));box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),0 0 0 2px rgba(0,0,0,.35),0 18px 50px rgba(0,0,0,.55);
+  overflow:hidden;color:#fff;container-type:inline-size;font-family:var(--f-display);animation:pop .4s both}
+.mp > *{position:absolute;z-index:1}
+.mp-mosaic{inset:0;width:100%;height:100%;z-index:0}
+.mp-brand{left:5%;top:4%;font-size:3.6cqw;font-weight:700;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.mp-cover{left:6%;top:15%;width:31%;aspect-ratio:1;border-radius:7%;background:#222 center/cover;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.mp-cover:not([style*="url"])::after{content:"♪";position:absolute;inset:0;display:grid;place-items:center;font-size:12cqw;color:rgba(255,255,255,.5)}
+.mp-info{left:41%;top:13%;width:51%;z-index:3}
+.mp-title{font-size:4.2cqw;font-weight:800;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.mp-artist{font-family:var(--f-body);font-size:3.6cqw;font-weight:600;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.mp-add{right:4%;top:4%;width:6.4cqw;height:6.4cqw;padding:0;border:0;background:none;color:#fff;z-index:3}
+.mp-add svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.mp-vinyl{right:4%;top:17%;width:38%;aspect-ratio:1;border-radius:50%;z-index:1;
+  background:radial-gradient(circle,transparent 31%,rgba(255,255,255,.05) 32%,transparent 34%),repeating-radial-gradient(circle,#0c0c0c 0 1.1%,#1b1b1b 1.1% 2.2%);
+  box-shadow:0 6px 18px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.08);animation:spin 3.6s linear infinite;animation-play-state:paused}
+.mp-vinyl::after{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg,transparent 0 12%,rgba(255,255,255,.1) 16%,transparent 22% 62%,rgba(255,255,255,.07) 66%,transparent 72%)}
+.mp-label{position:absolute;inset:33%;border-radius:50%;background:#ddd center/cover}
+.mp-label::after{content:"";position:absolute;inset:44%;border-radius:50%;background:#111}
+.mp.playing .mp-vinyl{animation-play-state:running}
+.mp-wave{left:40%;top:44%;width:26%;height:13%;z-index:2}
+.mp-ctrl{left:44%;top:63%;width:44%;display:flex;justify-content:space-between;align-items:center;z-index:3}
+.mp-ctrl button{border:0;background:none;padding:0;color:#fff;width:7cqw;height:7cqw;display:grid;place-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.mp-ctrl svg{width:100%;height:100%;fill:currentColor}
+#mPlay{width:8.5cqw;height:8.5cqw}
+.mp .i-play{display:none}
+.mp:not(.playing) .i-play{display:block}
+.mp:not(.playing) .i-pause{display:none}
+.mp.passive #mPrev,.mp.passive #mNext{visibility:hidden}
+.mp.passive #mPlay{pointer-events:none}
+.mp-times{left:5%;right:5%;top:79%;z-index:3;display:flex;justify-content:space-between;font-family:var(--f-body);font-weight:600;font-size:3.2cqw;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.mp-bar{left:5%;right:5%;top:88%;height:2.2cqw;border-radius:2cqw;background:rgba(255,255,255,.4);cursor:pointer;z-index:3}
+.mp-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:#fff;width:0}
+.mp-bar i::after{content:"";position:absolute;right:-1.8cqw;top:50%;width:3.6cqw;height:3.6cqw;margin-top:-1.8cqw;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.mp.passive .mp-bar{cursor:default}
+
+/* ——— Liste « Mes sons » dans les réglages ——— */
+.sound-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;flex-basis:100%;max-height:260px;overflow-y:auto}
+.sound-list li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.sound-list li.on{border-color:var(--accent)}
+.sound-list li.empty{color:var(--muted);font-size:12.5px;border-style:dashed}
+.snd-play{width:30px;height:30px;flex:none;border-radius:50%;border:0;background:var(--accent);color:var(--bg);font-size:11px}
+.snd-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.snd-info b,.snd-info small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snd-info small{color:var(--muted)}
+.snd-mini{flex:none;width:26px;height:26px;border-radius:8px;border:0;background:transparent;color:var(--muted)}
+.snd-mini:hover{background:var(--line);color:var(--fg)}
+
+/* ——— Mode Paroles ——— */
+.stage.lyrics{visibility:hidden}
+.ly-scene{position:absolute;inset:0;z-index:5;background:#000;overflow:hidden;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:3vw;padding:4vh 4vw 120px}
+.ly-flash{position:absolute;inset:0;opacity:0;pointer-events:none;z-index:2;mix-blend-mode:screen;
+  background:radial-gradient(ellipse 70% 90% at 30% 50%,rgba(255,255,255,.95),rgba(255,255,255,.45) 45%,rgba(255,255,255,0) 80%)}
+.ly-disc{width:100%;max-height:68vh;overflow:visible;filter:drop-shadow(0 0 4px rgba(255,255,255,.55)) drop-shadow(0 0 14px rgba(255,255,255,.18))}
+.ly-disc *{fill:none;stroke:#f2f2f2;stroke-width:1.6}
+.ly-disc .faint{stroke-opacity:.22;stroke-width:1}
+.ly-disc .groove{stroke-opacity:.55;stroke-width:2.4;stroke-linecap:round}
+.ly-disc .label{fill:rgba(255,255,255,.16);stroke-width:2}
+.ly-disc .mark{fill:#fff;stroke:none}
+.ly-disc .hole{fill:#000}
+.ly-disc .shine{fill:rgba(255,255,255,.07);stroke:none}
+.ly-spin{transform-box:view-box;transform-origin:98px 105px;animation:spin 2.2s linear infinite;animation-play-state:paused}
+.ly-scene.playing .ly-spin{animation-play-state:running}
+.ly-text{position:relative;height:40vh;min-width:0}
+.ly-line{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font-family:var(--f-body);font-weight:600;
+  font-size:clamp(28px,4.6vw,86px);line-height:1.1;color:#fff;text-wrap:balance;letter-spacing:-.01em;
+  text-shadow:0 0 14px rgba(255,255,255,.55),0 0 40px rgba(255,255,255,.18)}
+.ly-line.sub{font-size:clamp(18px,2vw,30px);color:rgba(255,255,255,.65);text-shadow:none;font-weight:500}
+.ly-line.in{animation:lyIn .55s cubic-bezier(.2,.8,.2,1) both}
+.ly-line.out{animation:lyOut .35s ease-in both}
+@keyframes lyIn{from{opacity:0;filter:blur(14px);transform:translate(28px,-50%) scale(1.04)}to{opacity:1;filter:blur(0);transform:translate(0,-50%)}}
+@keyframes lyOut{to{opacity:0;filter:blur(10px);transform:translate(-16px,-50%)}}
+.ly-meta{position:absolute;left:4vw;top:3vh;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+@media (max-width:760px){
+  .ly-scene{grid-template-columns:1fr;grid-template-rows:auto 1fr;padding-bottom:200px}
+  .ly-disc{max-height:30vh}
+}
+@media (prefers-reduced-motion:reduce){
+  .ly-line.in,.ly-line.out{animation:none}
+  .ly-spin,.mp-vinyl{animation:none}
+}
 
 @media (max-width:760px){
   .app{grid-template-columns:1fr}

@@ -18,7 +18,7 @@ const SHAPES = {
   hex: { r: "0", c: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", musicTitle: "MADARA-OST", musicCover: null };
+  ring: "gradient", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, musicTitle: "MADARA-OST", musicCover: null };
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
 const save = () => {
@@ -362,8 +362,8 @@ function layout() {
     t.el.style.left = t.el.style.top = t.el.style.transform = "";
     t.el.classList.toggle("focus", S.layout === "scene" && t.data.id === focusId);
   }
-  $("#music").hidden = !((S.layout === "cinema" || S.layout === "strip") && S.musicOn && hasMusic());
-  $("#music").style.transform = "";
+  $("#music").hidden = !(S.musicOn && hasMusic());
+  $("#lyricsScene").hidden = S.layout !== "lyrics";
   for (const t of tiles.values()) t.el.style.filter = t.el.style.zIndex = "";
   if (S.layout === "cinema") {
     const c = Math.round(Math.max(100, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420)));
@@ -420,28 +420,41 @@ function syncMusicSource() {
   const want = S.musicOn ? S.musicSource : "manual";
   if (want === sentSource) return;
   sentSource = want;
+  if (want !== "files") stopSounds();
   music = { status: "off", error: null, track: null };
   window.studio.music.source(want);
 }
-function liveTrack() { return S.musicSource !== "manual" ? music.track : null; }
-function hasMusic() { return S.musicSource === "manual" || !!music.track; }
+function liveTrack() {
+  if (S.musicSource === "files") return localTrack();
+  return S.musicSource !== "manual" ? music.track : null;
+}
+function hasMusic() {
+  if (S.musicSource === "files") return Sounds.list.length > 0;
+  return S.musicSource === "manual" || !!music.track;
+}
 function updateMusicCard() {
   const t = liveTrack();
   $("#musicTitle").textContent = t ? t.title : S.musicSource === "manual" ? S.musicTitle : "";
   $("#musicArtist").textContent = t ? t.artist || "" : "";
   const cover = t ? t.cover : S.musicSource === "manual" ? S.musicCover : null;
   $("#musicCover").style.backgroundImage = cover ? `url("${cover}")` : "";
-  if (t) $("#musicLen").textContent = fmtTime(t.duration / 1000);
+  $("#musicLabel").style.backgroundImage = cover ? `url("${cover}")` : "";
+  $("#musicBrand").textContent = sourceLabel(t);
+  cardLook(cover || null);
+  const card = $("#music");
+  card.classList.toggle("playing", t ? !!t.playing : S.musicSource === "manual");
+  card.classList.toggle("passive", S.musicSource !== "files");
   // Petite ligne d'état sous le choix de la source
   const st = $("#musicStatus");
   if (S.musicSource === "manual") st.textContent = "";
+  else if (S.musicSource === "files") st.textContent = t ? `♪ ${t.title}${t.playing ? "" : " (en pause)"}` : Sounds.list.length ? "Choisis un son dans la liste." : "";
   else if (music.error) st.textContent = "⚠ " + music.error;
   else if (music.status === "needs-config") st.textContent = "Colle le Client ID de ton appli Spotify.";
   else if (music.status === "disconnected") st.textContent = "Spotify n'est pas connecté.";
   else if (music.status === "authorizing") st.textContent = "Termine la connexion dans ton navigateur…";
   else if (t) st.textContent = `♪ ${t.title}${t.artist ? " · " + t.artist : ""}${t.playing ? "" : " (en pause)"}`;
   else st.textContent = "Rien en lecture pour l'instant.";
-  $("#music").hidden = !((S.layout === "cinema" || S.layout === "strip") && S.musicOn && hasMusic());
+  $("#music").hidden = !(S.musicOn && hasMusic());
 }
 function fmtTime(sec) { sec = Math.max(0, Math.floor(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
 window.studio.music.onState((s) => {
@@ -489,6 +502,24 @@ $("#musicPick").onclick = () => $("#musicFile").click();
 $("#musicFile").onchange = (e) => { const f = e.target.files[0]; if (f) readImage(f, 600, (d) => { S.musicCover = d; apply(); }); };
 $("#musicTitleIn").oninput = (e) => { S.musicTitle = e.target.value; apply(); };
 $("#musicOn").onclick = () => { S.musicOn = !S.musicOn; apply(); };
+$("#mPlay").onclick = () => togglePlay();
+$("#mPrev").onclick = () => nextSound(-1);
+$("#mNext").onclick = () => nextSound(1);
+$("#musicSeek").onclick = (e) => {
+  const lt = localTrack();
+  if (S.musicSource !== "files" || !lt) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  soundsAudio().currentTime = ((e.clientX - r.left) / r.width) * (lt.duration / 1000);
+};
+const addSounds = async () => {
+  Sounds.list = await window.studio.sounds.add();
+  S.musicSource = "files"; S.musicOn = true; S.panel = true;
+  apply();
+  renderSoundList();
+};
+$("#soundsAdd").onclick = addSounds;
+$("#musicAdd").onclick = addSounds;
+$("#volume").oninput = (e) => { S.volume = +e.target.value; if (Sounds.audio) Sounds.audio.volume = S.volume; apply(); };
 $("#presetMontage").onclick = () => {
   Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "vignette", glow: 85, names: false, cards: false, musicOn: true });
   apply();
@@ -541,6 +572,7 @@ function apply() {
   SEGS.forEach(([id, k]) =>
     $(id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === S[k])));
   $("#glow").value = S.glow; $("#glowOut").textContent = S.glow + " %";
+  $("#volume").value = S.volume; $("#volumeOut").textContent = Math.round(S.volume * 100) + " %";
   $("#players").value = S.players; $("#playersOut").textContent = String(S.players);
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
   $("#accent").value = S.accent || SKINS[S.skin].a;
@@ -609,14 +641,14 @@ function drawBg(t, energy) {
 /* ——— Caméra du mode Cinéma 3D ———
    Les avatars sont posés sur un plan ; la caméra glisse vers celui qui parle,
    le plan pivote doucement (lacet + roulis) et avance/recule comme un travelling. */
-let camX = 0, musicSlot = null;
+let camX = 0;
 function cinema(t) {
   const c = parseFloat(stage.style.getPropertyValue("--ctile")) || 200;
   const items = [...tiles.values()]
     .filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")))
     .map((x) => ({ el: x.el, id: x.data.id, seed: x.seed, tile: x }));
   const cam = S.camera;
-  const total = items.length + (S.musicOn ? 1 : 0);
+  const total = items.length;
   // Caméra désactivée : on cadre tout le salon (le plan est réduit pour que tout rentre)
   const fi = cam ? Math.max(0, items.findIndex((x) => x.id === focusId)) : -1;
   const aim = cam ? fi : (total - 1) / 2;
@@ -630,8 +662,7 @@ function cinema(t) {
   const shift = cam ? -c * 0.45 : 0;
   const gap = cam ? 1.4 : 1.25;
   items.forEach((it, i) => {
-    // Avec la carte musique, la place juste après le voisin de celui qui parle lui est réservée
-    const target = cam && S.musicOn && i > fi + 1 ? i + 1 : i;
+    const target = i;
     it.tile.slot = it.tile.slot === undefined || reduced ? target : it.tile.slot + (target - it.tile.slot) * 0.06;
     const d = it.tile.slot - camX;
     const near = cam ? Math.max(0, 1 - Math.abs(d)) : 0;
@@ -640,15 +671,6 @@ function cinema(t) {
     const y = 8 * Math.sin(t * 0.0009 * sp + it.seed);
     it.el.style.transform = `rotateZ(${roll}deg) rotateY(${yaw}deg) translate3d(${x}px, ${y}px, ${z}px) scale(${k})`;
   });
-  // La carte musique suit, deux places à droite de celui qui parle (ou en bout de rangée)
-  if (S.musicOn) {
-    const slot = cam ? fi + 2 : items.length;
-    musicSlot = musicSlot === null || reduced ? slot : musicSlot + (slot - musicSlot) * 0.06;
-    const d = musicSlot - camX;
-    const y = 6 * Math.sin(t * 0.0008 * sp + 3);
-    const z = cam ? dolly - Math.abs(d) * c * 0.2 : 0;
-    $("#music").style.transform = `rotateZ(${roll}deg) rotateY(${yaw}deg) translate3d(${(d * c * gap + shift - (cam ? c * 0.35 : 0)) * k}px, ${y}px, ${z}px) scale(${k})`;
-  }
 }
 
 /* ——— Changement de plan (nouvelle personne qui parle) ——— */
@@ -722,17 +744,20 @@ function frame(t) {
   if (S.layout === "strip") strip(t);
   flashLvl *= 0.8;
   $("#flash").style.opacity = flashLvl > 0.01 ? flashLvl.toFixed(3) : "0";
-  if (S.musicOn) {
-    // Morceau en direct : on avance la position entre deux nouvelles de Deezer/Spotify
-    const lt = liveTrack();
-    let len = 180, pos = (t / 1000) % len;
-    if (lt) {
-      len = Math.max(1, lt.duration / 1000);
-      pos = Math.min(len, (lt.progress + (lt.playing ? Date.now() - lt.at : 0)) / 1000);
-    }
+  // Morceau en direct : on avance la position entre deux nouvelles de Deezer/Spotify
+  const lt = S.musicOn ? liveTrack() : null;
+  let len = 180, pos = (t / 1000) % len;
+  if (lt) {
+    len = Math.max(1, lt.duration / 1000);
+    pos = Math.min(len, (lt.progress + (lt.playing ? Date.now() - lt.at : 0)) / 1000);
+  }
+  if (S.musicOn && !$("#music").hidden) {
     $("#musicProgress").style.width = (pos / len) * 100 + "%";
     $("#musicNow").textContent = fmtTime(pos);
+    $("#musicLen").textContent = "-" + fmtTime(len - pos);
+    drawWave(t, lt ? lt.playing : S.musicSource === "manual");
   }
+  if (S.layout === "lyrics") lyricsFrame(lt, pos * 1000);
   const names = state.members.filter((m) => m.speaking).map((m) => m.name);
   $("#talkers").textContent = names.length ? names.slice(0, 3).join(" & ") + (names.length > 1 ? " parlent" : " parle") : "personne ne parle";
   drawBg(t, Math.min(1, energy / 2));
@@ -744,6 +769,7 @@ if (innerWidth < 760) S.panel = false;
 loadBgImg();
 apply();
 refreshSpotify();
+loadSounds();
 sizeCanvas();
 if (S.demo) setDemo(true);
 else window.studio.voice.start();

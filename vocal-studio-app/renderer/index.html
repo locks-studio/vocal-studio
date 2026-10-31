@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://cdn.discordapp.com https://i.scdn.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: vsmedia: https://cdn.discordapp.com https://i.scdn.co; media-src 'self' vsmedia:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
 <title>Vocal Studio</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap">
 <link rel="stylesheet" href="style.css">
@@ -29,15 +29,55 @@
       <div class="orbit-ring" id="ring"></div>
       <div class="orbit-core"><strong id="coreName">Vocal Studio</strong><small id="talkers">personne ne parle</small></div>
       <div class="flash" id="flash"></div>
-      <div class="music" id="music" hidden>
-        <div class="cover" id="musicCover"></div>
-        <div class="mtitle" id="musicTitle"></div>
-        <div class="martist" id="musicArtist"></div>
-        <div class="mbar"><i id="musicProgress"></i></div>
-        <div class="mtimes"><span id="musicNow">0:00</span><span id="musicLen">3:00</span></div>
-        <div class="mctrl"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg><svg viewBox="0 0 24 24"><path d="M18 6L9 12l9 6zM6 6v12"/></svg><b><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg></b><svg viewBox="0 0 24 24"><path d="M6 6l9 6-9 6zM18 6v12"/></svg><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></div>
-      </div>
     </section>
+
+    <!-- Mode Paroles : vinyle « radiographie » qui tourne et paroles qui apparaissent ligne par ligne -->
+    <section class="ly-scene" id="lyricsScene" hidden aria-live="polite">
+      <div class="ly-flash" id="lyFlash"></div>
+      <svg class="ly-disc" viewBox="0 0 230 210" aria-hidden="true">
+        <g class="ly-case">
+          <rect x="8" y="8" width="180" height="194" rx="7"/>
+          <rect x="17" y="17" width="162" height="176" rx="4" class="faint"/>
+          <rect x="188" y="8" width="16" height="194" rx="4"/>
+          <path d="M196 26v22M196 162v22M8 40h-4v30h4M8 140h-4v30h4" />
+        </g>
+        <g class="ly-spin">
+          <circle cx="98" cy="105" r="84" class="rim"/>
+          <circle cx="98" cy="105" r="78" class="faint"/><circle cx="98" cy="105" r="72" class="faint"/>
+          <circle cx="98" cy="105" r="66" class="faint"/><circle cx="98" cy="105" r="60" class="faint"/>
+          <circle cx="98" cy="105" r="54" class="faint"/><circle cx="98" cy="105" r="48" class="faint"/>
+          <circle cx="98" cy="105" r="42" class="faint"/>
+          <path d="M98 27a78 78 0 0 1 62 30" class="groove"/><path d="M40 150a72 72 0 0 1-12-26" class="groove"/>
+          <path d="M150 160a76 76 0 0 1-30 18" class="groove"/>
+          <circle cx="98" cy="105" r="30" class="label"/>
+          <circle cx="98" cy="105" r="21" class="faint"/>
+          <rect x="94" y="80" width="8" height="5" rx="1" class="mark"/>
+          <circle cx="98" cy="105" r="4" class="hole"/>
+        </g>
+        <path d="M98 21a84 84 0 0 1 72 42L98 105z" class="shine"/>
+        <path d="M98 189a84 84 0 0 1-72-42L98 105z" class="shine"/>
+      </svg>
+      <div class="ly-text" id="lyText"></div>
+      <div class="ly-meta" id="lyMeta"></div>
+    </section>
+
+    <!-- Carte lecteur musique : toujours en bas à droite -->
+    <div class="mp" id="music" hidden>
+      <canvas class="mp-mosaic" id="musicMosaic"></canvas>
+      <div class="mp-brand" id="musicBrand"></div>
+      <div class="mp-cover" id="musicCover"></div>
+      <div class="mp-info"><div class="mp-title" id="musicTitle"></div><div class="mp-artist" id="musicArtist"></div></div>
+      <button class="mp-add" id="musicAdd" title="Ajouter des sons" aria-label="Ajouter des sons"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 7v10M7 12h10"/></svg></button>
+      <div class="mp-vinyl"><div class="mp-label" id="musicLabel"></div></div>
+      <canvas class="mp-wave" id="musicWave"></canvas>
+      <div class="mp-ctrl">
+        <button id="mPrev" aria-label="Morceau précédent"><svg viewBox="0 0 24 24"><path d="M11 6L3 12l8 6zM21 6l-8 6 8 6z"/></svg></button>
+        <button id="mPlay" aria-label="Lecture ou pause"><svg viewBox="0 0 24 24" class="i-pause"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg><svg viewBox="0 0 24 24" class="i-play"><path d="M7 4l13 8-13 8z"/></svg></button>
+        <button id="mNext" aria-label="Morceau suivant"><svg viewBox="0 0 24 24"><path d="M13 6l8 6-8 6zM3 6l8 6-8 6z"/></svg></button>
+      </div>
+      <div class="mp-times"><span id="musicNow">0:00</span><span id="musicLen">-0:00</span></div>
+      <div class="mp-bar" id="musicSeek"><i id="musicProgress"></i></div>
+    </div>
 
     <!-- Écrans d'état (connexion, configuration, salon vide) -->
     <div class="screen" id="screen" hidden>
@@ -66,7 +106,7 @@
     </div>
     <div class="group"><div class="label">Ambiance</div><div class="skins" id="skins"></div></div>
     <div class="group"><div class="label">Disposition</div>
-      <div class="seg" id="layoutSeg"><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="cinema">Cinéma 3D</button><button data-v="strip">Bande</button></div></div>
+      <div class="seg" id="layoutSeg"><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="cinema">Cinéma 3D</button><button data-v="strip">Bande</button><button data-v="lyrics">Paroles</button></div></div>
     <div class="group">
       <div class="row"><span>Caméra qui suit celui qui parle</span><button class="switch" id="camera" role="switch" aria-label="Caméra qui suit celui qui parle"></button></div>
       <p class="hint" style="margin:0">Modes Cinéma 3D et Bande. Désactivée, tout le salon reste cadré.</p>
@@ -81,9 +121,16 @@
       <input type="file" id="bgFile" accept="image/*" hidden>
     </div>
     <div class="group">
-      <div class="row"><span>Carte musique (Cinéma 3D et Bande)</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher la carte musique"></button></div>
+      <div class="row"><span>Lecteur musique (en bas à droite)</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher la carte musique"></button></div>
       <div class="music-box" id="musicFields">
-        <div class="seg" id="musicSrcSeg"><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
+        <div class="seg two" id="musicSrcSeg"><button data-v="files">Mes sons</button><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
+        <div class="music-fields" data-src="files">
+          <button class="ghost" id="soundsAdd">Ajouter des sons</button>
+          <div class="label" style="flex-basis:100%"><label for="volume">Volume</label><output id="volumeOut"></output></div>
+          <input type="range" id="volume" min="0" max="1" step="0.01">
+          <ul class="sound-list" id="soundList"></ul>
+          <p class="hint">Les sons sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran avec le son dans Discord.</p>
+        </div>
         <div class="music-fields" data-src="pc">
           <p class="hint">Affiche ce qui joue sur ce PC : Deezer en priorité, sinon Spotify, le navigateur… Rien à connecter.</p>
         </div>
@@ -128,6 +175,7 @@
   </aside>
 </div>
 <script src="patterns.js"></script>
+<script src="music.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

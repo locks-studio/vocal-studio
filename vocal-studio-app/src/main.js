@@ -5,6 +5,10 @@ const { spawn } = require("child_process");
 const { VoiceSession } = require("./voice");
 const { BotLink } = require("./botlink");
 const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
+const { registerScheme, SoundLibrary } = require("./sounds");
+
+registerScheme();
+let sounds;
 
 // ——— Réglages enregistrés (le secret et le jeton sont chiffrés par Windows quand c'est possible) ———
 const file = () => path.join(app.getPath("userData"), "config.json");
@@ -90,6 +94,7 @@ function setMusicSource(src) {
     if (process.platform === "win32") startPcMedia();
     else sendMusic({ status: "error", error: "La lecture de « Ce PC » ne marche que sous Windows.", track: null });
   } else if (src === "spotify") spotify.start();
+  // « Mes sons » et « À la main » sont gérés directement par l'interface
   else sendMusic({ status: "off", error: null, track: null });
 }
 
@@ -133,6 +138,8 @@ function createWindow() {
 
 app.whenReady().then(() => {
   load();
+  sounds = new SoundLibrary(path.join(app.getPath("userData"), "sounds"));
+  sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
   botLink = new BotLink(botStore, (url) => shell.openExternal(url), (state) => { if (session === botLink) send("voice:state", state); });
   useMode(data.mode);
@@ -190,6 +197,11 @@ ipcMain.handle("voice:deaf", (_e, v) => session.setDeaf(!!v));
 ipcMain.handle("voice:leave", () => session.leave());
 
 ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
+ipcMain.handle("sounds:list", () => sounds.list());
+ipcMain.handle("sounds:add", () => sounds.add(win));
+ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));
+ipcMain.handle("sounds:remove", (_e, id) => sounds.remove(id));
+ipcMain.handle("lyrics:get", (_e, q) => sounds.lyrics(q || {}));
 ipcMain.handle("spotify:get", () => ({ clientId: spotifyStore.getClientId(), connected: !!spotifyStore.getToken(), redirect: SPOTIFY_REDIRECT }));
 ipcMain.handle("spotify:save", (_e, clientId) => {
   const id = String(clientId || "").trim();

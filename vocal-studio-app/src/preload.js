@@ -23,6 +23,15 @@ contextBridge.exposeInMainWorld("studio", {
     source: (src) => ipcRenderer.invoke("music:source", src),
     onState: (fn) => ipcRenderer.on("music:state", (_e, s) => fn(s)),
   },
+  sounds: {
+    list: () => ipcRenderer.invoke("sounds:list"),
+    add: () => ipcRenderer.invoke("sounds:add"),
+    attachLrc: (id) => ipcRenderer.invoke("sounds:lrc", id),
+    remove: (id) => ipcRenderer.invoke("sounds:remove", id),
+  },
+  lyrics: {
+    get: (q) => ipcRenderer.invoke("lyrics:get", q),
+  },
   spotify: {
     get: () => ipcRenderer.invoke("spotify:get"),
     save: (clientId) => ipcRenderer.invoke("spotify:save", clientId),
