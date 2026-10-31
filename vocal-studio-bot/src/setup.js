@@ -53,6 +53,21 @@ function ask(question, { hidden = false, def = "" } = {}) {
   if (appId && clientId !== appId) console.log(`   ⚠ Ce Client ID ne correspond pas au bot (attendu : ${appId}). Vérifie que c'est la même application.`);
   const secret = (await ask("   Client Secret :", { hidden: true })) || env.DISCORD_CLIENT_SECRET;
   if (!secret) { console.log("   ✗ Il faut le Client Secret pour « Se connecter avec Discord »."); process.exit(1); }
+  if (secret === token) {
+    console.log("   ✗ Ça, c'est le jeton du bot, pas le Client Secret. Le Client Secret est sur la page OAuth2 (« Réinitialiser la clé secrète »).");
+    process.exit(1);
+  }
+  // Vérification du secret auprès de Discord (sans l'afficher)
+  const check = await fetch(`${API}/oauth2/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", scope: "identify", client_id: clientId, client_secret: secret }),
+  });
+  if (!check.ok) {
+    console.log("   ✗ Discord refuse ce Client Secret. Sur la page OAuth2, clique sur « Réinitialiser la clé secrète », copie-la et relance l'assistant.");
+    process.exit(1);
+  }
+  console.log("   ✓ Client Secret valide.\n");
 
   const publicUrl = await ask("3) Adresse du serveur (sur ton PC : http://localhost:8787) :", { def: env.PUBLIC_URL || "http://localhost:8787" });
   const port = env.PORT || "8787";

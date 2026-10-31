@@ -67,7 +67,7 @@ const server = http.createServer((req, res) => {
     const state = url.searchParams.get("state") || "";
     if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) { res.writeHead(400).end("state invalide"); return; }
     pending.set(state, { at: Date.now() });
-    const q = new URLSearchParams({ client_id: DISCORD_CLIENT_ID, response_type: "code", redirect_uri: REDIRECT, scope: "identify", state, prompt: "none" });
+    const q = new URLSearchParams({ client_id: DISCORD_CLIENT_ID, response_type: "code", redirect_uri: REDIRECT, scope: "identify", state });
     res.writeHead(302, { Location: `https://discord.com/oauth2/authorize?${q}` }).end();
   } else if (url.pathname === "/auth/callback") {
     handleCallback(url, res);

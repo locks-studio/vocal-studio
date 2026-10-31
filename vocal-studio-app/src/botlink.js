@@ -62,13 +62,18 @@ class BotLink {
   }
 
   // « Se connecter avec Discord » : ouvre le navigateur, puis attend que le serveur ait reçu la réponse
-  login() {
+  async login() {
     if (!this.server()) return this.set(this.blank("needs-config"));
     clearInterval(this.loginTimer);
+    // Le serveur du bot doit tourner, sinon le navigateur tomberait sur une page vide et on tournerait en rond
+    if (!(await this.serverUp())) {
+      return this.set(this.blank("needs-login", `Le serveur du bot ne répond pas à ${this.server()}. Lance « Lancer le bot.bat » (dossier vocal-studio-bot), puis réessaie.`));
+    }
     const state = crypto.randomBytes(18).toString("base64url");
     this.openUrl(`${this.server()}/auth/login?state=${state}`);
     this.set(this.blank("authorizing"));
     const started = Date.now();
+    let misses = 0;
     this.loginTimer = setInterval(async () => {
       if (Date.now() - started > LOGIN_TIMEOUT_MS) {
         clearInterval(this.loginTimer);
@@ -76,10 +81,24 @@ class BotLink {
       }
       try {
         const r = await fetch(`${this.server()}/auth/poll?state=${state}`).then((x) => x.json());
+        misses = 0;
         if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.start(); }
         else if (r.error) { clearInterval(this.loginTimer); this.set(this.blank("needs-login", r.error)); }
-      } catch {} // serveur momentanément injoignable : on réessaie au prochain tour
+      } catch {
+        // Serveur injoignable plusieurs fois de suite : il a été fermé pendant la connexion
+        if (++misses >= 5) {
+          clearInterval(this.loginTimer);
+          this.set(this.blank("needs-login", "Le serveur du bot s'est arrêté pendant la connexion. Relance « Lancer le bot.bat », puis réessaie."));
+        }
+      }
     }, 2000);
+  }
+
+  async serverUp() {
+    try {
+      const r = await fetch(this.server() + "/", { signal: AbortSignal.timeout(3000) });
+      return r.ok;
+    } catch { return false; }
   }
 
   logout() {
