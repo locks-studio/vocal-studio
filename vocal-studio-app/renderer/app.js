@@ -1,6 +1,8 @@
 const $ = (s) => document.querySelector(s);
 const stage = $("#stage");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Mini-fenêtre : même page, ouverte avec ?mini=1 (seulement les avatars, réglages repris de la grande fenêtre)
+const MINI = new URLSearchParams(location.search).has("mini");
 
 /* ——— Préférences visuelles ——— */
 const SKINS = {
@@ -17,10 +19,30 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, musicTitle: "MADARA-OST", musicCover: null };
+  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true };
 let S = { ...DEFAULTS };
-try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("vocal-studio") || "{}") }; } catch {}
+try {
+  const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
+  S = { ...DEFAULTS, ...stored };
+  if (!("ringFrom" in stored) && stored.ringColor) S.ringFrom = "custom";
+} catch {}
+// Chaque profil a ses propres listes (jamais partagées avec les valeurs par défaut)
+function normS() {
+  for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames"]) S[k] = { ...(S[k] || {}) };
+  S.hiddenUsers = [...(S.hiddenUsers || [])];
+  S.userPresets = [...(S.userPresets || [])];
+  // Fonds retirés
+  if (["aurora", "particles", "vignette", "grid"].includes(S.bg)) S.bg = "space";
+}
+normS();
+
+// Quelqu'un parle « vraiment » : Discord le dit, et (si le bot mesure le volume) sa voix dépasse le seuil choisi.
+// Une voix trop faible n'allume pas l'anneau et n'attire pas la caméra.
+// Le « volume dans Hush » réglé au clic droit multiplie la voix mesurée par le bot.
+const lvlOf = (m) => (typeof m.level === "number" ? Math.min(1, m.level * (S.userGain[m.id] ?? 1)) : m.level);
+const heard = (m) => !!(m && m.speaking && !(typeof m.level === "number" && lvlOf(m) < S.voiceMin));
 const save = () => {
+  if (MINI) return; // la mini-fenêtre lit les réglages, elle ne les écrit pas
   try { localStorage.setItem("vocal-studio", JSON.stringify(S)); }
   catch { console.warn("Réglages non enregistrés (image trop lourde ?)"); }
 };
@@ -39,6 +61,7 @@ function hue(id) {
 function createTile(m) {
   const el = document.createElement("div");
   el.className = "tile";
+  el.dataset.id = m.id;
   el.innerHTML = `<div class="av-wrap"><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
     <div class="bars">${"<i></i>".repeat(5)}</div>
     <div class="name"><span></span><span class="chips"></span></div>`;
@@ -87,9 +110,10 @@ function syncTiles() {
   // Toi en premier, puis l'ordre du salon, limité au nombre de joueurs choisi.
   // Ceux qui parlent (ou ont parlé il y a moins de 10 s) passent devant les muets pour avoir leur place.
   const now = Date.now();
-  for (const m of state.members) if (m.speaking) lastSpoke.set(m.id, now);
-  for (const m of state.members) if (typeof m.level === "number") peak.set(m.id, Math.max(m.level, (peak.get(m.id) || 0) * 0.97));
-  const ordered = [...state.members].sort((a, b) => (b.id === meId) - (a.id === meId));
+  for (const m of state.members) if (heard(m)) lastSpoke.set(m.id, now);
+  for (const m of state.members) if (typeof m.level === "number") peak.set(m.id, Math.max(lvlOf(m), (peak.get(m.id) || 0) * 0.97));
+  // Membres masqués au clic droit : absents de la scène
+  const ordered = state.members.filter((m) => !S.hiddenUsers.includes(m.id)).sort((a, b) => (b.id === meId) - (a.id === meId));
   const recent = (m) => m.id === meId || now - (lastSpoke.get(m.id) || 0) < 10_000;
   // Les plus forts (en dB) d'abord parmi ceux qui viennent de parler, puis les autres
   const loudFirst = ordered.filter(recent).sort((a, b) => (b.id === meId) - (a.id === meId) || (peak.get(b.id) || 0) - (peak.get(a.id) || 0));
@@ -101,11 +125,13 @@ function syncTiles() {
     let t = tiles.get(m.id);
     if (!t) { t = createTile(m); tiles.set(m.id, t); stage.appendChild(t.el); }
     updateTile(t, m);
+    t.el.title = m.name + (S.notes[m.id] ? " · note : " + S.notes[m.id] : "");
   }
   const order = list.map((m) => m.id).join(",");
   if (order !== lastOrder) { lastOrder = order; list.forEach((m) => stage.appendChild(tiles.get(m.id).el)); }
   // Couleurs bien différentes d'un joueur à l'autre, en partant du bleu Discord pour toi
   list.forEach((m, i) => tiles.get(m.id).el.querySelector(".av").style.setProperty("--h", PLAYER_HUES[i % PLAYER_HUES.length]));
+  if (typeof attachLocalMedia === "function") attachLocalMedia();
   layout();
 }
 
@@ -389,8 +415,15 @@ $("#settingsClose").onclick = () => { S.panel = false; apply(); };
 // Dès qu'on touche à un réglage visuel, la fenêtre se range sur le côté pour voir le résultat en direct
 $("#panel").addEventListener("input", dockSettings);
 $("#panel").addEventListener("click", (e) => { if (e.target.closest(".tab-panel .seg button, .tab-panel .switch, .skin, #accentReset")) dockSettings(); });
-function dockSettings() { $("#settingsWrap").classList.add("docked"); }
-$("#settingsCenter").onclick = () => $("#settingsWrap").classList.remove("docked");
+function dockSettings() { $("#settingsWrap").classList.add("docked"); syncDock(); }
+$("#settingsCenter").onclick = () => { $("#settingsWrap").classList.remove("docked"); syncDock(); };
+// Paramètres sur le côté : la scène se décale pour rester centrée dans la partie visible
+function syncDock() {
+  const on = S.panel && $("#settingsWrap").classList.contains("docked");
+  if (document.body.classList.contains("panel-docked") === on) return;
+  document.body.classList.toggle("panel-docked", on);
+  setTimeout(() => { layout(); placeMusic(); }, 320);
+}
 // Clic à côté de la fenêtre : on la ferme
 $("#settingsWrap").addEventListener("pointerdown", (e) => { if (e.target === e.currentTarget) { S.panel = false; apply(); } });
 $("#zoomRange").oninput = (e) => setZoom(+e.target.value, true);
@@ -439,6 +472,7 @@ function layout() {
     t.el.classList.toggle("focus", S.layout === "scene" && t.data.id === focusId);
   }
   $("#music").hidden = !(S.musicOn && hasMusic());
+  placeMusic();
   $("#lyricsScene").hidden = S.layout !== "lyrics";
   for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
   if (S.layout === "cinema") {
@@ -481,7 +515,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
+const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -493,6 +527,7 @@ SEGS.forEach(([id, key]) =>
 let music = { status: "off", error: null, track: null }, sentSource = null;
 // Démarre la bonne source côté application quand la carte ou la source change
 function syncMusicSource() {
+  if (MINI) return;
   const want = S.musicOn ? S.musicSource : "manual";
   if (want === sentSource) return;
   sentSource = want;
@@ -517,6 +552,7 @@ function updateMusicCard() {
   $("#musicLabel").style.backgroundImage = cover ? `url("${cover}")` : "";
   $("#musicBrand").textContent = sourceLabel(t);
   cardLook(cover || null);
+  ringCoverColors(cover || null);
   const card = $("#music");
   card.classList.toggle("playing", t ? !!t.playing : S.musicSource === "manual");
   card.classList.toggle("passive", S.musicSource === "manual");
@@ -531,6 +567,7 @@ function updateMusicCard() {
   else if (t) st.textContent = `♪ ${t.title}${t.artist ? " · " + t.artist : ""}${t.playing ? "" : " (en pause)"}`;
   else st.textContent = "Rien en lecture pour l'instant.";
   $("#music").hidden = !(S.musicOn && hasMusic());
+  placeMusic();
 }
 // Pochette trouvée en ligne pour un morceau qui n'en a pas (vidéo YouTube dans un navigateur…)
 const foundCovers = new Map();
@@ -617,28 +654,67 @@ addEventListener("keydown", (e) => {
   musicCmd("toggle");
 });
 
-// ——— 3. Taille du lecteur : poignée en haut à gauche, à faire glisser (double-clic : taille d'origine) ———
+// ——— 3. Lecteur : on le déplace en le faisant glisser, on le redimensionne avec l'arc du coin en bas à droite ———
+// La position est gardée en distance au bord droit / au bas de la fenêtre (le lecteur reste collé à son coin).
+// Largeur prise par les paramètres rangés sur le côté : le lecteur se pousse pour rester visible
+const dockW = () => (document.body.classList.contains("panel-docked") ? Math.min(400, innerWidth) + 28 : 0);
+function placeMusic() {
+  const card = $("#music"), grab = $("#musicGrab");
+  const D = dockW(), W = mainEl.clientWidth - D, H = mainEl.clientHeight;
+  if (S.playerPos) {
+    const w = card.offsetWidth, h = card.offsetHeight;
+    card.style.right = D + Math.max(0, Math.min(W - w, S.playerPos.r)) + "px";
+    card.style.bottom = Math.max(0, Math.min(H - h, S.playerPos.b)) + "px";
+  } else { card.style.right = D ? D + 16 + "px" : ""; card.style.bottom = ""; }
+  grab.hidden = card.hidden;
+  if (card.hidden) return;
+  // Centre de l'arrondi du coin (rayon 22 px) : l'arc est dessiné autour, juste à l'extérieur
+  grab.style.left = card.offsetLeft + card.offsetWidth - 22 + "px";
+  grab.style.top = card.offsetTop + card.offsetHeight - 22 + "px";
+}
+addEventListener("resize", () => placeMusic());
 (() => {
-  const card = $("#music"), handle = $("#musicResize");
+  const card = $("#music"), grab = $("#musicGrab");
   let drag = null;
-  handle.addEventListener("pointerdown", (e) => {
+  grab.addEventListener("pointerdown", (e) => {
     e.preventDefault(); e.stopPropagation();
-    try { handle.setPointerCapture(e.pointerId); } catch {}
-    drag = { x: e.clientX, y: e.clientY, w: card.offsetWidth };
-    card.classList.add("resizing");
+    try { grab.setPointerCapture(e.pointerId); } catch {}
+    drag = { x: e.clientX, y: e.clientY, w: card.offsetWidth, left: card.offsetLeft, top: card.offsetTop };
+    card.classList.add("resizing"); grab.classList.add("active");
   });
-  handle.addEventListener("pointermove", (e) => {
+  grab.addEventListener("pointermove", (e) => {
     if (!drag) return;
-    // Le lecteur est accroché en bas à droite : tirer vers le haut/la gauche l'agrandit
-    const grow = Math.max(drag.x - e.clientX, (drag.y - e.clientY) * 1.9);
-    const max = Math.min(680, mainEl.clientWidth * 0.7);
+    // Le coin en haut à gauche reste en place : tirer vers le bas/la droite agrandit, l'inverse rapetisse
+    const grow = Math.abs(e.clientX - drag.x) > Math.abs(e.clientY - drag.y) * 1.9 ? e.clientX - drag.x : (e.clientY - drag.y) * 1.9;
+    const max = Math.min(680, mainEl.clientWidth - dockW() - drag.left, (mainEl.clientHeight - drag.top) * 1.9);
     S.playerW = Math.round(Math.max(200, Math.min(max, drag.w + grow)));
     card.style.width = S.playerW + "px";
+    S.playerPos = { r: mainEl.clientWidth - dockW() - drag.left - card.offsetWidth, b: mainEl.clientHeight - drag.top - card.offsetHeight };
+    placeMusic();
   });
-  const end = () => { if (!drag) return; drag = null; card.classList.remove("resizing"); save(); };
-  handle.addEventListener("pointerup", end);
-  handle.addEventListener("pointercancel", end);
-  handle.addEventListener("dblclick", () => { S.playerW = null; card.style.width = ""; save(); });
+  const end = () => { if (!drag) return; drag = null; card.classList.remove("resizing"); grab.classList.remove("active"); save(); };
+  grab.addEventListener("pointerup", end);
+  grab.addEventListener("pointercancel", end);
+  grab.addEventListener("dblclick", () => { S.playerW = null; card.style.width = ""; requestAnimationFrame(placeMusic); save(); });
+
+  // Déplacer : glisser la carte (pas ses boutons). Un simple clic reste un clic.
+  let move = null;
+  card.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest("button")) return;
+    move = { x: e.clientX, y: e.clientY, r: mainEl.clientWidth - dockW() - card.offsetLeft - card.offsetWidth, b: mainEl.clientHeight - card.offsetTop - card.offsetHeight, on: false, id: e.pointerId };
+  });
+  card.addEventListener("pointermove", (e) => {
+    if (!move) return;
+    const dx = e.clientX - move.x, dy = e.clientY - move.y;
+    if (!move.on && Math.hypot(dx, dy) < 5) return;
+    if (!move.on) { move.on = true; try { card.setPointerCapture(move.id); } catch {} card.classList.add("moving"); }
+    S.playerPos = { r: move.r - dx, b: move.b - dy };
+    placeMusic();
+  });
+  const stop = () => { if (!move) return; if (move.on) { card.classList.remove("moving"); save(); } move = null; };
+  card.addEventListener("pointerup", stop);
+  card.addEventListener("pointercancel", stop);
+  card.addEventListener("dblclick", (e) => { if (e.target.closest("button")) return; S.playerPos = null; placeMusic(); save(); });
 })();
 
 // ——— 4. Interface masquée quand la souris ne bouge plus (désactivable) ———
@@ -651,7 +727,7 @@ function wakeHud() {
 }
 function sleepHud() {
   // Jamais pendant qu'on règle quelque chose ou qu'un écran demande une action
-  if (!S.autoHide || S.panel || !$("#screen").hidden || document.querySelector(".dock:hover, .titlebar:hover, .mp.resizing")) {
+  if (!S.autoHide || S.panel || !$("#screen").hidden || document.querySelector(".dock:hover, .titlebar:hover, .mp.resizing, .mp.moving")) {
     hudTimer = setTimeout(sleepHud, HUD_IDLE_MS);
     return;
   }
@@ -677,7 +753,7 @@ $("#recBtn").onclick = () => toggleRecording();
 $("#musicAdd").onclick = addSounds;
 $("#volume").oninput = (e) => { S.volume = +e.target.value; if (Sounds.audio) Sounds.audio.volume = S.volume; apply(); };
 $("#presetMontage").onclick = () => {
-  Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "vignette", glow: 85, names: false, cards: false, musicOn: true });
+  Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "space", glow: 85, names: false, cards: false, musicOn: true });
   apply();
 };
 $("#presetBase").onclick = () => {
@@ -699,9 +775,10 @@ $("#players").oninput = (e) => {
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
-$("#ringColor").oninput = (e) => { S.ringColor = e.target.value; apply(); };
-$("#ringColorReset").onclick = () => { S.ringColor = null; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide"];
+$("#ringColor").oninput = (e) => { S.ringColor = e.target.value; S.ringFrom = "custom"; apply(); };
+$("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
+$("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
+const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide", "avShadow", "clipAudio"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -718,6 +795,38 @@ function loadFont(f) {
 }
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
 
+// Couleurs d'origine des anneaux dessinés (vert comme la vidéo pour l'Aura et les Vagues, bleu pour le feu et l'énergie)
+const RING_ORIGIN = { aura: ["#5cff6e", "#eafff0"], wave: ["#5cff6e", "#b8ffd0"], flame: ["#2fb8ff", "#bdf1ff"], energy: ["#3aa8ff", "#c4e8ff"] };
+let ringCol = { a: "#5cff6e", b: "#b8ffd0" };
+// Mélange une couleur #rrggbb avec du blanc (k = part de blanc)
+function mixWhite(hex, k) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  return "#" + [0, 2, 4].map((i) => Math.round(parseInt(m[1].slice(i, i + 2), 16) * (1 - k) + 255 * k).toString(16).padStart(2, "0")).join("");
+}
+// Couleur de l'anneau : d'origine, choisie, ou celle de la pochette en cours. Indépendante du fond et de l'accent.
+function applyRing() {
+  const b = document.body;
+  let pal = null;
+  if (S.ringFrom === "cover" && coverRing) pal = coverRing;
+  else if (S.ringFrom === "custom" && S.ringColor) pal = { a: S.ringColor, b: mixWhite(S.ringColor, 0.55) };
+  else if (RING_ORIGIN[S.ring]) pal = { a: RING_ORIGIN[S.ring][0], b: RING_ORIGIN[S.ring][1] };
+  const vars = pal ? {
+    "--ring1": pal.a, "--ring2": pal.b,
+    "--aura1": `color-mix(in srgb, ${pal.a} 85%, transparent)`,
+    "--aura2": `color-mix(in srgb, ${pal.b} 60%, transparent)`,
+    "--aura3": `color-mix(in srgb, ${pal.b} 40%, transparent)`,
+  } : {};
+  for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3"]) {
+    if (vars[k]) b.style.setProperty(k, vars[k]); else b.style.removeProperty(k);
+  }
+  if (pal) ringCol = pal;
+  else {
+    const cs = getComputedStyle(b);
+    ringCol = { a: cs.getPropertyValue("--accent").trim() || "#fff", b: cs.getPropertyValue("--accent2").trim() || "#fff" };
+  }
+}
+
 let colors = null;
 function apply() {
   const b = document.body;
@@ -726,19 +835,20 @@ function apply() {
   b.style.setProperty("--radius", SHAPES[S.shape].r);
   b.style.setProperty("--clip", SHAPES[S.shape].c);
   if (S.accent) b.style.setProperty("--accent", S.accent); else b.style.removeProperty("--accent");
-  // Couleur de l'anneau, indépendante du fond et de l'accent (trois nuances pour les halos de l'Aura)
-  const rc = S.ringColor;
-  const ringVars = rc ? {
-    "--ring1": rc,
-    "--ring2": `color-mix(in srgb, ${rc} 55%, white)`,
-    "--aura1": `color-mix(in srgb, ${rc} 85%, transparent)`,
-    "--aura2": `color-mix(in srgb, color-mix(in srgb, ${rc} 60%, white) 60%, transparent)`,
-    "--aura3": `color-mix(in srgb, color-mix(in srgb, ${rc} 40%, white) 40%, transparent)`,
-  } : {};
-  for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3"]) {
-    if (ringVars[k]) b.style.setProperty(k, ringVars[k]); else b.style.removeProperty(k);
-  }
-  $("#ringColor").value = rc || (S.ring === "aura" ? "#5cff6e" : S.accent || SKINS[S.skin].a);
+  applyRing();
+  $("#ringColor").value = S.ringColor || (RING_ORIGIN[S.ring] ? RING_ORIGIN[S.ring][0] : S.accent || SKINS[S.skin].a);
+  $("#ringCoverHint").hidden = S.ringFrom !== "cover";
+  $("#voiceMin").value = S.voiceMin; $("#voiceMinOut").textContent = S.voiceMin ? Math.round(S.voiceMin * 100) + " %" : "aucune";
+  // Flou du fond
+  const blur = S.bgBlur;
+  $("#bgBlur").value = blur; $("#bgBlurOut").textContent = blur ? blur + " px" : "aucun";
+  $("#motionBlurStd").setAttribute("stdDeviation", `${blur * 1.6} 0`);
+  cv.style.filter = !blur || S.blurType === "tilt" ? "" : S.blurType === "motion" ? "url(#motionBlur)" : S.blurType === "frost" ? `blur(${blur}px) saturate(1.25) brightness(.9)` : `blur(${blur}px)`;
+  cv.classList.toggle("blurred", !!blur && S.blurType !== "tilt");
+  $("#bgTilt").style.backdropFilter = `blur(${blur}px)`;
+  b.classList.toggle("blur-tilt", !!blur && S.blurType === "tilt");
+  b.classList.toggle("blur-frost", !!blur && S.blurType === "frost");
+  b.classList.toggle("av-shadow", S.avShadow);
   b.classList.toggle("no-names", !S.names);
   b.classList.toggle("cards", S.cards);
   b.classList.toggle("hide-muted", S.hideMuted);
@@ -750,6 +860,7 @@ function apply() {
   fontSel.value = S.font;
   b.classList.toggle("hide-me", !S.showMe);
   $("#music").style.width = S.playerW ? S.playerW + "px" : "";
+  syncDock();
   if (!S.autoHide) document.body.classList.remove("hud-hidden");
   document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
   document.querySelectorAll(".tab-panel").forEach((x) => (x.hidden = x.dataset.tab !== S.tab));
@@ -757,6 +868,7 @@ function apply() {
   $("#setPin").setAttribute("aria-checked", pinned);
   b.classList.toggle("ring-solid", S.ring === "solid");
   b.classList.toggle("ring-aura", S.ring === "aura");
+  b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
   $("#bgPick").textContent = S.bgImage ? "Changer l'image de fond" : "Choisir une image de fond";
@@ -783,7 +895,6 @@ function apply() {
 
 /* ——— Fond animé ——— */
 const cv = $("#bg"), ctx = cv.getContext("2d");
-const dots = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 2 + 0.6, v: Math.random() * 0.4 + 0.1 }));
 function sizeCanvas() {
   const d = Math.min(devicePixelRatio || 1, 2);
   cv.width = cv.clientWidth * d; cv.height = cv.clientHeight * d;
@@ -807,42 +918,17 @@ function drawBg(t, energy) {
     g.addColorStop(1, `hsl(${c.h} ${c.s}% ${L(c.l * 0.28)}%)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-  } else if (["space", "stars", "topo", "grid", "auto"].includes(S.bg)) {
+  } else if (["space", "stars", "topo", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
-  } else if (S.bg === "vignette" || (S.bg === "image" && bgImg)) {
-    if (S.bg === "image") {
-      // Image de fond qui zoome très lentement (effet Ken Burns)
-      const z = 1.06 + 0.04 * Math.sin(t * 0.00012 * S.speed) + energy * 0.02;
-      const k = Math.max(w / bgImg.width, h / bgImg.height) * z;
-      const iw = bgImg.width * k, ih = bgImg.height * k;
-      ctx.drawImage(bgImg, (w - iw) / 2 + 20 * Math.sin(t * 0.0001 * S.speed), (h - ih) / 2, iw, ih);
-    } else {
-      // Fond sombre teinté de rouge, qui respire avec les voix
-      const g = ctx.createRadialGradient(w * 0.38, h * 0.5, 0, w * 0.38, h * 0.5, Math.max(w, h) * 0.75);
-      g.addColorStop(0, `rgba(70,4,10,${0.55 + energy * 0.2})`);
-      g.addColorStop(0.6, "rgba(25,2,4,.6)");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    }
+  } else if (S.bg === "image" && bgImg) {
+    // Image de fond qui zoome très lentement (effet Ken Burns)
+    const z = 1.06 + 0.04 * Math.sin(t * 0.00012 * S.speed) + energy * 0.02;
+    const k = Math.max(w / bgImg.width, h / bgImg.height) * z;
+    const iw = bgImg.width * k, ih = bgImg.height * k;
+    ctx.drawImage(bgImg, (w - iw) / 2 + 20 * Math.sin(t * 0.0001 * S.speed), (h - ih) / 2, iw, ih);
     const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.8);
     v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.75)");
     ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
-  } else if (S.bg === "aurora") {
-    ctx.globalCompositeOperation = "lighter";
-    [[colors.a, 0.3, 0.35, 0], [colors.b, 0.75, 0.65, 2], [colors.a, 0.6, 0.2, 4]].forEach(([c, x, y, o]) => {
-      const px = w * (x + 0.12 * Math.sin(t * 0.00013 * S.speed + o)), py = h * (y + 0.1 * Math.cos(t * 0.00011 * S.speed + o));
-      const rad = Math.max(w, h) * (0.38 + energy * 0.08);
-      const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
-      g.addColorStop(0, c + "44"); g.addColorStop(1, c + "00");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
-    ctx.globalCompositeOperation = "source-over";
-  } else if (S.bg === "particles") {
-    dots.forEach((d, i) => {
-      if (!reduced) { d.y -= d.v * 0.0009 * S.speed * (1 + energy * 3); if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); } }
-      ctx.beginPath(); ctx.arc(d.x * w, d.y * h, d.r * (1 + energy * 0.6), 0, 7);
-      ctx.fillStyle = (i % 2 ? colors.a : colors.b) + "99"; ctx.fill();
-    });
   }
 }
 
@@ -1080,7 +1166,7 @@ function showToast(msg) {
 }
 
 mainEl.addEventListener("pointerdown", (e) => {
-  if (!camLayout() || e.button !== 0 || e.target.closest(".dock, .mp, .screen")) return;
+  if (!camLayout() || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen")) return;
   const tileEl = e.target.closest(".tile");
   if (e.ctrlKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
@@ -1120,7 +1206,7 @@ function setZoom(z, quiet) {
   if (!quiet) showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
 }
 mainEl.addEventListener("wheel", (e) => {
-  if (e.target.closest(".screen, .mp") || S.layout === "lyrics") return;
+  if (e.target.closest(".screen, .mp, .mp-grab") || S.layout === "lyrics") return;
   e.preventDefault();
   setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
@@ -1144,11 +1230,11 @@ function frame(t) {
   const live = new Map(state.members.map((m) => [m.id, m]));
   for (const tile of tiles.values()) {
     const m = live.get(tile.data.id);
-    const speaking = !!(m && m.speaking);
+    const speaking = heard(m);
     if (speaking) lastSpoke.set(tile.data.id, Date.now());
     // Volume réel (bot) si on l'a, sinon une animation qui imite une voix
     let target;
-    if (m && typeof m.level === "number") target = speaking || m.level > 0.04 ? Math.max(speaking ? 0.12 : 0, m.level) : 0;
+    if (m && typeof m.level === "number") target = speaking ? Math.max(0.12, lvlOf(m)) : 0;
     else {
       const n = 0.55 + 0.45 * Math.sin(t * 0.011 * S.speed + tile.seed) * Math.sin(t * 0.0047 * S.speed + tile.seed * 2);
       target = speaking ? 0.35 + 0.65 * Math.abs(n) : 0;
@@ -1160,6 +1246,7 @@ function frame(t) {
       const s = tile.lvl * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.018 * S.speed + i * 1.3 + tile.seed)));
       b.style.transform = `scaleY(${Math.max(0.12, s)})`;
     });
+    if (S.layout !== "discord") Rings.draw(tile, S.ring, t, ringCol);
     energy += tile.lvl;
     if (speaking && (!loud || tile.lvl > loud.lvl)) loud = tile;
   }
@@ -1194,11 +1281,52 @@ function frame(t) {
     drawWave(t, lt ? lt.playing : S.musicSource === "manual");
   }
   if (S.layout === "lyrics") lyricsFrame(lt, pos * 1000);
-  const names = state.members.filter((m) => m.speaking).map((m) => m.name);
+  const names = state.members.filter(heard).map((m) => m.name);
   $("#talkers").textContent = names.length ? names.slice(0, 3).join(" & ") + (names.length > 1 ? " parlent" : " parle") : "personne ne parle";
   drawBg(t, Math.min(1, energy / 2));
   requestAnimationFrame(frame);
 }
+
+/* ——— Mini-fenêtre ——— */
+function miniLook() {
+  // Paroles et Discord n'ont pas de sens en petit : on montre la bande
+  if (["lyrics", "discord"].includes(S.layout)) S.layout = "strip";
+  S.panel = false; S.musicOn = false;
+  let clear = false;
+  try { clear = localStorage.getItem("hush-mini-clear") === "1"; } catch {}
+  document.body.classList.toggle("mini-clear", clear);
+  $("#miniClear").classList.toggle("on", clear);
+}
+function setupMini() {
+  document.body.classList.add("mini");
+  miniLook();
+  apply();
+  // La grande fenêtre change un réglage : on le reprend ici
+  addEventListener("storage", (e) => {
+    if (e.key !== "vocal-studio") return;
+    try { S = { ...DEFAULTS, ...JSON.parse(e.newValue || "{}") }; } catch { return; }
+    normS();
+    miniLook();
+    apply();
+    loadBgImg();
+    syncTiles();
+  });
+  $("#miniClear").onclick = () => {
+    const on = !document.body.classList.contains("mini-clear");
+    try { localStorage.setItem("hush-mini-clear", on ? "1" : "0"); } catch {}
+    miniLook();
+  };
+  $("#miniHome").onclick = () => window.studio.win.focusMain();
+  $("#miniClose").onclick = () => window.studio.win.close();
+}
+const openMini = async () => {
+  const open = await window.studio.win.mini();
+  $("#miniBtn").classList.toggle("on", open);
+  $("#setMini").textContent = open ? "Fermer" : "Ouvrir";
+};
+$("#miniBtn").onclick = openMini;
+$("#setMini").onclick = openMini;
+window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
 
 /* ——— Démarrage ——— */
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage
@@ -1207,7 +1335,9 @@ apply();
 refreshSpotify();
 loadSounds();
 sizeCanvas();
+if (MINI) setupMini();
 if (S.demo) setDemo(true);
+else if (MINI) window.studio.voice.state().then((s) => { if (!S.demo) { state = s; syncTiles(); renderChrome(); } });
 else window.studio.voice.start();
 renderChrome();
 document.fonts && document.fonts.ready.then(layout);

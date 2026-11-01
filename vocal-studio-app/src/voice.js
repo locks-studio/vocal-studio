@@ -195,6 +195,12 @@ class VoiceSession {
 
   // Actions depuis la barre d'appel
   setMute(mute) { return this.ipc.request("SET_VOICE_SETTINGS", { mute }); }
+  // Menu clic droit en connexion locale : volume (0–200) et muet pour toi seulement, comme dans Discord
+  userAction(a) {
+    if (a.action === "volume") return this.ipc.request("SET_USER_VOICE_SETTINGS", { user_id: a.target, volume: Math.max(0, Math.min(200, Math.round(a.volume))) });
+    if (a.action === "localMute") return this.ipc.request("SET_USER_VOICE_SETTINGS", { user_id: a.target, mute: !!a.on });
+    return Promise.reject(new Error("Disponible seulement avec le bot Hush (mode bot)."));
+  }
   setDeaf(deaf) { return this.ipc.request("SET_VOICE_SETTINGS", { deaf }); }
   leave() { return this.ipc.request("SELECT_VOICE_CHANNEL", { channel_id: null, force: true }); }
 }

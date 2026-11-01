@@ -16,6 +16,8 @@ class BotLink {
     this.loginTimer = null;
     this.stopped = true;
     this.state = this.blank("idle");
+    this.pending = new Map(); // rid → { resolve, reject } (actions du menu clic droit)
+    this.rid = 0;
   }
 
   blank(status, error = null) {
@@ -41,6 +43,12 @@ class BotLink {
       try { msg = JSON.parse(raw); } catch { return; }
       if (msg.type === "state") this.set({ ...msg.state, error: null });
       else if (msg.type === "error") this.set({ ...this.state, error: msg.message });
+      else if (msg.type === "mod-result") {
+        const p = this.pending.get(msg.rid);
+        if (!p) return;
+        this.pending.delete(msg.rid);
+        msg.ok ? p.resolve(msg.data) : p.reject(new Error(msg.error));
+      }
     });
     ws.on("close", (code) => {
       if (this.ws !== ws || this.stopped) return;
@@ -111,6 +119,17 @@ class BotLink {
   send(msg) { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg)); }
   summon() { this.send({ type: "summon" }); }
   dismiss() { this.send({ type: "dismiss" }); }
+
+  // Action de modération sur un membre (menu clic droit) : le serveur vérifie tes permissions
+  userAction(a) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Pas connecté au bot."));
+    const rid = ++this.rid;
+    return new Promise((resolve, reject) => {
+      this.pending.set(rid, { resolve, reject });
+      setTimeout(() => { if (this.pending.delete(rid)) reject(new Error("Le bot n'a pas répondu.")); }, 10_000);
+      this.send({ ...a, type: "mod", rid });
+    });
+  }
 
   // Le bot ne peut pas toucher à ton micro ni à ta sourdine personnels
   setMute() { return Promise.resolve(); }

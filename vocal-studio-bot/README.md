@@ -36,7 +36,9 @@ npm start
 
 Sous Windows, tu peux aussi double-cliquer sur `Lancer le bot.bat`.
 
-La console affiche le **lien d'invitation du bot** : ouvre-le pour l'ajouter à ton serveur Discord. Il demande seulement « Voir les salons » et « Se connecter ».
+La console affiche le **lien d'invitation du bot** : ouvre-le pour l'ajouter à ton serveur Discord. Il demande « Voir les salons » et « Se connecter », plus ce qu'il faut pour le menu clic droit de l'appli : rendre muet, mettre en sourdine, déplacer des membres, gérer les pseudos et les rôles. Si le bot est déjà sur ton serveur, rouvre ce lien pour lui donner ces permissions (ou donne-les à son rôle), et place son rôle assez haut.
+
+Ces actions ne se font que si **la personne qui les demande dans Hush** a elle-même la permission sur le serveur : le bot vérifie ses droits à chaque fois.
 
 ## 3. Utiliser l'appli avec le bot
 
@@ -62,7 +64,7 @@ Au-delà de 100 serveurs, Discord demande de faire vérifier le bot.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/bot.js` | Le bot : rejoint les salons, suit les membres et qui parle, commandes `/hush` |
+| `src/bot.js` | Le bot : rejoint les salons, suit les membres et qui parle, commandes `/hush`, actions du menu clic droit |
 | `src/index.js` | Le serveur : connexion « Se connecter avec Discord » et liaison en direct avec l'appli |
 | `.env` | Tes secrets (jamais partagé, ignoré par git) |
 | `sessions.json` | Les applis connectées (créé automatiquement, ignoré par git) |

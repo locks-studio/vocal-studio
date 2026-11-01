@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -107,15 +107,36 @@ function setMusicSource(src) {
 
 // ——— Fenêtre ———
 // « session » est la source active : le bot (par défaut) ou la connexion directe RPC
-let win, session, localSession, botLink;
+let win, mini = null, session, localSession, botLink;
 function useMode(mode) {
   if (session) session.stop();
   data.mode = mode === "local" ? "local" : "bot";
   session = data.mode === "local" ? localSession : botLink;
 }
+// Les nouvelles (salon, musique) vont à la fenêtre principale et à la mini-fenêtre si elle est ouverte
 function send(channel, payload) {
-  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  for (const w of [win, mini]) if (w && !w.isDestroyed()) w.webContents.send(channel, payload);
 }
+
+// ——— Mini-fenêtre : coins arrondis, toujours au premier plan, se déplace en la faisant glisser.
+// Créée transparente pour le mode « avatars seuls » (Windows ne permet pas de changer ça après coup).
+function toggleMini() {
+  if (mini && !mini.isDestroyed()) { mini.close(); return false; }
+  mini = new BrowserWindow({
+    width: 460, height: 240, minWidth: 180, minHeight: 110,
+    frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
+    alwaysOnTop: true, title: "Hush · mini",
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  mini.setAlwaysOnTop(true, "floating");
+  mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
+  mini.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mini.webContents.on("will-navigate", (e) => e.preventDefault());
+  mini.on("closed", () => { mini = null; send("win:mini", false); });
+  return true;
+}
+// Fenêtre qui a envoyé la demande (principale ou mini)
+const winOf = (e) => BrowserWindow.fromWebContents(e.sender) || win;
 
 function createWindow() {
   win = new BrowserWindow({
@@ -141,6 +162,7 @@ function createWindow() {
   win.webContents.on("will-navigate", (e) => e.preventDefault());
   win.on("maximize", () => send("win:state", { maximized: true }));
   win.on("unmaximize", () => send("win:state", { maximized: false }));
+  win.on("closed", () => { if (mini && !mini.isDestroyed()) mini.close(); });
 }
 
 app.whenReady().then(() => {
@@ -153,12 +175,24 @@ app.whenReady().then(() => {
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
   });
-  // Seul le micro peut être demandé (pour enregistrer un son), jamais la caméra ni l'écran
+  // Micro (enregistrer un son) et caméra (l'afficher dans Hush) : rien d'autre
   const { session: electronSession } = require("electron");
   electronSession.defaultSession.setPermissionRequestHandler((_wc, permission, cb, details) => {
-    cb(permission === "media" && (details.mediaTypes || []).every((t) => t === "audio"));
+    cb(permission === "media" && (details.mediaTypes || []).every((t) => t === "audio" || t === "video"));
   });
   electronSession.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === "media");
+  // Capture d'écran : seulement ce que l'interface vient de choisir (partage d'écran, ou la fenêtre Hush pour un clip)
+  electronSession.defaultSession.setDisplayMediaRequestHandler(async (_req, cb) => {
+    const p = capturePick;
+    capturePick = null;
+    if (!p) return cb({});
+    try {
+      const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
+      const src = sources.find((s) => s.id === p.id) || { id: p.id, name: "Hush" };
+      // « loopback » : le son du PC (voix Discord, musique…) sous Windows
+      cb(p.audio && process.platform === "win32" ? { video: src, audio: "loopback" } : { video: src });
+    } catch { cb({}); }
+  });
   createWindow();
 });
 app.on("window-all-closed", () => {
@@ -208,6 +242,14 @@ ipcMain.handle("voice:state", () => session.snapshot());
 ipcMain.handle("voice:mute", (_e, v) => session.setMute(!!v));
 ipcMain.handle("voice:deaf", (_e, v) => session.setDeaf(!!v));
 ipcMain.handle("voice:leave", () => session.leave());
+// Menu clic droit sur un membre
+ipcMain.handle("voice:user", async (_e, a) => {
+  if (!a || !/^\d{5,25}$/.test(String(a.target || ""))) throw new Error("Membre inconnu.");
+  if (!session.userAction) throw new Error("Indisponible dans ce mode.");
+  return session.userAction(a);
+});
+ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
+ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));
 
 ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
 // Commandes du lecteur : toggle (pause/lecture), next, prev
@@ -236,8 +278,46 @@ ipcMain.handle("spotify:save", (_e, clientId) => {
 ipcMain.handle("spotify:login", () => spotify.login());
 ipcMain.handle("spotify:logout", () => spotify.logout());
 
-ipcMain.handle("win:minimize", () => win.minimize());
-ipcMain.handle("win:maximize", () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
-ipcMain.handle("win:close", () => win.close());
-ipcMain.handle("win:fullscreen", () => win.setFullScreen(!win.isFullScreen()));
-ipcMain.handle("win:pin", (_e, on) => { win.setAlwaysOnTop(!!on, "floating"); return win.isAlwaysOnTop(); });
+ipcMain.handle("win:minimize", (e) => winOf(e).minimize());
+ipcMain.handle("win:maximize", (e) => { const w = winOf(e); w.isMaximized() ? w.unmaximize() : w.maximize(); });
+ipcMain.handle("win:close", (e) => winOf(e).close());
+ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
+ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
+ipcMain.handle("win:mini", () => toggleMini());
+
+// ——— Partage d'écran et clips ———
+let capturePick = null;
+ipcMain.handle("capture:sources", async () => {
+  const own = [win, mini].filter((w) => w && !w.isDestroyed()).map((w) => w.getMediaSourceId());
+  const list = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 320, height: 180 } });
+  return list.filter((s) => !own.includes(s.id)).map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith("screen:"), thumb: s.thumbnail.toDataURL() }));
+});
+// "self" : la fenêtre Hush qui demande (pour un clip) ; sinon l'écran / la fenêtre choisi
+ipcMain.handle("capture:pick", (e, p) => {
+  if (!p) { capturePick = null; return; }
+  capturePick = { id: p.id === "self" ? winOf(e).getMediaSourceId() : String(p.id), audio: !!p.audio };
+});
+// Les clips s'écrivent au fur et à mesure dans Vidéos\Hush (pas tout en mémoire)
+const clipsDir = () => path.join(app.getPath("videos"), "Hush");
+const clips = new Map();
+ipcMain.handle("clip:begin", () => {
+  fs.mkdirSync(clipsDir(), { recursive: true });
+  const d = new Date(), z = (n) => String(n).padStart(2, "0");
+  const name = `Hush ${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}.webm`;
+  const file = path.join(clipsDir(), name);
+  const id = String(Date.now());
+  clips.set(id, { file, stream: fs.createWriteStream(file) });
+  return id;
+});
+ipcMain.handle("clip:chunk", (_e, id, buf) => { const c = clips.get(id); if (c) c.stream.write(Buffer.from(buf)); });
+ipcMain.handle("clip:end", (_e, id) => new Promise((resolve) => {
+  const c = clips.get(id);
+  if (!c) return resolve(null);
+  clips.delete(id);
+  c.stream.end(() => resolve(c.file));
+}));
+ipcMain.handle("clip:show", (_e, file) => {
+  const f = path.resolve(String(file || ""));
+  if (f.startsWith(clipsDir() + path.sep)) shell.showItemInFolder(f); else shell.openPath(clipsDir());
+});
+ipcMain.handle("win:main", () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.focus(); } });

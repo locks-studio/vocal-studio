@@ -10,7 +10,7 @@
     { base: "#4d78ee", light: "#86a6ff", dark: "#2c51c2" }, // bleu
     { base: "#a49a2c", light: "#cfc456", dark: "#766f14" }, // olive
   ];
-  const KINDS = ["stars", "topo", "grid"];
+  const KINDS = ["stars", "topo", "space"];
 
   const stars = Array.from({ length: 22 }, () => ({
     x: Math.random(), y: Math.random(), r: 14 + Math.random() * 46,

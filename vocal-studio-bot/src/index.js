@@ -114,6 +114,11 @@ wss.on("connection", (ws) => {
     try {
       if (msg.type === "summon") await bot.summon(c.user.id);
       else if (msg.type === "dismiss") bot.dismiss(c.user.id);
+      else if (msg.type === "mod") {
+        // Réponse ciblée (rid) : l'appli attend le résultat de cette action précise
+        try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: await bot.moderate(c.user.id, msg) })); }
+        catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
     } catch (e) {
       ws.send(JSON.stringify({ type: "error", message: e.message }));
     }
@@ -129,10 +134,12 @@ bot.on("change", () => {
   setTimeout(() => { queued = false; for (const c of clients) push(c); }, 40);
 });
 
+// Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles
+const INVITE_PERMS = (1n << 10n) | (1n << 20n) | (1n << 22n) | (1n << 23n) | (1n << 24n) | (1n << 27n) | (1n << 28n);
 server.listen(PORT, () => {
   console.log(`Serveur Hush sur ${PUBLIC_URL} (port ${PORT})`);
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);
-  const invite = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${1024 + 1048576}`;
+  const invite = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`;
   console.log(`Lien d'invitation du bot : ${invite}`);
 });
 bot.start().catch((e) => {

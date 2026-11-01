@@ -42,7 +42,15 @@ L'engrenage en haut à droite ouvre les **paramètres** au centre de l'écran, a
 En mode **Bande** avec la caméra active, celui qui parle est **toujours au centre de l'image**, même tout au bout de la rangée et quel que soit l'angle : l'appli mesure à chaque image où il est affiché et corrige l'écart. La caméra glisse vers lui sans à-coup, la rangée est un plan 3D légèrement plongeant qui s'enfonce du côté où il reste le plus de monde. Quand plusieurs personnes parlent, la caméra centre le groupe et dézoome juste assez pour les voir en entier. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
 
 **Fond Dégradé** : un fond sans motif, clair au centre et sombre sur les bords, dans la couleur d'accent. Le lecteur musique a aussi un réglage **Fond du lecteur** : Mosaïque ou Dégradé.
-- **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, grille néon).
+- **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, espace).
+
+**Mes préréglages** (Paramètres › Général) : règle Hush comme tu aimes, donne un nom et **Enregistrer**. Un préréglage garde le look (disposition, anneau, couleurs, fond, flou, police, zoom). ▶ l'applique, ⟳ le remplace par les réglages actuels, ⇩ l'exporte en fichier `.hush` à partager ; « Importer un fichier .hush » le récupère.
+
+**Profils** (Paramètres › Compte) : chaque profil garde *tous* ses réglages (look, lecteur, noms de salons, notes…). Crée par exemple « Stream » et « Potes » et passe de l'un à l'autre avec la liste.
+
+**Flou du fond** (Paramètres › Style) : de 0 à 30 px, en 4 types : Doux, Mouvement (flou horizontal), Verre dépoli (flou + grain) et Profondeur (net au centre, flou en haut et en bas).
+
+Quand tu modifies un réglage, les paramètres se rangent sur le côté : la scène et le lecteur se décalent pour rester centrés dans la partie encore visible.
 - **Style montage 1 · Cinéma** : décrit ci-dessous.
 
 Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements de caméra (modes Cinéma 3D et Bande). Coupé, tout le salon reste cadré et seul celui qui parle grossit un peu.
@@ -60,22 +68,49 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 
 - la disposition **Cinéma 3D** : les avatars flottent dans l'espace, la caméra pivote doucement et glisse vers celui qui parle ;
 - l'ambiance **Halo vert** avec l'anneau **Plein lumineux** autour de celui qui parle ;
-- le fond **Vignette** (sombre teinté de rouge). Avec **Image**, tu peux mettre ta propre image de fond ;
+- le fond **Espace**. Avec **Image**, tu peux mettre ta propre image de fond ;
 - le **lecteur musique** en bas à droite.
 
 ## Voix, caméra et anneau
 
-- **Anneau « Aura »** (par défaut, Paramètres › Style) : des halos doux et décalés qui ondulent autour de l'avatar. Plus la voix est forte, plus l'anneau est grand et visible ; une voix faible le rend petit et discret. Les anneaux « Dégradé » et « Plein » suivent aussi le volume.
+- **Anneaux** (Paramètres › Style), tous animés selon le volume :
+  - **Aura** (par défaut) : des fils lumineux emmêlés qui se tordent autour de l'avatar, avec des gouttes qui s'échappent quand on parle fort ;
+  - **Vagues** : trois anneaux translucides qui ondulent ;
+  - **Flammes** : une couronne de langues de feu et d'étincelles ;
+  - **Énergie** : des contours électriques qui glissent les uns sur les autres ;
+  - **Dégradé** et **Plein**.
+- **Couleur de l'anneau** : d'origine (vert pour Aura et Vagues, bleu pour Flammes et Énergie), **Ma couleur**, ou **Pochette** (les couleurs de la pochette du morceau en cours).
+- **Ignorer les voix trop faibles** (Paramètres › Général, mode bot) : sous ce volume, l'anneau ne s'allume pas et la caméra ne va pas sur la personne (souffle, bruit de fond).
+- **Ombre portée** sous les avatars (désactivable dans Paramètres › Style).
 - **Volume réel** : avec le bot, Hush connaît le volume (dB) de chaque voix. Les plus fortes sont affichées en priorité et la caméra se pose sur la plus forte.
 - **Avatars GIF** : ils ne s'animent que quand la personne parle.
-- **Caméra / live** : un badge caméra ou « LIVE » apparaît sur l'avatar. Discord ne laisse pas les bots recevoir la vidéo, donc les flux eux-mêmes ne peuvent pas s'afficher.
+- **Caméra / live** des autres : un badge caméra ou « LIVE » apparaît sur leur avatar. Discord ne laisse aucune appli recevoir la vidéo d'un appel, donc leurs flux ne peuvent pas s'afficher.
+- **Ta caméra et ton partage d'écran** (boutons de la barre d'appel) : ta caméra remplace ton avatar, ton écran s'affiche dans une fenêtre flottante (déplace-la par son bandeau, agrandis-la par son coin). C'est affiché **dans Hush** seulement : pour que le salon Discord te voie, allume-les aussi dans Discord.
 - **Plusieurs personnes parlent** (mode Bande) : la caméra reste posée sur le groupe de ceux qui ont parlé ces dernières secondes et dézoome pour les cadrer. Si le groupe est trop étalé, elle garde les voix les plus fortes, et les autres apparaissent en **loupes** juste au-dessus de la barre d'appel.
 - **Disposition Discord** : la grille de tuiles façon appel Discord, avec le contour vert quand on parle.
+
+## Clic droit sur un membre
+
+Un menu comme celui de Discord :
+
+- **Profil, Envoyer un message, Commencer un appel, Ajouter en ami, Bloquer** : ouvrent son profil dans l'appli Discord (Discord ne laisse pas une appli faire ces actions à ta place).
+- **Mentionner** : copie la mention, à coller dans un salon textuel. **Copier l'identifiant** aussi.
+- **Ajouter une note** : une note visible seulement par toi (au survol de l'avatar).
+- **Volume** : en connexion directe (RPC), c'est le vrai volume Discord de ce membre, pour toi seulement, et **Rendre muet (pour toi)** marche aussi. Avec le bot, c'est le **volume dans Hush** : il rend sa voix plus ou moins « forte » pour l'anneau et la caméra (utile pour un ami au micro faible).
+- **Masquer dans Hush** : le retire de la scène (clic droit sur le fond pour tout réafficher).
+- **Avec le bot** : Changer le pseudo, Rôles, Déplacer vers, Rendre muet / Mettre en sourdine sur le serveur, Déconnecter du vocal. Seulement si **toi** tu as la permission sur le serveur, et si le bot l'a aussi (réinvite-le avec le nouveau lien affiché au lancement du bot).
+
+## Mini-fenêtre et clips
+
+- **Mini-fenêtre** (icône à côté de l'épingle, ou Paramètres › Vidéo) : petite fenêtre aux coins arrondis, toujours au premier plan, qu'on déplace en la faisant glisser et qu'on redimensionne par ses bords. Au survol, le bouton ◎ la rend **transparente** : il ne reste que les avatars (parfait pour OBS ou par-dessus un jeu).
+- **Clips** (bouton ⏺ de la barre d'appel, ou **F9**) : enregistre la fenêtre Hush en vidéo, avec le son du PC si tu veux (voix Discord, musique), dans `Vidéos\Hush`. 15 minutes au plus. Cliquer sur le message de fin ouvre le dossier.
 
 ## Raccourcis et petites commandes
 
 - **Nom du salon** : clique sur le nom en haut à gauche pour le renommer (Entrée pour valider, Échap pour annuler, vide pour reprendre celui de Discord). Le nouveau nom ne s'affiche que dans Hush.
 - **Espace** : pause / lecture de la musique.
+- **F9** : démarrer / arrêter un clip.
+- **Lecteur musique** : fais-le glisser pour le déplacer ; l'arc blanc en bas à droite (comme sur les widgets iPhone) l'agrandit ou le rapetisse. Double-clic sur la carte : retour en bas à droite ; double-clic sur l'arc : taille d'origine.
 - **Interface masquée** : après 3 secondes sans bouger la souris, la barre du haut, la barre d'appel et le curseur disparaissent ; ils reviennent dès que tu bouges. Désactivable dans Paramètres › Général.
 
 ## Le lecteur musique
@@ -114,7 +149,7 @@ Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc l
 ## Ce qu'il faut savoir
 
 - **Qui peut l'utiliser ?** Discord réserve l'accès au salon vocal par RPC aux applications validées. Une application non validée marche pour son propriétaire (toi). Pour des amis, ajoute-les comme testeurs de l'application sur le portail développeur (**App Testers**), dans la limite fixée par Discord.
-- **Caméra et partage d'écran** : le RPC de Discord ne donne pas accès aux flux vidéo. Hush affiche donc les avatars, pas les vidéos.
+- **Caméra et partage d'écran** : Discord ne donne accès aux flux vidéo de personne. Hush affiche les avatars des autres, et seulement ta propre caméra / ton propre écran.
 - **Réactions** (🔥😂💜👏) : elles ne sont visibles que dans ta fenêtre. Pratique si tu captures Hush dans OBS pour un stream.
 - **Épingle** (dans la barre de titre) : garde la fenêtre au premier plan, par-dessus un jeu en mode fenêtré.
 
@@ -127,3 +162,7 @@ Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc l
 | `src/main.js` | Fenêtre Electron, stockage chiffré des identifiants |
 | `src/preload.js` | Pont sécurisé entre la fenêtre et Discord |
 | `renderer/` | L'interface (HTML, CSS, animations) |
+| `renderer/rings.js` | Les anneaux dessinés (Aura, Vagues, Flammes, Énergie) |
+| `renderer/usermenu.js` | Le menu clic droit sur un membre |
+| `renderer/profiles.js` | Préréglages et profils |
+| `renderer/capture.js` | Caméra, partage d'écran et clips |

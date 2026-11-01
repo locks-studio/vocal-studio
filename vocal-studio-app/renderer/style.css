@@ -110,11 +110,12 @@ body.no-names .name{display:none}
 .chan b:hover{background:rgba(255,255,255,.08)}
 .chan b[contenteditable="plaintext-only"]{outline:2px solid var(--accent);outline-offset:2px;background:rgba(0,0,0,.25)}
 
-/* ——— Poignée de taille du lecteur ——— */
-.mp-resize{left:3%;top:3%;width:7.5cqw;height:7.5cqw;min-width:22px;min-height:22px;max-width:34px;max-height:34px;border-radius:50%;
-  display:grid;place-items:center;cursor:nwse-resize;z-index:6;opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s;touch-action:none}
-.mp-resize svg{width:58%;height:58%;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.mp:hover .mp-resize,.mp.resizing .mp-resize{opacity:1;transform:none}
+/* ——— Poignée de taille du lecteur : arc blanc collé au coin, comme sur les widgets iPhone ——— */
+.mp-grab{position:absolute;width:44px;height:44px;z-index:3;cursor:nwse-resize;touch-action:none;opacity:0;transform:scale(.85);transform-origin:0 0;transition:opacity .2s,transform .2s}
+.mp-grab svg{width:100%;height:100%;overflow:visible;fill:none;stroke:rgba(255,255,255,.92);stroke-width:5.5;stroke-linecap:round;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5))}
+.mp-grab::before{content:"";position:absolute;inset:-6px}
+.mp:hover + .mp-grab,.mp-grab:hover,.mp-grab.active{opacity:1;transform:none}
+.mp.moving{cursor:grabbing;transition:none}
 .mp.resizing{transition:none;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),0 0 0 3px rgba(255,255,255,.35),0 24px 60px rgba(0,0,0,.6)}
 
 /* ——— Interface masquée quand la souris ne bouge plus ——— */
@@ -122,7 +123,7 @@ body.no-names .name{display:none}
 body.hud-hidden .titlebar{opacity:0;pointer-events:none}
 body.hud-hidden .dock{opacity:0;pointer-events:none;transform:translateY(16px)}
 body.hud-hidden .toast{opacity:0}
-body.hud-hidden .mp-resize{opacity:0}
+body.hud-hidden .mp-grab{opacity:0}
 body.hud-hidden,body.hud-hidden .main,body.hud-hidden .main.cam-move{cursor:none}
 
 /* ——— Caméra libre ——— */
@@ -432,3 +433,99 @@ body.ring-solid .tile.speaking .ring{opacity:calc(.25 + var(--lvl) * .9);inset:c
 .mute-badge .i-deaf{display:none}
 .tile.deaf .mute-badge .i-mic{display:none}
 .tile.deaf .mute-badge .i-deaf{display:block}
+
+/* ——— Anneaux dessinés (rings.js) : canvas deux fois plus grand que l'avatar, derrière lui ——— */
+.fx{position:absolute;left:-50%;top:-50%;width:200%;height:200%;pointer-events:none}
+body.ring-canvas .ring,body.ring-canvas .av-wrap > .aura{display:none}
+body.ring-canvas .av-wrap{filter:none}
+.stage.discord .fx{display:none}
+.loupe .aura{display:block}
+
+/* Ombre portée sous les avatars */
+body.av-shadow .stage .av{box-shadow:0 calc(var(--ctile, var(--tile)) * .07) calc(var(--ctile, var(--tile)) * .2) rgba(0,0,0,.6),0 2px 6px rgba(0,0,0,.35)}
+body.av-shadow .stage.discord .av{box-shadow:0 6px 18px rgba(0,0,0,.5)}
+
+/* Flou du fond : « Profondeur » floute le haut et le bas ; « Verre dépoli » ajoute du grain */
+.bg-tilt,.bg-grain{position:absolute;inset:0;z-index:0;pointer-events:none;display:none}
+.bg-tilt{-webkit-mask-image:linear-gradient(#000,transparent 34%,transparent 66%,#000);mask-image:linear-gradient(#000,transparent 34%,transparent 66%,#000)}
+body.blur-tilt .bg-tilt{display:block}
+body.blur-frost .bg-grain{display:block;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+#bg.blurred{transform:scale(1.06)}
+
+/* Paramètres rangés sur le côté : la scène se recentre dans la partie encore visible */
+.main{transition:padding-right .3s cubic-bezier(.2,.8,.2,1)}
+body.panel-docked .main{padding-right:calc(min(400px, 100%) + 28px)}
+
+/* Champs texte et listes déroulantes des réglages */
+.field{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:8px 10px;user-select:text;min-width:0}
+select.field option{background:#141824;color:#fff}
+
+/* ——— Menu clic droit sur un membre (façon Discord, en verre) ——— */
+.umenu{position:fixed;z-index:60;min-width:224px;max-width:280px;max-height:calc(100vh - 12px);overflow-y:auto;padding:6px;border-radius:12px;display:flex;flex-direction:column;gap:1px;
+  background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,18,26,.86);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 50px rgba(0,0,0,.55);animation:pop .14s both;font-size:13.5px}
+.um-head{padding:6px 8px 8px;font-weight:700;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.um-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;padding:7px 8px;border-radius:6px;color:#dbdee1;font-weight:500}
+.um-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.um-item small{color:var(--muted);font-size:12px}
+.um-item:hover:not(:disabled),.um-item:focus-visible{background:#5865f2;color:#fff;outline:none}
+.um-item:hover:not(:disabled) small{color:#fff}
+.um-item.danger{color:#f23f43}
+.um-item.danger:hover:not(:disabled){background:#da373c;color:#fff}
+.um-item:disabled{opacity:.42;cursor:default}
+.um-check{width:16px;height:16px;flex:none;border-radius:4px;border:2px solid currentColor;opacity:.7}
+.um-check.on{background:#5865f2;border-color:#5865f2;opacity:1;box-shadow:inset 0 0 0 2px rgba(16,18,26,.9)}
+.um-role span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;background:var(--rc,#99aab5);vertical-align:-1px}
+.um-sep{height:1px;background:rgba(255,255,255,.1);margin:4px 6px}
+.um-vol{display:flex;flex-direction:column;gap:6px;padding:6px 8px 8px}
+.um-vol label{display:flex;justify-content:space-between;color:#dbdee1;font-weight:500}
+.um-vol output{color:var(--muted);font-variant-numeric:tabular-nums}
+.um-vol input{width:100%;accent-color:#5865f2}
+.um-input{width:100%;resize:none;margin:2px 0 6px;font:inherit}
+.um-row{display:flex;gap:6px}
+.um-row .um-item{justify-content:center}
+.um-empty{padding:8px;color:var(--muted)}
+.umenu.sub{max-height:60vh}
+
+/* ——— Mini-fenêtre : avatars seuls, coins arrondis, on la déplace en la faisant glisser ——— */
+.mini-bar{display:none}
+html:has(body.mini),body.mini{background:transparent}
+body.mini .app{background:var(--bg);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.14);-webkit-app-region:drag;grid-template-rows:1fr}
+body.mini .titlebar,body.mini .dock,body.mini #music,body.mini .mp-grab,body.mini .loupes,body.mini .settings-wrap,body.mini .screen,body.mini .ly-scene{display:none!important}
+body.mini .main{padding:8px}
+body.mini .stage{margin-bottom:0}
+body.mini .mini-bar{display:flex;position:absolute;top:8px;right:8px;z-index:9;gap:4px;padding:4px;border-radius:12px;-webkit-app-region:no-drag;opacity:0;transition:opacity .2s}
+body.mini .app:hover .mini-bar{opacity:1}
+.mini-bar .wb.on{color:var(--accent)}
+/* Mode transparent : plus de fond ni de cadre, il ne reste que les avatars */
+body.mini-clear .app{background:transparent;border-color:transparent}
+body.mini-clear #bg,body.mini-clear .bg-tilt,body.mini-clear .bg-grain{display:none}
+body.mini-clear .app:hover{border-color:rgba(255,255,255,.18)}
+
+/* ——— Caméra, partage d'écran, clips ——— */
+.av video.selfcam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:1}
+.btn.on{color:var(--accent);background:rgba(255,255,255,.1)}
+.btn.clip{position:relative}
+.btn.clip .dotrec{fill:#e5141c;stroke:none}
+.btn.clip.rec{background:rgba(229,20,28,.18);color:#ff4d55;width:auto;padding:0 12px;grid-auto-flow:column;gap:6px}
+.btn.clip.rec .dotrec{animation:recBlink 1s steps(2) infinite}
+@keyframes recBlink{50%{opacity:.25}}
+.clip-time{font-family:var(--f-mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.screen-view{position:absolute;left:24px;top:16px;z-index:4;width:min(520px,46%);min-width:220px;min-height:150px;aspect-ratio:16/10;resize:both;overflow:hidden;border-radius:16px;display:flex;flex-direction:column;
+  background:rgba(8,10,16,.75);border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.screen-view[hidden]{display:none}
+.screen-bar{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;cursor:grab;font-size:12.5px;font-weight:600;flex:none}
+.screen-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#e5141c;box-shadow:0 0 8px #e5141c}
+.screen-view video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+.share-pick{position:absolute;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.45)}
+.share-pick[hidden]{display:none}
+.share-card{width:min(760px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;background:rgba(14,16,24,.82)}
+.share-card header{display:flex;align-items:center;justify-content:space-between}
+.share-card h3{margin:0;font-family:var(--f-display);font-size:20px}
+.share-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;color:var(--muted)}
+.share-src{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);text-align:left}
+.share-src:hover{border-color:var(--accent);background:rgba(255,255,255,.1)}
+.share-src img{width:100%;aspect-ratio:16/9;object-fit:contain;background:#000;border-radius:8px}
+.share-src span{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+body.mini .screen-view,body.mini .share-pick{display:none!important}

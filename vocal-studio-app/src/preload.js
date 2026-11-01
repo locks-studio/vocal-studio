@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld("studio", {
     deaf: (v) => ipcRenderer.invoke("voice:deaf", v),
     leave: () => ipcRenderer.invoke("voice:leave"),
     summon: () => ipcRenderer.invoke("voice:summon"),
+    user: (a) => ipcRenderer.invoke("voice:user", a),
+    openProfile: (id) => ipcRenderer.invoke("discord:user", id),
+    copy: (text) => ipcRenderer.invoke("clip:write", text),
     onState: (fn) => ipcRenderer.on("voice:state", (_e, s) => fn(s)),
   },
   music: {
@@ -45,11 +48,24 @@ contextBridge.exposeInMainWorld("studio", {
     login: () => ipcRenderer.invoke("spotify:login"),
     logout: () => ipcRenderer.invoke("spotify:logout"),
   },
+  capture: {
+    sources: () => ipcRenderer.invoke("capture:sources"),
+    pick: (p) => ipcRenderer.invoke("capture:pick", p),
+  },
+  clip: {
+    begin: () => ipcRenderer.invoke("clip:begin"),
+    chunk: (id, buf) => ipcRenderer.invoke("clip:chunk", id, buf),
+    end: (id) => ipcRenderer.invoke("clip:end", id),
+    show: (file) => ipcRenderer.invoke("clip:show", file),
+  },
   win: {
     minimize: () => ipcRenderer.invoke("win:minimize"),
     maximize: () => ipcRenderer.invoke("win:maximize"),
     close: () => ipcRenderer.invoke("win:close"),
     pin: (on) => ipcRenderer.invoke("win:pin", on),
     fullscreen: () => ipcRenderer.invoke("win:fullscreen"),
+    mini: () => ipcRenderer.invoke("win:mini"),
+    focusMain: () => ipcRenderer.invoke("win:main"),
+    onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
   },
 });

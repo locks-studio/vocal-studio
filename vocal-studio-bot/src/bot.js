@@ -171,6 +171,73 @@ class StudioBot extends EventEmitter {
     if (loc) this.leave(loc.guild.id);
   }
 
+  // ——— Menu clic droit de l'appli : actions de modération ———
+  // Chaque action est faite par le bot, mais seulement si TOI (celui qui la demande dans Hush) as la permission
+  // correspondante sur le serveur. Le bot doit aussi l'avoir (sinon Discord refuse et on l'explique).
+  async moderate(requesterId, a) {
+    const loc = this.findUser(requesterId);
+    if (!loc) throw new Error("Tu n'es dans aucun salon vocal d'un serveur où le bot est invité.");
+    const { guild } = loc;
+    if (!/^\d{5,25}$/.test(String(a.target || ""))) throw new Error("Membre inconnu.");
+    const [me, target] = await Promise.all([guild.members.fetch(requesterId), guild.members.fetch(a.target)]);
+    const P = PermissionFlagsBits;
+    const has = (p) => me.permissions.has(p);
+    const isOwner = guild.ownerId === me.id;
+    const outranks = (role) => isOwner || me.roles.highest.comparePositionTo(role) > 0;
+    const need = (p, label) => { if (!has(p)) throw new Error(`Tu n'as pas la permission « ${label} » sur ce serveur.`); };
+    const reason = `Hush · demandé par ${me.user.username}`;
+    const canNick = target.id === me.id
+      ? has(P.ChangeNickname) || has(P.ManageNicknames)
+      : has(P.ManageNicknames) && (isOwner || outranks(target.roles.highest)) && target.id !== guild.ownerId;
+    try {
+      switch (a.action) {
+        case "info": {
+          const channels = [...guild.channels.cache.values()]
+            .filter((c) => c.isVoiceBased() && c.permissionsFor(me).has(P.ViewChannel))
+            .sort((x, y) => x.rawPosition - y.rawPosition)
+            .map((c) => ({ id: c.id, name: c.name, here: c.id === target.voice.channelId }));
+          const roles = [...guild.roles.cache.values()]
+            .filter((r) => r.id !== guild.id && !r.managed)
+            .sort((x, y) => y.position - x.position)
+            .map((r) => ({ id: r.id, name: r.name, color: r.hexColor, has: target.roles.cache.has(r.id), editable: has(P.ManageRoles) && outranks(r) && r.editable }));
+          return {
+            nick: target.nickname || "",
+            serverMute: !!target.voice.serverMute, serverDeaf: !!target.voice.serverDeaf, inVoice: !!target.voice.channelId,
+            perms: { mute: has(P.MuteMembers), deaf: has(P.DeafenMembers), move: has(P.MoveMembers), nick: canNick, roles: has(P.ManageRoles) },
+            channels, roles,
+          };
+        }
+        case "mute": need(P.MuteMembers, "Rendre muet"); await target.voice.setMute(!!a.on, reason); return {};
+        case "deaf": need(P.DeafenMembers, "Mettre en sourdine"); await target.voice.setDeaf(!!a.on, reason); return {};
+        case "disconnect": need(P.MoveMembers, "Déplacer des membres"); await target.voice.disconnect(reason); return {};
+        case "move": {
+          need(P.MoveMembers, "Déplacer des membres");
+          const ch = guild.channels.cache.get(String(a.channel));
+          if (!ch || !ch.isVoiceBased() || !ch.permissionsFor(me).has(P.Connect)) throw new Error("Tu ne peux pas aller dans ce salon.");
+          await target.voice.setChannel(ch, reason);
+          return {};
+        }
+        case "nick": {
+          if (!canNick) throw new Error("Tu ne peux pas changer le pseudo de ce membre.");
+          await target.setNickname(String(a.nick || "").slice(0, 32) || null, reason);
+          return {};
+        }
+        case "role": {
+          need(P.ManageRoles, "Gérer les rôles");
+          const role = guild.roles.cache.get(String(a.role));
+          if (!role || role.managed || role.id === guild.id || !outranks(role)) throw new Error("Tu ne peux pas donner ce rôle.");
+          if (a.on) await target.roles.add(role, reason); else await target.roles.remove(role, reason);
+          return {};
+        }
+        default: throw new Error("Action inconnue.");
+      }
+    } catch (e) {
+      // 50013 : c'est le BOT qui n'a pas la permission (ou son rôle est trop bas)
+      if (e.code === 50013) throw new Error(`${this.client.user.username} n'a pas la permission de faire ça : réinvite-le avec le lien affiché au lancement du bot, ou place son rôle plus haut.`);
+      throw e;
+    }
+  }
+
   // ——— Événements Discord ———
   onVoiceState(oldS, newS) {
     const guild = newS.guild;

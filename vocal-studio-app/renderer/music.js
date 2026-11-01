@@ -239,6 +239,39 @@ function cardLook(cover) {
   img.src = cover;
 }
 
+// Deux couleurs tirées de la pochette pour l'anneau : la dominante et la plus éclatante
+let coverRing = null, coverRingKey;
+function ringCoverColors(cover) {
+  if (cover === coverRingKey) return;
+  coverRingKey = cover;
+  if (!cover) { coverRing = null; applyRing(); return; }
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 24;
+      const x = cv.getContext("2d");
+      x.drawImage(img, 0, 0, 24, 24);
+      const d = x.getImageData(0, 0, 24, 24).data;
+      let r = 0, g = 0, b = 0, w = 0, best = null, bestSat = -1;
+      for (let i = 0; i < d.length; i += 4) {
+        const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
+        const k = 0.05 + (mx - mn) / 255;
+        r += d[i] * k; g += d[i + 1] * k; b += d[i + 2] * k; w += k;
+        const sat = (mx - mn) * (mx / 255);
+        if (sat > bestSat) { bestSat = sat; best = [d[i], d[i + 1], d[i + 2]]; }
+      }
+      const a = vivid([r / w, g / w, b / w]), c = vivid(best);
+      // Couleurs lumineuses : un anneau doit briller même sur une pochette sombre
+      coverRing = { a: `hsl(${a.h} ${Math.max(a.s, 60)}% ${Math.max(a.l, 55)}%)`, b: `hsl(${c.h} ${Math.max(c.s, 60)}% ${Math.max(c.l, 70)}%)` };
+    } catch { coverRing = null; }
+    applyRing();
+  };
+  img.onerror = () => { coverRing = null; applyRing(); };
+  img.src = cover;
+}
+
 function cssRgb(c) {
   const m = /^#?([0-9a-f]{6})$/i.exec(c);
   if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
