@@ -29,6 +29,9 @@ function attachLocalMedia() {
   }
   $("#camBtn").classList.toggle("on", !!Cap.cam);
   $("#shareBtn").classList.toggle("on", !!Cap.screen);
+  // Une vidéo apparaît ou disparaît : la vue « stream » se met en place
+  const f = featureSource(), k = f ? `${f.id}|${f.kind}` : "";
+  if (k !== featKey) requestAnimationFrame(layout);
 }
 
 async function toggleCam() {

@@ -13,6 +13,9 @@ const TYPES = {
   flac: "audio/flac", webm: "audio/webm", weba: "audio/webm", mp4: "audio/mp4", "3gp": "audio/3gpp", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
 };
 
+// Fonds d'écran (images, GIF animés, vidéos) : gardés en pleine qualité dans le dossier « backgrounds »
+const BG_TYPES = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", avif: "image/avif", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime" };
+
 // À appeler avant que l'application soit prête
 function registerScheme() {
   protocol.registerSchemesAsPrivileged([
@@ -23,6 +26,7 @@ function registerScheme() {
 class SoundLibrary {
   constructor(dir) {
     this.dir = dir;
+    this.bgDir = path.join(path.dirname(dir), "backgrounds");
     fs.mkdirSync(dir, { recursive: true });
     this.indexFile = path.join(dir, "index.json");
     try { this.items = JSON.parse(fs.readFileSync(this.indexFile, "utf8")); } catch { this.items = []; }
@@ -36,10 +40,12 @@ class SoundLibrary {
   // Sert les fichiers au lecteur, avec les requêtes partielles (Range) pour pouvoir avancer dans le morceau
   serve() {
     protocol.handle("vsmedia", async (req) => {
-      const file = path.join(this.dir, path.basename(decodeURIComponent(new URL(req.url).pathname)));
+      const u = new URL(req.url);
+      const bg = u.host === "bg";
+      const file = path.join(bg ? this.bgDir : this.dir, path.basename(decodeURIComponent(u.pathname)));
       let st;
       try { st = fs.statSync(file); } catch { return new Response("introuvable", { status: 404 }); }
-      const type = TYPES[path.extname(file).slice(1).toLowerCase()] || "application/octet-stream";
+      const type = (bg ? BG_TYPES : TYPES)[path.extname(file).slice(1).toLowerCase()] || "application/octet-stream";
       const base = { "Content-Type": type, "Accept-Ranges": "bytes", "Access-Control-Allow-Origin": "*" };
       const m = /bytes=(\d*)-(\d*)/.exec(req.headers.get("range") || "");
       if (!m) {
@@ -52,6 +58,24 @@ class SoundLibrary {
         headers: { ...base, "Content-Length": String(end - start + 1), "Content-Range": `bytes ${start}-${end}/${st.size}` },
       });
     });
+  }
+
+  // Choisir un fond : copié tel quel (aucune perte de qualité, les GIF restent animés). On garde les 12 derniers.
+  async pickBackground(win) {
+    const r = await dialog.showOpenDialog(win, {
+      title: "Choisir un fond",
+      properties: ["openFile"],
+      filters: [{ name: "Images, GIF et vidéos", extensions: Object.keys(BG_TYPES) }],
+    });
+    if (r.canceled || !r.filePaths[0]) return null;
+    fs.mkdirSync(this.bgDir, { recursive: true });
+    const ext = path.extname(r.filePaths[0]).slice(1).toLowerCase();
+    if (!BG_TYPES[ext]) return null;
+    const file = crypto.randomBytes(6).toString("hex") + "." + ext;
+    fs.copyFileSync(r.filePaths[0], path.join(this.bgDir, file));
+    const old = fs.readdirSync(this.bgDir).map((f) => ({ f, t: fs.statSync(path.join(this.bgDir, f)).mtimeMs })).sort((a, b) => b.t - a.t);
+    for (const o of old.slice(12)) fs.rmSync(path.join(this.bgDir, o.f), { force: true });
+    return { url: `vsmedia://bg/${file}`, kind: BG_TYPES[ext].startsWith("video") ? "video" : "image" };
   }
 
   // Fenêtre « Ajouter des sons » : fichiers audio, et éventuellement leurs paroles .lrc (même nom)

@@ -19,7 +19,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true };
+  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, squash: true, streamView: true, history: [] };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -31,6 +31,8 @@ function normS() {
   for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames"]) S[k] = { ...(S[k] || {}) };
   S.hiddenUsers = [...(S.hiddenUsers || [])];
   S.userPresets = [...(S.userPresets || [])];
+  S.history = [...(S.history || [])];
+  if (!["general", "avatars", "fond", "sound", "video", "account"].includes(S.tab)) S.tab = "general";
   // Fonds retirés
   if (["aurora", "particles", "vignette", "grid"].includes(S.bg)) S.bg = "space";
 }
@@ -132,6 +134,10 @@ function syncTiles() {
   // Couleurs bien différentes d'un joueur à l'autre, en partant du bleu Discord pour toi
   list.forEach((m, i) => tiles.get(m.id).el.querySelector(".av").style.setProperty("--h", PLAYER_HUES[i % PLAYER_HUES.length]));
   if (typeof attachLocalMedia === "function") attachLocalMedia();
+  // Bouton « Afficher les joueurs masqués »
+  const nh = state.members.filter((m) => S.hiddenUsers.includes(m.id)).length;
+  $("#showHidden").hidden = !nh || MINI;
+  $("#showHidden").textContent = `Afficher ${nh > 1 ? `les ${nh} joueurs masqués` : "le joueur masqué"}`;
   layout();
 }
 
@@ -169,6 +175,7 @@ function renderChrome() {
   // Onglet Compte : qui est connecté, et comment
   const how = S.demo ? "Mode démo (joueurs fictifs)" : state.mode === "bot" ? "Avec le bot Hush" : "Connexion directe (RPC)";
   $("#accountInfo").textContent = `${how} · ${(STATUS[state.status] || STATUS.idle)[1]}${state.me ? ` · connecté en tant que ${state.me.name}` : ""}`;
+  if (typeof renderHome === "function") renderHome();
   renderScreen();
 }
 
@@ -219,6 +226,8 @@ let screenKey = "";
 async function renderScreen() {
   const screen = $("#screen"), card = $("#screenCard");
   const s = state.status;
+  // L'accueil remplace les écrans « connexion / aucun vocal »
+  if (typeof homeWanted === "function" && homeWanted()) { screen.hidden = true; screenKey = ""; return; }
   // Ne redessine que si l'écran change (sinon le formulaire perdrait ce qui est tapé)
   const key = editingConfig || s === "needs-config" ? "setup" : `${s}|${!!state.channel}|${state.error}|${state.canJoin}|${state.mode}`;
   if (key === screenKey) return;
@@ -336,6 +345,9 @@ async function renderSetup(card, screen) {
 /* ——— Source des données : Discord ou démo ——— */
 window.studio.voice.onState((s) => {
   if (S.demo) return;
+  if (typeof homeOnState === "function" && !MINI) homeOnState(s);
+  // Hors vocal : on te montre seul dans la scène (le fond flouté de l'accueil)
+  if (!s.channel && s.me && !MINI) s = { ...s, members: [{ ...s.me, muted: false, deaf: false, speaking: false }] };
   state = s;
   syncTiles();
   renderChrome();
@@ -442,8 +454,12 @@ $("#demoToggle").onclick = () => setDemo(!S.demo);
 
 /* ——— Disposition ——— */
 let focusId = null, focusAt = 0;
+let L = "strip"; // disposition affichée (la choisie, ou « stream » quand une vidéo est à l'image)
 function layout() {
-  stage.className = "stage " + S.layout;
+  const feat = featureSource();
+  L = feat ? "stream" : S.layout;
+  stage.className = "stage " + L;
+  renderFeature(feat);
   mainEl.classList.toggle("cam-move", camLayout());
   if (!camLayout()) { view.lock = null; view.y = 0; }
   const n = Math.max(1, tiles.size);
@@ -454,10 +470,10 @@ function layout() {
     const rows = Math.ceil(n / cols);
     size = Math.max(size, Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35));
   }
-  if (S.layout === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
+  if (L === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
   stage.style.setProperty("--tile", Math.round(Math.max(36, Math.min(size * S.zoom, 320 * S.zoom))) + "px");
   // Disposition Discord classique : tuiles 16:9, on cherche le nombre de colonnes qui les rend les plus grandes
-  if (S.layout === "discord") {
+  if (L === "discord") {
     let dw = 0;
     for (let cols = 1; cols <= n; cols++) {
       const rows = Math.ceil(n / cols);
@@ -466,19 +482,19 @@ function layout() {
     stage.style.setProperty("--dw", Math.round(Math.max(120, dw * Math.min(1, S.zoom))) + "px");
   }
   const ring = $("#ring");
-  const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || S.layout !== "orbit");
+  const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || L !== "orbit");
   for (const t of tiles.values()) {
     t.el.style.left = t.el.style.top = t.el.style.transform = "";
-    t.el.classList.toggle("focus", S.layout === "scene" && t.data.id === focusId);
+    t.el.classList.toggle("focus", L === "scene" && t.data.id === focusId);
   }
   $("#music").hidden = !(S.musicOn && hasMusic());
   placeMusic();
-  $("#lyricsScene").hidden = S.layout !== "lyrics";
+  $("#lyricsScene").hidden = L !== "lyrics";
   for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
-  if (S.layout === "cinema") {
+  if (L === "cinema") {
     const c = Math.round(Math.max(40, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
-  } else if (S.layout === "strip") {
+  } else if (L === "strip") {
     // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
     const fit = S.camera ? Math.min(n, 5) : n;
     const c = Math.round(Math.max(30, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400) * S.zoom));
@@ -486,7 +502,13 @@ function layout() {
   } else {
     stage.style.removeProperty("--ctile");
   }
-  if (S.layout !== "orbit" || !list.length) return;
+  if (L === "column") {
+    // Verticale : une colonne d'avatars avec le pseudo à droite, tout le monde tient en hauteur
+    const vt = Math.round(Math.max(22, Math.min((H - 8) / (n * 1.22), W * 0.32, 150) * Math.min(1, S.zoom)));
+    stage.style.setProperty("--vt", vt + "px");
+  }
+  if (L === "stream") placeStream();
+  if (L !== "orbit" || !list.length) return;
   const w = stage.clientWidth, h = stage.clientHeight;
   const tw = list[0].offsetWidth, th = list[0].offsetHeight;
   // Ellipse : prend toute la largeur disponible au lieu d'un cercle limité par la hauteur
@@ -505,6 +527,62 @@ function layout() {
 }
 new ResizeObserver(() => layout()).observe(stage);
 
+/* ——— Vue « stream » : quand une caméra ou un partage d'écran est actif ———
+   Le flux en grand à gauche dans un cadre arrondi (qui s'allume en vert quand la personne parle),
+   les autres en zigzag sur un panneau sombre en biais à droite. */
+function featureSource() {
+  if (!S.streamView || MINI || ["discord", "lyrics"].includes(S.layout) || typeof Cap === "undefined") return null;
+  const me = meTileId();
+  if (Cap.screen) return { id: me, kind: "screen", stream: Cap.screen };
+  if (Cap.cam) return { id: me, kind: "cam", stream: Cap.cam };
+  const live = [...tiles.values()].map((t) => t.data);
+  const m = live.find((d) => d.stream) || live.find((d) => d.video);
+  return m ? { id: m.id, kind: m.stream ? "remote-stream" : "remote-cam", member: m } : null;
+}
+let featKey = "";
+function renderFeature(f) {
+  const box = $("#feature");
+  box.hidden = !f;
+  const key = f ? `${f.id}|${f.kind}` : "";
+  if (key === featKey) return;
+  featKey = key;
+  if (!f) return;
+  const t = tiles.get(f.id);
+  const name = t ? t.data.name : "";
+  $("#featureName").textContent = name;
+  const v = $("#featureVideo"), ph = $("#featurePh");
+  if (f.stream) {
+    v.srcObject = f.stream;
+    v.classList.toggle("mirror", f.kind === "cam");
+    v.play().catch(() => {});
+    v.hidden = false; ph.hidden = true;
+  } else {
+    // Flux d'un autre membre : Discord ne le donne à aucune appli, on montre son avatar flouté
+    v.srcObject = null; v.hidden = true; ph.hidden = false;
+    $("#featurePhImg").src = (t && (t.data.avatarAnim || t.data.avatar)) || "assets/discord-logo.png";
+    $("#featurePhText").textContent = f.kind === "remote-stream" ? `${name} est en live · à regarder dans Discord` : `${name} a allumé sa caméra · visible dans Discord`;
+  }
+  // Le partage affiché en grand remplace la petite fenêtre flottante
+  $("#screenView").classList.toggle("in-feature", f.kind === "screen");
+}
+function placeStream() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const list = [...tiles.values()];
+  const n = Math.max(1, list.length);
+  const panelL = W * 0.62, panelW = W - panelL;
+  // Le zoom de la scène ne s'applique pas ici : le panneau est toujours rempli au mieux
+  // En zigzag sur deux colonnes : deux voisins d'une même colonne sont à 2 rangs d'écart (place pour le pseudo)
+  const top = H * 0.07, usable = H * 0.86;
+  const size = Math.round(Math.max(32, Math.min(panelW * 0.36, (usable / n) * 1.25, 220)));
+  stage.style.setProperty("--st", size + "px");
+  list.forEach((t, i) => {
+    const y = top + ((i + 0.5) / n) * usable + size * 0.08;
+    const x = panelL + panelW * (i % 2 ? 0.7 : 0.34);
+    t.el.style.left = x - size / 2 + "px";
+    t.el.style.top = y - size / 2 + "px";
+  });
+}
+
 /* ——— Panneau de réglages ——— */
 const skinsEl = $("#skins");
 Object.entries(SKINS).forEach(([k, v]) => {
@@ -520,7 +598,7 @@ SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
     apply();
-    if (key === "bg" && S.bg === "image" && !S.bgImage) $("#bgFile").click();
+    if (key === "bg" && S.bg === "image" && !S.bgImage) pickBg();
   })));
 
 /* ——— Musique en cours : Ce PC (Deezer…), compte Spotify ou saisie à la main ——— */
@@ -618,15 +696,34 @@ function readImage(file, maxSide, done) {
   img.src = url;
 }
 let bgImg = null;
+// Le fond image est un vrai élément de la page (pas dessiné dans le canvas) : pleine résolution,
+// GIF animés et vidéos qui bougent. Il zoome très lentement (effet Ken Burns).
+let bgMediaSrc = null;
 function loadBgImg() {
   bgImg = null;
-  if (!S.bgImage) return;
-  const i = new Image();
-  i.onload = () => { bgImg = i; };
-  i.src = S.bgImage;
+  const box = $("#bgMedia");
+  const src = S.bg === "image" ? S.bgImage : null;
+  box.hidden = !src;
+  if (src === bgMediaSrc) return;
+  bgMediaSrc = src;
+  box.textContent = "";
+  if (!src) return;
+  const video = S.bgKind === "video";
+  const m = document.createElement(video ? "video" : "img");
+  if (video) Object.assign(m, { muted: true, loop: true, autoplay: true, playsInline: true });
+  m.alt = "";
+  m.src = src;
+  box.appendChild(m);
+  if (video) m.play().catch(() => {});
 }
-$("#bgPick").onclick = () => $("#bgFile").click();
-$("#bgFile").onchange = (e) => { const f = e.target.files[0]; if (f) readImage(f, 1920, (d) => { S.bgImage = d; S.bg = "image"; loadBgImg(); apply(); }); };
+async function pickBg() {
+  const r = await window.studio.bg.pick();
+  if (!r) return;
+  S.bgImage = r.url; S.bgKind = r.kind; S.bg = "image";
+  apply();
+}
+$("#bgPick").onclick = pickBg;
+
 $("#musicPick").onclick = () => $("#musicFile").click();
 $("#musicFile").onchange = (e) => { const f = e.target.files[0]; if (f) readImage(f, 600, (d) => { S.musicCover = d; apply(); }); };
 $("#musicTitleIn").oninput = (e) => { S.musicTitle = e.target.value; apply(); };
@@ -778,7 +875,7 @@ $("#accentReset").onclick = () => { S.accent = null; apply(); };
 $("#ringColor").oninput = (e) => { S.ringColor = e.target.value; S.ringFrom = "custom"; apply(); };
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide", "avShadow", "clipAudio"];
+const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide", "avShadow", "clipAudio", "squash", "streamView"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -796,7 +893,9 @@ function loadFont(f) {
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
 
 // Couleurs d'origine des anneaux dessinés (vert comme la vidéo pour l'Aura et les Vagues, bleu pour le feu et l'énergie)
-const RING_ORIGIN = { aura: ["#5cff6e", "#eafff0"], wave: ["#5cff6e", "#b8ffd0"], flame: ["#2fb8ff", "#bdf1ff"], energy: ["#3aa8ff", "#c4e8ff"] };
+// Couleur d'origine de tous les anneaux : le vert de Discord quand quelqu'un parle
+const DISCORD_GREEN = ["#23a559", "#8af0b0"];
+const RING_ORIGIN = { aura: DISCORD_GREEN, wave: DISCORD_GREEN, flame: DISCORD_GREEN, energy: DISCORD_GREEN, gradient: DISCORD_GREEN, solid: DISCORD_GREEN };
 let ringCol = { a: "#5cff6e", b: "#b8ffd0" };
 // Mélange une couleur #rrggbb avec du blanc (k = part de blanc)
 function mixWhite(hex, k) {
@@ -871,7 +970,9 @@ function apply() {
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
-  $("#bgPick").textContent = S.bgImage ? "Changer l'image de fond" : "Choisir une image de fond";
+  $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
+  loadBgImg();
+  $("#bgMedia").style.filter = cv.style.filter;
   $("#musicOn").setAttribute("aria-checked", S.musicOn);
   $("#musicFields").hidden = !S.musicOn;
   if ($("#musicTitleIn").value !== S.musicTitle) $("#musicTitleIn").value = S.musicTitle;
@@ -920,16 +1021,79 @@ function drawBg(t, energy) {
     ctx.fillRect(0, 0, w, h);
   } else if (["space", "stars", "topo", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
-  } else if (S.bg === "image" && bgImg) {
-    // Image de fond qui zoome très lentement (effet Ken Burns)
-    const z = 1.06 + 0.04 * Math.sin(t * 0.00012 * S.speed) + energy * 0.02;
-    const k = Math.max(w / bgImg.width, h / bgImg.height) * z;
-    const iw = bgImg.width * k, ih = bgImg.height * k;
-    ctx.drawImage(bgImg, (w - iw) / 2 + 20 * Math.sin(t * 0.0001 * S.speed), (h - ih) / 2, iw, ih);
-    const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.8);
-    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.75)");
+  } else if (S.bg === "pulse") {
+    drawPulse(t, w, h, energy);
+  } else if (S.bg === "image") {
+    // L'image est affichée par #bgMedia ; ici, juste un léger assombrissement des bords
+    const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.8);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.45)");
     ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
   }
+}
+
+/* ——— Fond « Son » : un cercle de barres qui suit le son, et des ondes qui partent à chaque coup fort ———
+   Il écoute la musique jouée dans Hush (Mes sons) quand il y en a, sinon les voix du salon (et une
+   respiration lente pour qu'il ne soit jamais figé). */
+const pulse = { lvl: 0, avg: 0, waves: [], bars: new Float32Array(72) };
+function drawPulse(t, w, h, energy) {
+  const music = audioLevel();
+  const spectrum = music !== null ? Sounds.data : null;
+  const target = Math.min(1, Math.max(energy, music !== null ? music * 1.6 : 0));
+  pulse.lvl += (target - pulse.lvl) * 0.25;
+  pulse.avg += (pulse.lvl - pulse.avg) * 0.03;
+  // Un coup (la voix ou la basse monte d'un coup) : une onde part du centre
+  if (pulse.lvl > pulse.avg + 0.12 && (!pulse.waves.length || t - pulse.waves[pulse.waves.length - 1].t > 180)) pulse.waves.push({ t, k: pulse.lvl });
+  // Couleurs de l'anneau (vert Discord par défaut, ou ta couleur / la pochette)
+  const c = ringCol.a, c2 = ringCol.b;
+  const cx = w / 2, cy = h / 2, base = Math.min(w, h) * (0.22 + pulse.lvl * 0.03);
+  // Halo central
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
+  g.addColorStop(0, hexA(c, 0.10 + pulse.lvl * 0.25));
+  g.addColorStop(0.5, hexA(c2, 0.04 + pulse.lvl * 0.06));
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // Ondes
+  pulse.waves = pulse.waves.filter((wv) => t - wv.t < 2200);
+  for (const wv of pulse.waves) {
+    const p = (t - wv.t) / 2200;
+    ctx.beginPath();
+    ctx.arc(cx, cy, base + p * Math.max(w, h) * 0.6, 0, Math.PI * 2);
+    ctx.strokeStyle = hexA(c, (1 - p) * 0.5 * wv.k);
+    ctx.lineWidth = 2 + (1 - p) * 10 * wv.k;
+    ctx.stroke();
+  }
+  // Barres en cercle
+  const n = pulse.bars.length;
+  ctx.lineCap = "round";
+  for (let i = 0; i < n; i++) {
+    const half = i < n / 2 ? i : n - 1 - i; // symétrique, comme un miroir
+    let v;
+    if (spectrum) v = spectrum[Math.floor((half / (n / 2)) * 40)] / 255;
+    else v = pulse.lvl * (0.45 + 0.55 * Math.abs(Math.sin(t * 0.004 * S.speed + half * 0.7) * Math.sin(t * 0.0023 * S.speed + half * 1.9)));
+    v = Math.max(v, 0.04 + 0.02 * Math.sin(t * 0.001 + i));
+    pulse.bars[i] += (v - pulse.bars[i]) * 0.3;
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const len = pulse.bars[i] * Math.min(w, h) * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * base, cy + Math.sin(a) * base);
+    ctx.lineTo(cx + Math.cos(a) * (base + len), cy + Math.sin(a) * (base + len));
+    ctx.strokeStyle = hexA(i % 2 ? c2 : c, 0.35 + pulse.bars[i] * 0.6);
+    ctx.lineWidth = Math.max(2, (Math.PI * 2 * base) / n * 0.45);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+// Couleur #rrggbb (ou autre) avec une transparence
+function hexA(col, a) {
+  // Le canvas convertit n'importe quelle couleur CSS opaque (hsl…) en #rrggbb
+  if (!/^#[0-9a-f]{6}$/i.test(col)) { ctx.fillStyle = col; col = ctx.fillStyle; }
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(col).trim());
+  if (!m) return col;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a)).toFixed(3)})`;
 }
 
 /* ——— Caméra du mode Cinéma 3D ———
@@ -989,7 +1153,7 @@ function hideClipped(list) {
 /* ——— Changement de plan (nouvelle personne qui parle) ——— */
 function onCut() {
   if (S.bg === "auto") window.Patterns.cut();
-  if (S.layout === "strip" && S.camera) { zoomKick = 1; newShot(); }
+  if (L === "strip" && S.camera) { zoomKick = 1; newShot(); }
   if (S.bg === "auto" && !reduced) flashLvl = 0.35;
 }
 
@@ -1153,7 +1317,7 @@ function updateLoupes() {
    (Ctrl+clic à nouveau, ou sur le fond, pour libérer). Sans action pendant 2,5 s, la caméra repart toute seule. */
 const FREE_MS = 2500;
 const view = { dragging: false, px: 0, py: 0, until: 0, x: null, y: 0, zoom: 1, lock: null, slotPx: 200 };
-const camLayout = () => S.layout === "strip" || S.layout === "cinema";
+const camLayout = () => L === "strip" || L === "cinema";
 const viewFree = () => view.dragging || performance.now() < view.until;
 const mainEl = document.querySelector(".main");
 
@@ -1182,7 +1346,7 @@ mainEl.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   view.dragging = true;
   view.px = e.clientX; view.py = e.clientY;
-  view.x = S.layout === "strip" ? stripX : camX;
+  view.x = L === "strip" ? stripX : camX;
   mainEl.classList.add("grabbing");
 });
 addEventListener("pointermove", (e) => {
@@ -1206,7 +1370,7 @@ function setZoom(z, quiet) {
   if (!quiet) showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
 }
 mainEl.addEventListener("wheel", (e) => {
-  if (e.target.closest(".screen, .mp, .mp-grab") || S.layout === "lyrics") return;
+  if (e.target.closest(".screen, .mp, .mp-grab") || L === "lyrics") return;
   e.preventDefault();
   setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
@@ -1241,25 +1405,36 @@ function frame(t) {
     }
     tile.lvl += (target - tile.lvl) * (reduced ? 1 : 0.2);
     tile.el.style.setProperty("--lvl", tile.lvl.toFixed(3));
+    const wrap = tile.wrap || (tile.wrap = tile.el.querySelector(".av-wrap"));
+    if (S.squash && !reduced && tile.lvl > 0.02) {
+      const k = tile.lvl * 0.075 * (Math.sin(t * 0.026 * S.speed + tile.seed) * 0.7 + Math.sin(t * 0.061 * S.speed + tile.seed * 3) * 0.3);
+      wrap.style.transform = `scale(${(1 + k).toFixed(4)}, ${(1 - k).toFixed(4)})`;
+      tile.squashed = true;
+    } else if (tile.squashed) { wrap.style.transform = ""; tile.squashed = false; }
     tile.el.classList.toggle("speaking", speaking);
     tile.bars.forEach((b, i) => {
       const s = tile.lvl * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.018 * S.speed + i * 1.3 + tile.seed)));
       b.style.transform = `scaleY(${Math.max(0.12, s)})`;
     });
-    if (S.layout !== "discord") Rings.draw(tile, S.ring, t, ringCol);
+    if (L !== "discord") Rings.draw(tile, S.ring, t, ringCol);
     energy += tile.lvl;
     if (speaking && (!loud || tile.lvl > loud.lvl)) loud = tile;
   }
   // Qui est « à l'image » : la voix la plus forte, sans changer plus vite qu'un plan de montage
-  if (!focusId || !tiles.has(focusId)) { focusId = tiles.keys().next().value || null; if (S.layout === "scene") layout(); }
-  const minShot = S.layout === "strip" ? 900 : 1600;
+  if (!focusId || !tiles.has(focusId)) { focusId = tiles.keys().next().value || null; if (L === "scene") layout(); }
+  const minShot = L === "strip" ? 900 : 1600;
   if (loud && loud.data.id !== focusId && t - focusAt > minShot) {
     focusId = loud.data.id; focusAt = t;
-    if (S.layout === "scene") for (const x of tiles.values()) x.el.classList.toggle("focus", x.data.id === focusId);
+    if (L === "scene") for (const x of tiles.values()) x.el.classList.toggle("focus", x.data.id === focusId);
     onCut();
   }
-  if (S.layout === "cinema") cinema(t);
-  if (S.layout === "strip") strip(t);
+  if (L === "stream") {
+    const ft = featKey && tiles.get(featKey.split("|")[0]);
+    $("#feature").classList.toggle("speaking", !!(ft && ft.el.classList.contains("speaking")));
+    if (ft) $("#feature").style.setProperty("--lvl", ft.lvl.toFixed(3));
+  }
+  if (L === "cinema") cinema(t);
+  if (L === "strip") strip(t);
   updateLoupes();
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }
@@ -1280,7 +1455,7 @@ function frame(t) {
     $("#musicLen").textContent = "-" + fmtTime(len - pos);
     drawWave(t, lt ? lt.playing : S.musicSource === "manual");
   }
-  if (S.layout === "lyrics") lyricsFrame(lt, pos * 1000);
+  if (L === "lyrics") lyricsFrame(lt, pos * 1000);
   const names = state.members.filter(heard).map((m) => m.name);
   $("#talkers").textContent = names.length ? names.slice(0, 3).join(" & ") + (names.length > 1 ? " parlent" : " parle") : "personne ne parle";
   drawBg(t, Math.min(1, energy / 2));
@@ -1288,21 +1463,38 @@ function frame(t) {
 }
 
 /* ——— Mini-fenêtre ——— */
+const miniGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const miniSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 function miniLook() {
-  // Paroles et Discord n'ont pas de sens en petit : on montre la bande
-  if (["lyrics", "discord"].includes(S.layout)) S.layout = "strip";
+  // L'overlay montre TOUT le salon, sans caméra qui file : personne ne sort de la fenêtre.
+  // Disposition : verticale (par défaut) ou en bande, au choix avec le bouton ↕
+  const vertical = miniGet("hush-mini-layout") !== "strip";
+  S.layout = vertical ? "column" : "strip";
+  S.players = 99; S.camera = false; S.zoom = 1;
   S.panel = false; S.musicOn = false;
-  let clear = false;
-  try { clear = localStorage.getItem("hush-mini-clear") === "1"; } catch {}
+  const clear = miniGet("hush-mini-clear") === "1";
   document.body.classList.toggle("mini-clear", clear);
   $("#miniClear").classList.toggle("on", clear);
+  $("#miniLayout").classList.toggle("on", vertical);
+  $("#miniLayout").title = vertical ? "Passer en bande (horizontal)" : "Passer en colonne (vertical)";
 }
+// Ctrl+O : overlay transparent ou non (dans la mini-fenêtre comme dans la grande)
+function toggleMiniClear() {
+  miniSet("hush-mini-clear", miniGet("hush-mini-clear") === "1" ? "0" : "1");
+  if (MINI) { miniLook(); return; }
+  if (!$("#miniBtn").classList.contains("on")) openMini();
+  showToast(miniGet("hush-mini-clear") === "1" ? "Overlay transparent (Ctrl+O)" : "Overlay avec fond (Ctrl+O)");
+}
+addEventListener("keydown", (e) => {
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") { e.preventDefault(); toggleMiniClear(); }
+});
 function setupMini() {
   document.body.classList.add("mini");
   miniLook();
   apply();
   // La grande fenêtre change un réglage : on le reprend ici
   addEventListener("storage", (e) => {
+    if (e.key === "hush-mini-clear" || e.key === "hush-mini-layout") { miniLook(); apply(); syncTiles(); return; }
     if (e.key !== "vocal-studio") return;
     try { S = { ...DEFAULTS, ...JSON.parse(e.newValue || "{}") }; } catch { return; }
     normS();
@@ -1311,11 +1503,25 @@ function setupMini() {
     loadBgImg();
     syncTiles();
   });
-  $("#miniClear").onclick = () => {
-    const on = !document.body.classList.contains("mini-clear");
-    try { localStorage.setItem("hush-mini-clear", on ? "1" : "0"); } catch {}
-    miniLook();
+  $("#miniClear").onclick = toggleMiniClear;
+  $("#miniLayout").onclick = () => {
+    miniSet("hush-mini-layout", miniGet("hush-mini-layout") === "strip" ? "column" : "strip");
+    miniLook(); apply(); syncTiles();
   };
+  // Déplacer / redimensionner à la main : la fenêtre peut sortir de l'écran, comme une fenêtre normale
+  const drag = (el, mode) => el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || (mode === "move" && e.target.closest("button, .mini-grip"))) return;
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    window.studio.win.drag("start", mode);
+    const mv = () => window.studio.win.drag("move");
+    const up = () => { window.studio.win.drag("end"); el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); };
+    el.addEventListener("pointermove", mv);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  });
+  drag($("#app"), "move");
+  drag($("#miniGrip"), "size");
   $("#miniHome").onclick = () => window.studio.win.focusMain();
   $("#miniClose").onclick = () => window.studio.win.close();
 }
@@ -1325,6 +1531,7 @@ const openMini = async () => {
   $("#setMini").textContent = open ? "Fermer" : "Ouvrir";
 };
 $("#miniBtn").onclick = openMini;
+$("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
 

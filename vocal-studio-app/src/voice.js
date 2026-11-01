@@ -136,7 +136,7 @@ class VoiceSession {
   async useToken(accessToken) {
     const data = await this.ipc.request("AUTHENTICATE", { access_token: accessToken });
     const u = data.user;
-    this.me = { id: u.id, name: u.global_name || u.username };
+    this.me = { id: u.id, name: u.global_name || u.username, avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=256` : null };
   }
 
   async watchChannel(channelId) {
@@ -153,7 +153,8 @@ class VoiceSession {
     if (ch.guild_id) {
       try { guild = (await ipc.request("GET_GUILD", { guild_id: ch.guild_id })).name; } catch {}
     }
-    this.channel = { id: ch.id, name: ch.name || "Appel privé", guild };
+    // type 1 : appel privé, 3 : appel de groupe
+    this.channel = { id: ch.id, name: ch.name || "Appel privé", guild, call: ch.type === 1 || ch.type === 3 };
     for (const vs of ch.voice_states || []) {
       const m = toMember(vs);
       this.members.set(m.id, m);

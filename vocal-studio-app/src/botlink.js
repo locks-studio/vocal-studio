@@ -120,6 +120,15 @@ class BotLink {
   summon() { this.send({ type: "summon" }); }
   dismiss() { this.send({ type: "dismiss" }); }
 
+  // Page d'accueil : vocaux suggérés et membres qui ont Hush
+  home() { return this.userAction({ type: "home" }); }
+  // Infos publiques du serveur (sans connexion) : bot en ligne ?, nom, lien d'invitation
+  async info() {
+    if (!this.server()) return null;
+    try { return await fetch(this.server() + "/info", { signal: AbortSignal.timeout(3000) }).then((r) => r.json()); }
+    catch { return { online: false, unreachable: true }; }
+  }
+
   // Action de modération sur un membre (menu clic droit) : le serveur vérifie tes permissions
   userAction(a) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Pas connecté au bot."));
@@ -127,7 +136,7 @@ class BotLink {
     return new Promise((resolve, reject) => {
       this.pending.set(rid, { resolve, reject });
       setTimeout(() => { if (this.pending.delete(rid)) reject(new Error("Le bot n'a pas répondu.")); }, 10_000);
-      this.send({ ...a, type: "mod", rid });
+      this.send({ type: "mod", ...a, rid });
     });
   }
 

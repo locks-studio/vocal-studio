@@ -17,14 +17,16 @@
   <filter id="motionBlur" x="-10%" y="0%" width="120%" height="100%"><feGaussianBlur id="motionBlurStd" stdDeviation="12 0"/></filter>
 </svg>
 <div class="app" id="app">
+  <div class="bg-media" id="bgMedia" aria-hidden="true"></div>
   <canvas id="bg" aria-hidden="true"></canvas>
   <div class="bg-tilt" id="bgTilt" aria-hidden="true"></div>
   <div class="bg-grain" id="bgGrain" aria-hidden="true"></div>
 
   <header class="titlebar">
     <div class="chan"><span>#</span> <b id="chanName">Hush</b></div>
-    <div class="meta"><span id="status"><i class="dot"></i> Hors ligne</span><span id="guild"></span><span id="count"></span></div>
+    <div class="meta"><span id="status"><i class="dot"></i> Hors ligne</span><span id="guild"></span><span id="count"></span><button class="pill" id="showHidden" hidden></button></div>
     <div class="winbtns">
+      <button class="wb" id="homeBtn" title="Accueil" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-6h4v6"/></svg></button>
       <button class="wb" id="togglePanel" title="Paramètres" aria-label="Ouvrir ou fermer les paramètres"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="wb" id="fullscreen" title="Plein écran (F11)" aria-label="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button class="wb" id="miniBtn" title="Mini-fenêtre (toujours au premier plan)" aria-label="Ouvrir la mini-fenêtre"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="11" y="11" width="7" height="6" rx="1.5"/></svg></button>
@@ -37,6 +39,14 @@
 
   <main class="main">
     <section id="stage" class="stage grid" aria-label="Participants">
+      <!-- Vue stream : le flux en grand, dans un cadre qui s'allume quand la personne parle -->
+      <div class="feature" id="feature" hidden>
+        <div class="feature-name" id="featureName"></div>
+        <div class="feature-box">
+          <video id="featureVideo" muted playsinline></video>
+          <div class="feature-ph" id="featurePh" hidden><img id="featurePhImg" alt=""><span id="featurePhText"></span></div>
+        </div>
+      </div>
       <div class="orbit-ring" id="ring"></div>
       <div class="orbit-core"><strong id="coreName">Hush</strong><small id="talkers">personne ne parle</small></div>
       <div class="flash" id="flash"></div>
@@ -96,11 +106,13 @@
     <div class="toast glass" id="toast" role="status" hidden></div>
     <!-- Barre de la mini-fenêtre (visible au survol) -->
     <div class="mini-bar glass" id="miniBar">
-      <button class="wb" id="miniClear" title="Mode transparent : seulement les avatars" aria-label="Mode transparent"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button class="wb" id="miniLayout" title="Colonne ou bande" aria-label="Disposition verticale ou horizontale"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="2"/><rect x="8" y="10" width="8" height="5" rx="2"/><rect x="8" y="17" width="8" height="4" rx="2"/></svg></button>
+      <button class="wb" id="miniClear" title="Mode transparent : seulement les avatars (Ctrl+O)" aria-label="Mode transparent"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="3"/></svg></button>
       <button class="wb" id="miniHome" title="Revenir à la grande fenêtre" aria-label="Revenir à la grande fenêtre"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg></button>
       <button class="wb close" id="miniClose" title="Fermer la mini-fenêtre" aria-label="Fermer la mini-fenêtre"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
 
+    <div class="mini-grip" id="miniGrip" title="Redimensionner" aria-hidden="true"></div>
     <!-- Partage d'écran affiché dans Hush : fenêtre flottante, déplaçable et redimensionnable -->
     <div class="screen-view glass" id="screenView" hidden>
       <div class="screen-bar" id="screenBar"><i class="live-dot"></i><span id="screenTitle">Écran</span><button class="wb" id="screenStop" title="Arrêter le partage" aria-label="Arrêter le partage"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -114,6 +126,34 @@
         <div class="row"><span>Garder le son du PC (pour les clips)</span><button class="switch" id="shareAudio" role="switch" aria-checked="false" aria-label="Garder le son du PC"></button></div>
         <p class="hint">Le partage s'affiche dans Hush. Pour que ton salon Discord le voie aussi, lance le partage d'écran dans Discord : aucune appli ne peut le faire à sa place.</p>
       </section>
+    </div>
+
+    <!-- Appel : tu es seul, ça sonne / on attend -->
+    <div class="call-banner glass" id="callBanner" hidden><i class="call-dot"></i><div><b id="callTitle"></b><small id="callSub"></small></div></div>
+    <!-- Quelqu'un vient de lancer un vocal -->
+    <div class="incoming glass" id="incoming" hidden>
+      <img id="incomingAv" alt=""><div><b id="incomingText"></b><small id="incomingSub"></small></div>
+      <button class="cta small" id="incomingJoin">Rejoindre</button><button class="wb" id="incomingClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+
+    <!-- Accueil : toi seul en fond (flouté), ton compte, les vocaux en cours, tes potes sur Hush, l'historique -->
+    <div class="home" id="home" hidden>
+      <div class="home-grid">
+        <section class="hm-card glass hm-account" id="homeAccount"></section>
+        <section class="hm-card glass hm-quick">
+          <h3>Raccourcis</h3>
+          <div class="hm-quick-grid">
+            <button class="ghost" id="homeSettings">⚙ Paramètres</button>
+            <button class="ghost" id="homeMini">▣ Overlay</button>
+            <button class="ghost" id="homeClips">⏺ Mes clips</button>
+            <button class="ghost" id="homeDemo">✦ Mode démo</button>
+          </div>
+        </section>
+        <section class="hm-card glass hm-rooms"><h3>Ça parle en ce moment</h3><div id="homeRooms"></div></section>
+        <section class="hm-card glass hm-people"><h3>Sur Hush</h3><div id="homePeople"></div></section>
+        <section class="hm-card glass hm-history"><h3>Derniers vocaux</h3><div id="homeHistory"></div></section>
+      </div>
+      <button class="home-close" id="homeClose">Voir la scène</button>
     </div>
 
     <!-- Écrans d'état (connexion, configuration, salon vide) -->
@@ -139,9 +179,10 @@
       <header class="settings-head">
         <h2 id="settingsTitle">Paramètres</h2>
         <nav class="tabs" id="tabs" role="tablist">
-          <button role="tab" data-tab="general">Général</button>
-          <button role="tab" data-tab="style">Style</button>
-          <button role="tab" data-tab="sound">Son</button>
+          <button role="tab" data-tab="general">Affichage</button>
+          <button role="tab" data-tab="avatars">Avatars</button>
+          <button role="tab" data-tab="fond">Fond</button>
+          <button role="tab" data-tab="sound">Musique</button>
           <button role="tab" data-tab="video">Vidéo</button>
           <button role="tab" data-tab="account">Compte</button>
         </nav>
@@ -150,8 +191,9 @@
       </header>
 
       <div class="settings-body">
-        <!-- ——— Général ——— -->
+        <!-- ——— 1. Affichage : le look en un clic, puis comment le salon est disposé ——— -->
         <div class="tab-panel" data-tab="general" role="tabpanel">
+          <h4 class="sec">Looks</h4>
           <div class="group">
             <div class="label">Styles prêts à l'emploi</div>
             <div class="presets">
@@ -168,76 +210,97 @@
             <input type="file" id="presetFile" accept=".hush,application/json" multiple hidden>
             <p class="hint">Un préréglage garde le look : disposition, anneau, couleurs, fond, flou, police, zoom. ⇩ l'exporte pour le partager.</p>
           </div>
-          <div class="group"><div class="label">Disposition</div>
-            <div class="seg" id="layoutSeg"><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="cinema">Cinéma 3D</button><button data-v="strip">Bande</button><button data-v="lyrics">Paroles</button><button data-v="discord">Discord</button></div></div>
+          <h4 class="sec">Disposition</h4>
+          <div class="group">
+            <div class="seg" id="layoutSeg"><button data-v="strip">Bande</button><button data-v="cinema">Cinéma 3D</button><button data-v="column">Verticale</button><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="discord">Discord</button><button data-v="lyrics">Paroles</button></div>
+          </div>
           <div class="group">
             <div class="label"><label for="players">Joueurs affichés</label><output id="playersOut"></output></div>
             <input type="range" id="players" min="1" max="16" step="1">
-            <p class="hint">Moins il y a de joueurs, plus les avatars sont grands. Quelqu'un qui parle est toujours affiché. En mode démo, c'est le nombre de joueurs fictifs.</p>
+            <p class="hint">Moins il y a de joueurs, plus les avatars sont grands. Quelqu'un qui parle est toujours affiché.</p>
           </div>
+          <div class="group">
+            <div class="label"><label for="zoomRange">Zoom</label><output id="zoomOut"></output></div>
+            <input type="range" id="zoomRange" min="0.3" max="1.8" step="0.05">
+            <p class="hint">Aussi avec la molette sur la scène. Ctrl+0 pour revenir à 100 %.</p>
+          </div>
+          <h4 class="sec">Caméra</h4>
           <div class="group">
             <div class="row"><span>Caméra qui suit celui qui parle</span><button class="switch" id="camera" role="switch" aria-label="Caméra qui suit celui qui parle"></button></div>
-            <p class="hint">Modes Cinéma 3D et Bande. Clic-glisser pour déplacer la caméra, Ctrl+clic sur quelqu'un pour la verrouiller sur lui. Sans action pendant 2,5 s, elle repart sur celui qui parle.</p>
+            <p class="hint">Modes Cinéma 3D et Bande. Clic-glisser pour la déplacer, Ctrl+clic sur quelqu'un pour la verrouiller sur lui. Sans action pendant 2,5 s, elle repart sur celui qui parle.</p>
+            <div class="row"><span>Vue stream quand une caméra ou un live est actif</span><button class="switch" id="streamView" role="switch" aria-label="Vue stream automatique"></button></div>
+            <p class="hint">Le flux en grand à gauche, dans un cadre qui s'allume quand la personne parle, et les autres sur le côté.</p>
           </div>
           <div class="group">
-            <div class="label"><label for="voiceMin">Ignorer les voix trop faibles</label><output id="voiceMinOut"></output></div>
-            <input type="range" id="voiceMin" min="0" max="0.5" step="0.01">
-            <p class="hint">En dessous de ce volume (souffle, bruit de fond, voix très loin du micro), l'anneau ne s'allume pas et la caméra ne va pas sur la personne. Mode bot uniquement : c'est lui qui mesure le volume.</p>
-          </div>
-          <div class="group">
-            <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
-            <div class="row"><span>Afficher « (toi) » après ton pseudo</span><button class="switch" id="showMe" role="switch" aria-label="Afficher (toi) après ton pseudo"></button></div>
-            <div class="row"><span>Masquer les membres muets</span><button class="switch" id="hideMuted" role="switch" aria-label="Masquer les membres muets"></button></div>
-          </div>
-          <div class="group">
-            <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
-            <p class="hint">Après 3 secondes sans bouger la souris, la barre du haut, la barre d'appel et le curseur disparaissent. Ils reviennent dès que tu bouges.</p>
+            <div class="label"><label for="speed">Vitesse des animations et de la caméra</label><output id="speedOut"></output></div>
+            <input type="range" id="speed" min="0.4" max="2" step="0.1">
           </div>
         </div>
 
-        <!-- ——— Style ——— -->
-        <div class="tab-panel" data-tab="style" role="tabpanel">
-          <div class="group"><div class="label">Ambiance</div><div class="skins" id="skins"></div></div>
-          <div class="group">
-            <div class="row"><label class="label" for="accent">Couleur d'accent</label><input type="color" id="accent"></div>
-            <button class="linkbtn" id="accentReset">Revenir à la couleur de l'ambiance</button>
-          </div>
-          <div class="group"><div class="label">Fond</div>
-            <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="gradient">Dégradé</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image</button><button data-v="none">Aucun</button></div>
-            <button class="ghost" id="bgPick" hidden>Choisir une image de fond</button>
-            <input type="file" id="bgFile" accept="image/*" hidden>
-          </div>
-          <div class="group">
-            <div class="label"><label for="bgBlur">Flou du fond</label><output id="bgBlurOut"></output></div>
-            <input type="range" id="bgBlur" min="0" max="30" step="1">
-            <div class="seg two" id="blurTypeSeg"><button data-v="gaussian">Doux</button><button data-v="motion">Mouvement</button><button data-v="frost">Verre dépoli</button><button data-v="tilt">Profondeur</button></div>
-            <p class="hint">Profondeur : net au centre, flou en haut et en bas, comme une photo à faible profondeur de champ.</p>
-          </div>
-          <div class="group"><div class="label">Forme des avatars</div>
-            <div class="seg two" id="shapeSeg"><button data-v="round">Rond</button><button data-v="squircle">Carré</button></div></div>
-          <div class="group"><div class="label">Anneau quand on parle</div>
+        <!-- ——— 2. Avatars : anneau, animation, forme, pseudos ——— -->
+        <div class="tab-panel" data-tab="avatars" role="tabpanel">
+          <h4 class="sec">Quand quelqu'un parle</h4>
+          <div class="group"><div class="label">Anneau</div>
             <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="energy">Énergie</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
-            <p class="hint">Plus la voix est forte, plus l'anneau est grand et bouge ; une voix trop faible ne l'allume pas.</p>
             <div class="label">Couleur de l'anneau</div>
-            <div class="seg" id="ringFromSeg"><button data-v="origin">D'origine</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button></div>
+            <div class="seg" id="ringFromSeg"><button data-v="origin">Vert Discord</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button></div>
             <div class="row" id="ringColorRow"><label for="ringColor">Ma couleur</label><input type="color" id="ringColor"></div>
-            <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de la pochette du morceau en cours.</p></div>
+            <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de la pochette du morceau en cours.</p>
+          </div>
           <div class="group">
             <div class="label"><label for="glow">Intensité du halo</label><output id="glowOut"></output></div>
             <input type="range" id="glow" min="0" max="100">
           </div>
           <div class="group">
-            <div class="row"><label for="fontSel">Police</label><select id="fontSel" class="field"></select></div>
-            <div class="row"><span>Pseudos en police pixel</span><button class="switch" id="pixel" role="switch" aria-label="Pseudos en police pixel"></button></div>
+            <div class="row"><span>L'avatar s'aplatit et s'étire en rythme</span><button class="switch" id="squash" role="switch" aria-label="Animation d'aplatissement quand on parle"></button></div>
+          </div>
+          <div class="group">
+            <div class="label"><label for="voiceMin">Ignorer les voix trop faibles</label><output id="voiceMinOut"></output></div>
+            <input type="range" id="voiceMin" min="0" max="0.5" step="0.01">
+            <p class="hint">Sous ce volume (souffle, bruit de fond), l'anneau ne s'allume pas et la caméra ne va pas sur la personne. Avec le bot : c'est lui qui mesure le volume.</p>
+          </div>
+          <h4 class="sec">Apparence</h4>
+          <div class="group"><div class="label">Forme</div>
+            <div class="seg two" id="shapeSeg"><button data-v="round">Rond</button><button data-v="squircle">Carré</button></div>
+            <div class="row"><span>Ombre portée</span><button class="switch" id="avShadow" role="switch" aria-label="Ombre portée sous les avatars"></button></div>
             <div class="row"><span>Cartes derrière les avatars</span><button class="switch" id="cards" role="switch" aria-label="Cartes derrière les avatars"></button></div>
-            <div class="row"><span>Ombre portée sous les avatars</span><button class="switch" id="avShadow" role="switch" aria-label="Ombre portée sous les avatars"></button></div>
+          </div>
+          <h4 class="sec">Pseudos</h4>
+          <div class="group">
+            <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
+            <div class="row"><label for="fontSel">Police</label><select id="fontSel" class="field"></select></div>
+            <div class="row"><span>Police pixel</span><button class="switch" id="pixel" role="switch" aria-label="Pseudos en police pixel"></button></div>
+            <div class="row"><span>« (toi) » après ton pseudo</span><button class="switch" id="showMe" role="switch" aria-label="Afficher (toi) après ton pseudo"></button></div>
+            <div class="row"><span>Masquer les membres muets</span><button class="switch" id="hideMuted" role="switch" aria-label="Masquer les membres muets"></button></div>
           </div>
         </div>
 
-        <!-- ——— Son ——— -->
+        <!-- ——— 3. Fond : ambiance, couleurs, fond, flou ——— -->
+        <div class="tab-panel" data-tab="fond" role="tabpanel">
+          <h4 class="sec">Ambiance</h4>
+          <div class="group"><div class="skins" id="skins"></div></div>
+          <div class="group">
+            <div class="row"><label class="label" for="accent">Couleur d'accent</label><input type="color" id="accent"></div>
+            <button class="linkbtn" id="accentReset">Revenir à la couleur de l'ambiance</button>
+          </div>
+          <h4 class="sec">Fond</h4>
+          <div class="group">
+            <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="pulse">Son</button><button data-v="gradient">Dégradé</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
+            <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
+            <input type="file" id="bgFile" accept="image/*" hidden>
+            <p class="hint">« Son » bouge avec les voix et la musique. « Image / GIF » garde ton image en pleine qualité ; les GIF et les vidéos bougent.</p>
+          </div>
+          <div class="group">
+            <div class="label"><label for="bgBlur">Flou du fond</label><output id="bgBlurOut"></output></div>
+            <input type="range" id="bgBlur" min="0" max="30" step="1">
+            <div class="seg two" id="blurTypeSeg"><button data-v="gaussian">Doux</button><button data-v="motion">Mouvement</button><button data-v="frost">Verre dépoli</button><button data-v="tilt">Profondeur</button></div>
+          </div>
+        </div>
+
+        <!-- ——— 4. Musique ——— -->
         <div class="tab-panel" data-tab="sound" role="tabpanel">
           <div class="group">
-            <div class="row"><span>Lecteur musique (en bas à droite)</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher le lecteur musique"></button></div>
+            <div class="row"><span>Lecteur musique</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher le lecteur musique"></button></div>
             <div class="music-box" id="musicFields">
               <div class="label">Source</div>
               <div class="seg two" id="musicSrcSeg"><button data-v="files">Mes sons</button><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
@@ -266,47 +329,40 @@
                 <input type="file" id="musicFile" accept="image/*" hidden>
               </div>
               <p class="hint music-status" id="musicStatus"></p>
-              <div class="label">Couleur du lecteur</div>
+              <h4 class="sec">Apparence du lecteur</h4>
+              <div class="label">Couleur</div>
               <div class="seg two" id="playerColorSeg"><button data-v="cover">Pochette</button><button data-v="accent">Couleur d'accent</button></div>
-              <div class="label">Fond du lecteur</div>
+              <div class="label">Fond</div>
               <div class="seg two" id="playerBgSeg"><button data-v="mosaic">Mosaïque</button><button data-v="gradient">Dégradé</button></div>
+              <p class="hint">Fais glisser le lecteur pour le déplacer ; l'arc en bas à droite change sa taille.</p>
             </div>
           </div>
         </div>
 
-        <!-- ——— Vidéo ——— -->
+        <!-- ——— 5. Vidéo : caméra, partage, clips, fenêtres ——— -->
         <div class="tab-panel" data-tab="video" role="tabpanel">
+          <h4 class="sec">Caméra et partage d'écran</h4>
+          <p class="hint">Les boutons caméra et écran de la barre d'appel les affichent dans Hush, en vue stream. Discord ne laisse aucune appli envoyer ni recevoir la vidéo d'un appel : pour que le salon te voie, allume-les aussi dans Discord.</p>
+          <h4 class="sec">Clips</h4>
           <div class="group">
-            <div class="label"><label for="zoomRange">Zoom</label><output id="zoomOut"></output></div>
-            <input type="range" id="zoomRange" min="0.3" max="1.8" step="0.05">
-            <p class="hint">Aussi avec la molette sur la scène. Ctrl+0 pour revenir à 100 %.</p>
-          </div>
-          <div class="group">
-            <div class="label"><label for="speed">Vitesse des animations et de la caméra</label><output id="speedOut"></output></div>
-            <input type="range" id="speed" min="0.4" max="2" step="0.1">
-          </div>
-          <div class="group">
-            <div class="row"><span>Plein écran (F11)</span><button class="ghost" id="setFull">Basculer</button></div>
-            <div class="row"><span>Toujours au premier plan</span><button class="switch" id="setPin" role="switch" aria-label="Toujours au premier plan"></button></div>
-            <div class="row"><span>Mini-fenêtre</span><button class="ghost" id="setMini">Ouvrir</button></div>
-            <p class="hint">Petite fenêtre aux coins arrondis, toujours au-dessus des jeux et du stream, qu'on déplace en la faisant glisser. Son bouton ◎ la rend transparente : il ne reste que les avatars (pratique pour l'incruster dans OBS).</p>
-          </div>
-          <div class="group">
-            <div class="label">Clips</div>
             <div class="row"><span>Inclure le son du PC (voix Discord, musique)</span><button class="switch" id="clipAudio" role="switch" aria-label="Inclure le son du PC dans les clips"></button></div>
             <div class="row"><span>Bouton ⏺ de la barre d'appel, ou F9</span><button class="ghost" id="openClips">Ouvrir le dossier</button></div>
             <p class="hint">Enregistre la fenêtre Hush en vidéo (WebM, 60 images/s) dans Vidéos\Hush, 15 minutes au plus.</p>
           </div>
+          <h4 class="sec">Overlay et fenêtre</h4>
           <div class="group">
-            <div class="label">Caméra et partage d'écran</div>
-            <p class="hint">Les boutons caméra et écran de la barre d'appel les affichent dans Hush (ta caméra remplace ton avatar). Discord ne laisse aucune appli envoyer ni recevoir la vidéo d'un appel : pour que le salon te voie, allume-les aussi dans Discord. Les caméras des autres membres ne peuvent pas être affichées.</p>
+            <div class="row"><span>Overlay (mini-fenêtre)</span><button class="ghost" id="setMini">Ouvrir</button></div>
+            <p class="hint">Toujours au-dessus des jeux et du stream, on le déplace en le faisant glisser (même en partie hors de l'écran). Tout le salon y est affiché, en colonne ou en bande (bouton ↕). Ctrl+O : transparent, il ne reste que les avatars.</p>
+            <div class="row"><span>Toujours au premier plan</span><button class="switch" id="setPin" role="switch" aria-label="Toujours au premier plan"></button></div>
+            <div class="row"><span>Plein écran (F11)</span><button class="ghost" id="setFull">Basculer</button></div>
+            <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
           </div>
         </div>
 
-        <!-- ——— Compte ——— -->
+        <!-- ——— 6. Compte ——— -->
         <div class="tab-panel" data-tab="account" role="tabpanel">
+          <h4 class="sec">Connexion Discord</h4>
           <div class="group">
-            <div class="label">Connexion Discord</div>
             <p class="account-info" id="accountInfo"></p>
             <div class="row" style="justify-content:flex-start;flex-wrap:wrap">
               <button class="ghost" id="openSetup">Modifier la connexion</button>
@@ -314,13 +370,13 @@
               <button class="ghost" id="demoToggle">Mode démo</button>
             </div>
           </div>
+          <h4 class="sec">Profils</h4>
           <div class="group">
-            <div class="label">Profils</div>
             <div class="row"><label for="profileSel">Profil actif</label><select id="profileSel" class="field"></select></div>
             <div class="row" style="gap:8px"><input type="text" id="profileName" class="field" maxlength="30" placeholder="Nom du profil" aria-label="Nom du profil" spellcheck="false" style="flex:1;min-width:0"><button class="ghost" id="profileNew">Créer</button></div>
             <div class="row"><span>Le nouveau profil reprend les réglages actuels</span><button class="switch" id="profileCopy" role="switch" aria-checked="true" aria-label="Copier les réglages actuels"></button></div>
             <div class="row" style="justify-content:flex-start;gap:8px"><button class="ghost" id="profileRename">Renommer</button><button class="ghost" id="profileDel">Supprimer ce profil</button></div>
-            <p class="hint">Chaque profil a tous ses réglages à lui (look, lecteur, noms de salons…). Pratique pour avoir un profil « Stream » et un profil « Potes ».</p>
+            <p class="hint">Chaque profil a tous ses réglages à lui (look, lecteur, noms de salons…). Pratique pour un profil « Stream » et un profil « Potes ».</p>
           </div>
           <p class="hint">Tes réglages sont enregistrés automatiquement sur ce PC.</p>
         </div>
@@ -335,5 +391,6 @@
 <script src="profiles.js"></script>
 <script src="usermenu.js"></script>
 <script src="capture.js"></script>
+<script src="home.js"></script>
 </body>
 </html>

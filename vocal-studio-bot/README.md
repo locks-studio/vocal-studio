@@ -40,6 +40,8 @@ La console affiche le **lien d'invitation du bot** : ouvre-le pour l'ajouter à 
 
 Ces actions ne se font que si **la personne qui les demande dans Hush** a elle-même la permission sur le serveur : le bot vérifie ses droits à chaque fois.
 
+**Page d'accueil de l'appli** : le serveur indique si le bot est en ligne (`/info`, avec le lien d'invitation), et, pour chaque personne connectée, les vocaux de ses serveurs où se trouvent des gens qui ont Hush, ainsi que les membres de ses serveurs qui ont Hush. Seuls les salons que cette personne peut voir sur Discord sont montrés.
+
 ## 3. Utiliser l'appli avec le bot
 
 1. Dans Hush, choisis **Avec le bot** et garde l'adresse `http://localhost:8787`.

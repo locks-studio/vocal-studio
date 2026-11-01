@@ -52,7 +52,7 @@ class StudioBot extends EventEmitter {
 
   // État envoyé à l'appli : même forme que la connexion locale (RPC)
   snapshot(user) {
-    const me = { id: user.id, name: user.name };
+    const me = { id: user.id, name: user.name, avatar: user.avatar || null };
     const base = { mode: "bot", controls: false, me, settings: { mute: false, deaf: false } };
     if (!this.client.isReady()) return { ...base, status: "connecting", channel: null, members: [] };
     const loc = this.findUser(user.id);
@@ -169,6 +169,55 @@ class StudioBot extends EventEmitter {
   dismiss(userId) {
     const loc = this.findUser(userId);
     if (loc) this.leave(loc.guild.id);
+  }
+
+  // Photo de profil d'un utilisateur (pour la page d'accueil de l'appli)
+  async avatarOf(id) {
+    try { return (await this.client.users.fetch(id)).displayAvatarURL({ size: 256, extension: "png", forceStatic: true }); }
+    catch { return null; }
+  }
+
+  // ——— Page d'accueil de l'appli ———
+  // rooms : les vocaux en cours, sur tes serveurs, où se trouve au moins une personne qui a Hush
+  //         (seulement les salons que TU peux voir, et pas celui où tu es déjà).
+  // people : les membres de tes serveurs qui ont Hush (en ligne = appli ouverte), et leur vocal s'il t'est visible.
+  async home(userId, hushIds, onlineIds) {
+    const P = PermissionFlagsBits;
+    const rooms = [], people = new Map();
+    const av = (m) => m.displayAvatarURL({ size: 64, extension: "png", forceStatic: true });
+    for (const guild of this.client.guilds.cache.values()) {
+      const me = await guild.members.fetch(userId).catch(() => null);
+      if (!me) continue;
+      const speaking = this.speaking.get(guild.id) || new Set();
+      const botChan = this.botChannelId(guild.id);
+      for (const ch of guild.channels.cache.values()) {
+        if (!ch.isVoiceBased() || !ch.members.size || !ch.permissionsFor(me).has(P.ViewChannel)) continue;
+        const humans = [...ch.members.values()].filter((m) => !m.user.bot);
+        if (!humans.length || humans.some((m) => m.id === userId) || !humans.some((m) => hushIds.has(m.id))) continue;
+        rooms.push({
+          guild: { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 64, extension: "png" }) },
+          channel: { id: ch.id, name: ch.name },
+          live: botChan === ch.id,
+          count: humans.length,
+          members: humans.slice(0, 10).map((m) => ({
+            id: m.id, name: m.displayName, avatar: av(m), hush: hushIds.has(m.id),
+            speaking: botChan === ch.id && speaking.has(m.id), muted: !!(m.voice.selfMute || m.voice.serverMute),
+            video: !!m.voice.selfVideo, stream: !!m.voice.streaming,
+          })),
+        });
+      }
+      for (const id of hushIds) {
+        if (id === userId || people.has(id)) continue;
+        const m = guild.members.cache.get(id) || (await guild.members.fetch(id).catch(() => null));
+        if (!m) continue;
+        const vc = m.voice.channel && m.voice.channel.permissionsFor(me).has(P.ViewChannel) ? m.voice.channel : null;
+        people.set(id, { id, name: m.displayName, avatar: av(m), online: onlineIds.has(id), voice: vc ? vc.name : null, guild: guild.name, guildId: guild.id, channelId: vc ? vc.id : null });
+      }
+    }
+    return {
+      rooms: rooms.sort((a, b) => b.count - a.count).slice(0, 8),
+      people: [...people.values()].sort((a, b) => b.online - a.online || !!b.voice - !!a.voice).slice(0, 30),
+    };
   }
 
   // ——— Menu clic droit de l'appli : actions de modération ———

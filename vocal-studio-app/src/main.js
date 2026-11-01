@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -123,7 +123,7 @@ function send(channel, payload) {
 function toggleMini() {
   if (mini && !mini.isDestroyed()) { mini.close(); return false; }
   mini = new BrowserWindow({
-    width: 460, height: 240, minWidth: 180, minHeight: 110,
+    width: 300, height: 420, minWidth: 160, minHeight: 90,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
     alwaysOnTop: true, title: "Hush · mini",
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -248,6 +248,9 @@ ipcMain.handle("voice:user", async (_e, a) => {
   if (!session.userAction) throw new Error("Indisponible dans ce mode.");
   return session.userAction(a);
 });
+ipcMain.handle("voice:home", () => (session === botLink ? botLink.home() : null));
+ipcMain.handle("bot:info", () => botLink.info());
+ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
 ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));
 
@@ -259,6 +262,7 @@ ipcMain.handle("music:control", (_e, cmd) => {
   else if (musicSource === "spotify") return spotify.control(cmd);
 });
 ipcMain.handle("sounds:list", () => sounds.list());
+ipcMain.handle("bg:pick", (e) => sounds.pickBackground(winOf(e)));
 ipcMain.handle("sounds:add", () => sounds.add(win));
 ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));
 ipcMain.handle("sounds:remove", (_e, id) => sounds.remove(id));
@@ -284,6 +288,19 @@ ipcMain.handle("win:close", (e) => winOf(e).close());
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
 ipcMain.handle("win:mini", () => toggleMini());
+// Déplacement / taille à la main (mini-fenêtre) : suit le curseur, et peut sortir de l'écran
+let winDrag = null;
+ipcMain.on("win:drag", (e, phase, mode) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (!w) return;
+  const p = screen.getCursorScreenPoint();
+  if (phase === "start") { winDrag = { w, mode: mode === "size" ? "size" : "move", x: p.x, y: p.y, b: w.getBounds() }; return; }
+  if (!winDrag || winDrag.w !== w) return;
+  if (phase === "end") { winDrag = null; return; }
+  const dx = p.x - winDrag.x, dy = p.y - winDrag.y, b = winDrag.b;
+  if (winDrag.mode === "move") w.setBounds({ x: b.x + dx, y: b.y + dy, width: b.width, height: b.height });
+  else w.setBounds({ x: b.x, y: b.y, width: Math.max(160, b.width + dx), height: Math.max(90, b.height + dy) });
+});
 
 // ——— Partage d'écran et clips ———
 let capturePick = null;

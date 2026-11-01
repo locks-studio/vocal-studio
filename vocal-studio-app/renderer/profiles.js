@@ -3,7 +3,7 @@
    qu'on peut exporter en fichier .hush pour le partager et réimporter.
    Profil : tous les réglages de Hush d'un coup (look, lecteur, sons, noms de salons…). On en a autant
    qu'on veut (« Stream », « Potes »…) et on passe de l'un à l'autre. */
-const PRESET_KEYS = ["skin", "accent", "layout", "shape", "bg", "bgImage", "bgBlur", "blurType", "glow", "speed", "names", "cards", "hideMuted",
+const PRESET_KEYS = ["skin", "accent", "layout", "shape", "bg", "bgImage", "bgKind", "bgBlur", "blurType", "glow", "speed", "names", "cards", "hideMuted",
   "players", "ring", "ringFrom", "ringColor", "pixel", "camera", "zoom", "font", "showMe", "avShadow", "voiceMin", "playerColor", "playerBg"];
 const PROFILES_KEY = "hush-profiles";
 

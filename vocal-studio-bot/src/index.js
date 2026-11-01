@@ -76,6 +76,17 @@ const server = http.createServer((req, res) => {
     res.writeHead(p ? 200 : 404, { "Content-Type": "application/json" });
     if (p && (p.token || p.error)) pending.delete(url.searchParams.get("state"));
     res.end(JSON.stringify(p ? { token: p.token || null, error: p.error || null } : { error: "Connexion inconnue ou expirée." }));
+  } else if (url.pathname === "/info") {
+    // Infos publiques pour l'accueil de l'appli (avant même de se connecter) : le bot est-il en ligne, et son lien d'invitation
+    const u = bot.client.user;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      online: bot.client.isReady(),
+      name: u ? u.username : null,
+      avatar: u ? u.displayAvatarURL({ size: 128, extension: "png" }) : null,
+      servers: bot.client.isReady() ? bot.client.guilds.cache.size : 0,
+      invite: `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`,
+    }));
   } else if (url.pathname === "/") {
     page(res, "Hush", "Le serveur du bot tourne.");
   } else {
@@ -106,7 +117,7 @@ wss.on("connection", (ws) => {
       const s = msg.type === "auth" && sessions[msg.token];
       if (!s) return ws.close(4001, "session inconnue");
       clearTimeout(authTimer);
-      c.user = { id: s.id, name: s.name };
+      c.user = { id: s.id, name: s.name, avatar: await bot.avatarOf(s.id) };
       clients.add(c);
       ws.send(JSON.stringify({ type: "hello", user: c.user }));
       return push(c);
@@ -114,7 +125,13 @@ wss.on("connection", (ws) => {
     try {
       if (msg.type === "summon") await bot.summon(c.user.id);
       else if (msg.type === "dismiss") bot.dismiss(c.user.id);
-      else if (msg.type === "mod") {
+      else if (msg.type === "home") {
+        // Qui a Hush : toutes les sessions connues ; en ligne : appli ouverte en ce moment
+        const hushIds = new Set(Object.values(sessions).map((x) => x.id));
+        const onlineIds = new Set([...clients].map((x) => x.user && x.user.id));
+        try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: await bot.home(c.user.id, hushIds, onlineIds) })); }
+        catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      } else if (msg.type === "mod") {
         // Réponse ciblée (rid) : l'appli attend le résultat de cette action précise
         try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: await bot.moderate(c.user.id, msg) })); }
         catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }

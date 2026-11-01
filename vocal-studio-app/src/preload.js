@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("studio", {
   },
   bot: {
     login: () => ipcRenderer.invoke("bot:login"),
+    info: () => ipcRenderer.invoke("bot:info"),
   },
   voice: {
     start: () => ipcRenderer.invoke("voice:start"),
@@ -18,6 +19,8 @@ contextBridge.exposeInMainWorld("studio", {
     leave: () => ipcRenderer.invoke("voice:leave"),
     summon: () => ipcRenderer.invoke("voice:summon"),
     user: (a) => ipcRenderer.invoke("voice:user", a),
+    home: () => ipcRenderer.invoke("voice:home"),
+    openChannel: (g, c) => ipcRenderer.invoke("discord:channel", g, c),
     openProfile: (id) => ipcRenderer.invoke("discord:user", id),
     copy: (text) => ipcRenderer.invoke("clip:write", text),
     onState: (fn) => ipcRenderer.on("voice:state", (_e, s) => fn(s)),
@@ -35,6 +38,9 @@ contextBridge.exposeInMainWorld("studio", {
     setCover: (id) => ipcRenderer.invoke("sounds:cover", id),
     record: (data, duration) => ipcRenderer.invoke("sounds:record", data, duration),
     rename: (id, title) => ipcRenderer.invoke("sounds:rename", id, title),
+  },
+  bg: {
+    pick: () => ipcRenderer.invoke("bg:pick"),
   },
   lyrics: {
     get: (q) => ipcRenderer.invoke("lyrics:get", q),
@@ -65,6 +71,7 @@ contextBridge.exposeInMainWorld("studio", {
     pin: (on) => ipcRenderer.invoke("win:pin", on),
     fullscreen: () => ipcRenderer.invoke("win:fullscreen"),
     mini: () => ipcRenderer.invoke("win:mini"),
+    drag: (phase, mode) => ipcRenderer.send("win:drag", phase, mode),
     focusMain: () => ipcRenderer.invoke("win:main"),
     onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
   },

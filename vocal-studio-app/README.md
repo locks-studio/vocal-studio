@@ -35,7 +35,7 @@ Sans configuration, le bouton **Mode démo** affiche un faux salon pour essayer 
 
 ## Les styles prêts à l'emploi
 
-L'engrenage en haut à droite ouvre les **paramètres** au centre de l'écran, avec cinq onglets : **Général** (styles prêts, disposition, joueurs, caméra), **Style** (ambiance, couleurs, fond, avatars), **Son** (lecteur musique et sources), **Vidéo** (zoom, vitesse, plein écran, premier plan) et **Compte** (connexion Discord, mode démo). Échap, la croix ou un clic à côté les ferme. Les paramètres, la barre d'appel et les messages sont en style « verre liquide ». F11 ou l'icône à côté passe en plein écran, net jusqu'en 2K et au-delà.
+L'engrenage en haut à droite ouvre les **paramètres** au centre de l'écran, avec six onglets : **Affichage** (styles prêts, préréglages, disposition, joueurs, zoom, caméra), **Avatars** (anneau, animation, forme, pseudos), **Fond** (ambiance, couleurs, fond, flou), **Musique** (lecteur et sources), **Vidéo** (caméra, partage, clips, overlay, fenêtre) et **Compte** (connexion Discord, profils, mode démo). Échap, la croix ou un clic à côté les ferme. Les paramètres, la barre d'appel et les messages sont en style « verre liquide ». F11 ou l'icône à côté passe en plein écran, net jusqu'en 2K et au-delà.
 
 - **Style de base · Espace** (par défaut) : fond noir étoilé avec des étoiles filantes, rangée d'avatars, anneau blanc lumineux autour de celui qui parle.
 
@@ -48,7 +48,11 @@ En mode **Bande** avec la caméra active, celui qui parle est **toujours au cent
 
 **Profils** (Paramètres › Compte) : chaque profil garde *tous* ses réglages (look, lecteur, noms de salons, notes…). Crée par exemple « Stream » et « Potes » et passe de l'un à l'autre avec la liste.
 
-**Flou du fond** (Paramètres › Style) : de 0 à 30 px, en 4 types : Doux, Mouvement (flou horizontal), Verre dépoli (flou + grain) et Profondeur (net au centre, flou en haut et en bas).
+**Fond « Son »** (Paramètres › Fond) : un cercle de barres et des ondes qui bougent avec les voix et la musique (celle de « Mes sons » est analysée en direct).
+
+**Fond « Image / GIF »** : ton image est gardée en pleine qualité ; les GIF et les vidéos (MP4, WebM) bougent.
+
+**Flou du fond** (Paramètres › Fond) : de 0 à 30 px, en 4 types : Doux, Mouvement (flou horizontal), Verre dépoli (flou + grain) et Profondeur (net au centre, flou en haut et en bas).
 
 Quand tu modifies un réglage, les paramètres se rangent sur le côté : la scène et le lecteur se décalent pour rester centrés dans la partie encore visible.
 - **Style montage 1 · Cinéma** : décrit ci-dessous.
@@ -61,6 +65,17 @@ Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements 
 - **Molette** : zoom avant ou arrière (de 60 % à 180 %), dans toutes les dispositions. Le zoom agrandit ou réduit les avatars eux-mêmes, donc rien n'est coupé. Il reste tel quel jusqu'à ce que tu le changes ; **Ctrl+0** le remet à 100 %. Aussi réglable dans Paramètres › Vidéo.
 - **Ctrl+clic sur un joueur** : verrouille la caméra sur lui (badge « CAM »). Ctrl+clic à nouveau, ou sur le fond, pour la libérer.
 - Sans action pendant **2,5 secondes**, la caméra repart toute seule sur celui qui parle (ou sur le joueur verrouillé).
+
+## La page d'accueil
+
+Elle s'affiche quand tu n'es dans aucun vocal (ou avec le bouton maison en haut). En fond, toi seul dans la scène, flouté. Elle montre :
+
+- **ton compte** : lié au bot ou non, le bot en ligne ou hors ligne, avec les boutons pour lier ton compte ou inviter le bot sur un serveur ;
+- **Ça parle en ce moment** (avec le bot) : les vocaux de tes serveurs où il y a des gens qui ont Hush, qui y parle et qui est en live, avec un bouton pour les rejoindre dans Discord. Quand un nouveau vocal démarre, une notification apparaît ;
+- **Sur Hush** (avec le bot) : les membres de tes serveurs qui ont Hush, en ligne ou non, et leur vocal. Discord ne donne la liste d'amis à aucune appli : ce sont donc les gens de tes serveurs ;
+- **tes derniers vocaux** (salon, durée, qui était là) et des raccourcis.
+
+Dans un vocal : quand tu es seul, Hush affiche « Appel en cours… » (appel privé, en connexion directe) ou « en attente », avec ton avatar qui sonne ; chaque arrivée et départ est annoncé. Discord ne prévient aucune appli d'un appel entrant.
 
 ## Le style « montage 1 » (Cinéma 3D)
 
@@ -79,8 +94,11 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
   - **Flammes** : une couronne de langues de feu et d'étincelles ;
   - **Énergie** : des contours électriques qui glissent les uns sur les autres ;
   - **Dégradé** et **Plein**.
-- **Couleur de l'anneau** : d'origine (vert pour Aura et Vagues, bleu pour Flammes et Énergie), **Ma couleur**, ou **Pochette** (les couleurs de la pochette du morceau en cours).
-- **Ignorer les voix trop faibles** (Paramètres › Général, mode bot) : sous ce volume, l'anneau ne s'allume pas et la caméra ne va pas sur la personne (souffle, bruit de fond).
+- **Couleur de l'anneau** : **vert Discord** (par défaut, pour tous les anneaux), **Ma couleur**, ou **Pochette** (les couleurs de la pochette du morceau en cours).
+- **Aplatissement** (Paramètres › Avatars) : l'avatar de celui qui parle s'écrase et s'étire en rythme, plus fort quand la voix est forte. Désactivable.
+- **Vue stream** : dès qu'une caméra ou un partage d'écran est actif, le flux s'affiche en grand à gauche dans un cadre qui s'allume en vert quand la personne parle, et les autres sont en zigzag sur un panneau sombre à droite. Pour les autres membres, Discord ne donne pas leur vidéo : Hush montre leur avatar flouté avec « à regarder dans Discord ». Désactivable (Paramètres › Affichage).
+- **Disposition Verticale** : une colonne d'avatars avec le pseudo à droite, tout le monde tient en hauteur.
+- **Ignorer les voix trop faibles** (Paramètres › Avatars, mode bot) : sous ce volume, l'anneau ne s'allume pas et la caméra ne va pas sur la personne (souffle, bruit de fond).
 - **Ombre portée** sous les avatars (désactivable dans Paramètres › Style).
 - **Volume réel** : avec le bot, Hush connaît le volume (dB) de chaque voix. Les plus fortes sont affichées en priorité et la caméra se pose sur la plus forte.
 - **Avatars GIF** : ils ne s'animent que quand la personne parle.
@@ -102,7 +120,7 @@ Un menu comme celui de Discord :
 
 ## Mini-fenêtre et clips
 
-- **Mini-fenêtre** (icône à côté de l'épingle, ou Paramètres › Vidéo) : petite fenêtre aux coins arrondis, toujours au premier plan, qu'on déplace en la faisant glisser et qu'on redimensionne par ses bords. Au survol, le bouton ◎ la rend **transparente** : il ne reste que les avatars (parfait pour OBS ou par-dessus un jeu).
+- **Overlay** (mini-fenêtre ; icône à côté de l'épingle, ou Paramètres › Vidéo) : coins arrondis, toujours au premier plan. On le déplace en le faisant glisser, même en partie hors de l'écran, et on le redimensionne par le coin en bas à droite. **Tout le salon** y est affiché, en colonne (par défaut) ou en bande : bouton ↕. **Ctrl+O** (ou ◎) le rend **transparent** : il ne reste que les avatars (parfait pour OBS ou par-dessus un jeu).
 - **Clips** (bouton ⏺ de la barre d'appel, ou **F9**) : enregistre la fenêtre Hush en vidéo, avec le son du PC si tu veux (voix Discord, musique), dans `Vidéos\Hush`. 15 minutes au plus. Cliquer sur le message de fin ouvre le dossier.
 
 ## Raccourcis et petites commandes
@@ -110,6 +128,8 @@ Un menu comme celui de Discord :
 - **Nom du salon** : clique sur le nom en haut à gauche pour le renommer (Entrée pour valider, Échap pour annuler, vide pour reprendre celui de Discord). Le nouveau nom ne s'affiche que dans Hush.
 - **Espace** : pause / lecture de la musique.
 - **F9** : démarrer / arrêter un clip.
+- **Ctrl+O** : overlay transparent ou non.
+- **Joueurs masqués** : un bouton « Afficher les joueurs masqués » apparaît dans la barre du haut.
 - **Lecteur musique** : fais-le glisser pour le déplacer ; l'arc blanc en bas à droite (comme sur les widgets iPhone) l'agrandit ou le rapetisse. Double-clic sur la carte : retour en bas à droite ; double-clic sur l'arc : taille d'origine.
 - **Interface masquée** : après 3 secondes sans bouger la souris, la barre du haut, la barre d'appel et le curseur disparaissent ; ils reviennent dès que tu bouges. Désactivable dans Paramètres › Général.
 
@@ -166,3 +186,4 @@ Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc l
 | `renderer/usermenu.js` | Le menu clic droit sur un membre |
 | `renderer/profiles.js` | Préréglages et profils |
 | `renderer/capture.js` | Caméra, partage d'écran et clips |
+| `renderer/home.js` | Page d'accueil, historique, arrivées et appels |
