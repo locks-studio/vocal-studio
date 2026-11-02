@@ -128,26 +128,37 @@
     ctx.fill();
   }
 
-  function drawSpace(ctx, w, h, t, p, energy, sp) {
-    ctx.fillStyle = "#000";
+  // pink : variante « Espace rose » (fond rose pâle, étoiles blanches qui brillent)
+  function drawSpace(ctx, w, h, t, p, energy, sp, pink) {
+    if (pink) {
+      // Ciel rose : plus clair au centre, un peu plus profond sur les bords
+      const sky = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h / 2, Math.max(w, h) * 0.75);
+      sky.addColorStop(0, `rgb(255,${222 + Math.round(energy * 8)},238)`);
+      sky.addColorStop(0.55, "#fcbbdd");
+      sky.addColorStop(1, "#f29cc8");
+      ctx.fillStyle = sky;
+    } else ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, w, h);
-    // Léger halo gris au centre, qui respire avec les voix
+    // Léger halo au centre, qui respire avec les voix
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.55);
-    g.addColorStop(0, `rgba(40,44,54,${0.55 + energy * 0.15})`);
+    g.addColorStop(0, pink ? `rgba(255,255,255,${0.25 + energy * 0.15})` : `rgba(40,44,54,${0.55 + energy * 0.15})`);
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
+    // Sur le rose, les étoiles blanches ont une petite lueur pour bien ressortir
+    if (pink) { ctx.shadowColor = "rgba(255,255,255,1)"; ctx.shadowBlur = 10; }
     for (const s of dust) {
       const a = s.b * (0.55 + 0.45 * Math.sin(t * s.tw * Math.max(sp, 0.3) + s.ph));
-      ctx.fillStyle = `rgba(235,238,245,${a})`;
-      ctx.fillRect(s.x * w, s.y * h, s.r, s.r);
+      ctx.fillStyle = pink ? `rgba(255,255,255,${Math.min(1, a * 1.5)})` : `rgba(235,238,245,${a})`;
+      ctx.fillRect(s.x * w, s.y * h, s.r * (pink ? 2.2 : 1), s.r * (pink ? 2.2 : 1));
     }
     for (const s of sparkles) {
       const a = 0.35 + 0.5 * Math.abs(Math.sin(t * s.tw * Math.max(sp, 0.3) + s.ph));
-      ctx.fillStyle = `rgba(230,233,240,${a})`;
-      sparkle(ctx, s.x * w, s.y * h, s.r * (0.8 + 0.3 * a));
+      ctx.fillStyle = pink ? `rgba(255,255,255,${Math.min(1, a + 0.3)})` : `rgba(230,233,240,${a})`;
+      sparkle(ctx, s.x * w, s.y * h, s.r * (0.8 + 0.3 * a) * (pink ? 1.6 : 1));
     }
+    ctx.shadowBlur = 0;
 
     // Étoile filante de temps en temps (toutes les 3 à 9 secondes)
     if (sp > 0 && t > nextMeteor) {
@@ -176,7 +187,8 @@
     }
   }
 
-  const DRAW = { stars: drawStars, topo: drawTopo, grid: drawGrid, space: drawSpace };
+  const DRAW = { stars: drawStars, topo: drawTopo, grid: drawGrid, space: drawSpace,
+    pinkspace: (ctx, w, h, t, p, energy, sp) => drawSpace(ctx, w, h, t, p, energy, sp, true) };
   let current = { kind: "stars", pal: PALETTES[0] };
 
   window.Patterns = {

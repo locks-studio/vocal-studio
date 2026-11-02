@@ -12,6 +12,7 @@ const CATALOG_URL = (arg && arg.slice(10)) || process.env.CATALOG_1999 || CONFIG
 
 // Une seule fenêtre de launcher à la fois
 if (!app.requestSingleInstanceLock()) app.quit();
+if (process.platform === "win32") app.setAppUserModelId("fr.locks.launcher1999");
 // Linux : même chose pour le launcher lui-même (sinon il ne s'ouvre pas sur Ubuntu 24.04+)
 if (process.platform === "linux") app.commandLine.appendSwitch("no-sandbox");
 
@@ -54,9 +55,14 @@ async function getCatalog() {
 }
 
 function createWindow() {
+  // Vrai verre : la fenêtre laisse voir le bureau derrière, flouté par le système
+  // (Acrylic sur Windows 11, Vibrancy sur Mac). Ailleurs : fond rose translucide dessiné par la page.
+  const glass = process.platform === "win32" ? { backgroundMaterial: "acrylic", backgroundColor: "#00000000" }
+    : process.platform === "darwin" ? { vibrancy: "under-window", visualEffectState: "active", backgroundColor: "#00000000", transparent: true }
+    : { backgroundColor: "#fbe2ee" };
   win = new BrowserWindow({
     width: 1180, height: 720, minWidth: 900, minHeight: 560,
-    frame: false, backgroundColor: "#fbe2ee", title: "1999",
+    frame: false, title: "1999", ...glass,
     icon: path.join(__dirname, "..", "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

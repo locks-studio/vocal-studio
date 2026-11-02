@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+// Sans flou du système (Linux), la page met un fond rose plein
+addEventListener("DOMContentLoaded", () => { if (process.platform === "linux") document.body.classList.add("no-os-glass"); });
+
 contextBridge.exposeInMainWorld("launcher", {
   catalog: () => ipcRenderer.invoke("catalog:get"),
   install: (id) => ipcRenderer.invoke("app:install", { id }),

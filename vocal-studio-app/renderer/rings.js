@@ -54,7 +54,7 @@ const Rings = (() => {
       x.lineWidth = R * (0.11 - i * 0.02);
       x.strokeStyle = i === 1 ? col.b : col.a;
       x.globalAlpha = alpha * Math.min(1, lvl * 1.8);
-      x.shadowColor = col.a;
+      x.shadowColor = col.glow;
       x.shadowBlur = R * 0.25;
       x.stroke();
     });
@@ -73,7 +73,7 @@ const Rings = (() => {
       x.globalAlpha = alpha * 0.9;
       x.lineWidth = R * 0.075;
       x.strokeStyle = col.a;
-      x.shadowColor = col.a;
+      x.shadowColor = col.glow;
       x.shadowBlur = R * 0.18;
       x.stroke();
       x.shadowBlur = 0;
@@ -126,13 +126,13 @@ const Rings = (() => {
     path(x, c, R * 1.04, R * 0.02, (a) => noise(a, t * 2, seed));
     x.lineWidth = R * 0.1;
     x.strokeStyle = col.a;
-    x.shadowColor = col.a;
+    x.shadowColor = col.glow;
     x.shadowBlur = R * 0.3;
     x.stroke();
     x.shadowBlur = 0;
     // Langues de feu : deux couches (large et colorée, fine et presque blanche)
     const n = 22;
-    for (const [wide, color, k] of [[1, col.a, 1], [0.45, col.b, 0.7]]) {
+    for (const [wide, color, k] of [[1, col.sa, 1], [0.45, col.sb, 0.7]]) {
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * TAU + seed + Math.sin(t * 0.7 + i) * 0.05;
         const flick = 0.5 + 0.5 * noise(a0, t * 3.2, seed + i);
@@ -166,7 +166,7 @@ const Rings = (() => {
       parts.push({ a, r: R * (1.05 + Math.random() * 0.1), v: R * (0.006 + Math.random() * 0.012) * (0.5 + lvl), spin: (Math.random() - 0.5) * 0.02, life: 1, s: R * (0.025 + Math.random() * 0.05) });
     }
     if (parts.length > 400) parts.splice(0, parts.length - 400);
-    const spA = sprite(col.a), spB = sprite(col.b);
+    const spA = sprite(col.sa), spB = sprite(col.sb);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       p.r += p.v; p.a += p.spin; p.life -= 0.03;
@@ -189,7 +189,7 @@ const Rings = (() => {
       x.globalAlpha = alpha * (s ? 0.6 : 1);
       x.lineWidth = R * 0.05;
       x.strokeStyle = col.a;
-      x.shadowColor = col.a;
+      x.shadowColor = col.glow;
       x.shadowBlur = R * 0.35;
       x.stroke();
       x.shadowBlur = 0;
@@ -220,7 +220,16 @@ const Rings = (() => {
     x.clearRect(0, 0, cv.width, cv.height);
     const c = cv.width / 2, R = cv.width / 4;
     if (type !== tile.fxType) { tile.fxParts = []; tile.fxType = type; }
-    DRAW[type](x, c, R, Math.max(0, Math.min(1, lvl)), t / 1000, tile.seed, col, tile);
+    // Couleurs : a / b pour les traits ; sa / sb et glow restent de vraies couleurs (lueurs, étincelles)
+    let pal = { a: col.a, b: col.b, sa: col.a, sb: col.b, glow: col.a };
+    if (col.duo) {
+      // Dégradé à deux couleurs qui tourne lentement autour de l'avatar
+      const turn = (t / 1000) * 0.8;
+      const ga = x.createConicGradient(turn, c, c), gb = x.createConicGradient(turn + Math.PI, c, c);
+      for (const [g, p, q] of [[ga, col.a, col.b], [gb, col.b, col.a]]) { g.addColorStop(0, p); g.addColorStop(0.5, q); g.addColorStop(1, p); }
+      pal = { ...pal, a: ga, b: gb };
+    }
+    DRAW[type](x, c, R, Math.max(0, Math.min(1, lvl)), t / 1000, tile.seed, pal, tile);
   }
 
   return { TYPES, draw };

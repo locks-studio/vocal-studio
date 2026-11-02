@@ -33,7 +33,8 @@
     "files": [
       "src/**/*",
       "renderer/**/*",
-      "package.json"
+      "package.json",
+      "build/icon.png"
     ],
     "artifactName": "Hush-${version}-${os}-${arch}.${ext}",
     "win": {

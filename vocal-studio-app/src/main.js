@@ -8,6 +8,9 @@ const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 const { registerScheme, SoundLibrary } = require("./sounds");
 
 registerScheme();
+const ICON = path.join(__dirname, "..", "build", "icon.png");
+// Windows regroupe les fenêtres sous cet identifiant (et sous l'icône de Hush) dans la barre des tâches
+if (process.platform === "win32") app.setAppUserModelId("fr.locks.hush");
 let sounds;
 
 // Le logiciel s'appelait « Vocal Studio » : si son dossier existe, Hush continue de l'utiliser
@@ -131,7 +134,7 @@ function toggleMini() {
   mini = new BrowserWindow({
     width: 300, height: 420, minWidth: 160, minHeight: 90,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
-    alwaysOnTop: true, title: "Hush · mini",
+    alwaysOnTop: true, title: "Hush · mini", icon: ICON,
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   mini.setAlwaysOnTop(true, "floating");
@@ -153,6 +156,8 @@ function createWindow() {
     frame: false,
     backgroundColor: "#0d0b1a",
     title: "Hush",
+    // Icône de la fenêtre et de la barre des tâches (sinon Windows montre celle d'Electron)
+    icon: ICON,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

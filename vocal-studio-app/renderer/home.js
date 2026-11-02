@@ -34,7 +34,6 @@ function renderHome() {
   document.body.classList.toggle("home-on", on);
   $("#homeBtn").classList.toggle("on", on);
   if (!on) { clearInterval(Home.timer); Home.timer = null; return; }
-  $("#homeClose").textContent = state.channel ? "Retour au vocal" : "Voir la scène";
   if (!Home.timer) { Home.timer = setInterval(refreshHome, 10_000); refreshHome(); }
   drawHome();
 }
@@ -77,104 +76,24 @@ function showIncoming(r, who) {
   Home.incomingT = setTimeout(() => (el.hidden = true), 15_000);
 }
 
-function drawHome() {
-  if ($("#home").hidden) return;
+// Accueil sobre : un centre vide, avec une seule phrase selon la situation
+function homeMessage() {
   const isBot = state.mode === "bot";
   const info = Home.info;
-  // — Compte —
-  const acc = $("#homeAccount");
-  acc.textContent = "";
-  const me = state.me;
-  const top = h("div", "hm-me");
-  top.append(avatarImg(me && me.avatar, "hm-av big"));
-  const who = h("div");
-  who.append(h("h2", "", me ? `Salut ${me.name}` : "Bienvenue sur Hush"));
-  const lines = h("div", "hm-status");
-  const line = (ok, text) => { const p = h("p", "hm-line " + (ok === true ? "ok" : ok === false ? "err" : "warn")); p.append(h("i", "dot"), text); lines.append(p); };
-  if (isBot) {
-    if (!info || info.unreachable) line(false, "Serveur du bot injoignable");
-    else line(info.online, info.online ? `Bot ${info.name || ""} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
-    if (state.status === "needs-login") line(false, "Ton compte Discord n'est pas lié au bot");
-    else if (me) line(true, `Compte Discord lié : ${me.name}`);
-    else line(null, "Connexion au serveur Hush…");
-  } else {
-    line(state.status === "ready", state.status === "ready" ? "Connecté directement à Discord (RPC)" : (STATUS[state.status] || STATUS.idle)[1]);
-  }
-  who.append(lines);
-  top.append(who);
-  acc.append(top);
-  const btns = h("div", "hm-actions");
-  const b = (label, cls, fn) => { const x = h("button", cls, label); x.onclick = fn; btns.append(x); };
-  if (isBot && state.status === "needs-login") b("Lier mon compte Discord", "cta", () => window.studio.bot.login());
-  if (isBot && info && info.invite) b(`Inviter ${info.name || "le bot"} sur un serveur`, state.status === "needs-login" ? "ghost" : "cta", () => window.open(info.invite));
-  if (state.status === "disconnected" || (isBot && info && info.unreachable)) b("Réessayer", "ghost", () => window.studio.voice.start());
-  b("Connexion", "ghost", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); });
-  acc.append(btns);
-  acc.append(h("p", "hint", me && state.status === "ready" ? (isBot ? "Rejoins un salon vocal sur un serveur où le bot est invité : Hush passe tout seul sur ton vocal." : "Rejoins un vocal ou un appel dans Discord : Hush passe tout seul dessus.") : ""));
-
-  // — Ça parle en ce moment —
-  const rooms = $("#homeRooms");
-  rooms.textContent = "";
-  const data = Home.data;
-  if (!isBot && !data) rooms.append(h("p", "hint", "Lie ton compte au bot Hush (Connexion › Avec le bot, puis Se connecter) pour voir les vocaux de tes serveurs."));
-  else if (!data) rooms.append(h("p", "hint", state.status === "ready" ? "Chargement…" : "Lie ton compte pour voir les vocaux de tes serveurs."));
-  else if (!data.rooms.length) rooms.append(h("p", "hint", "Personne avec Hush n'est en vocal sur tes serveurs pour l'instant."));
-  for (const r of (data && data.rooms) || []) {
-    const card = h("div", "hm-room");
-    const head = h("div", "hm-room-head");
-    head.append(avatarImg(r.guild.icon, "hm-gicon"));
-    const t = h("div", "hm-room-title");
-    t.append(h("b", "", "🔊 " + r.channel.name), h("small", "", `${r.guild.name} · ${r.count} en vocal${r.live ? " · Hush en direct" : ""}`));
-    head.append(t);
-    const join = h("button", "ghost small", "Rejoindre");
-    join.onclick = () => window.studio.voice.openChannel(r.guild.id, r.channel.id);
-    head.append(join);
-    const row = h("div", "hm-faces");
-    for (const m of r.members) {
-      const f = h("div", "hm-face" + (m.speaking ? " speaking" : "") + (m.hush ? " hush" : ""));
-      f.title = m.name + (m.hush ? " · a Hush" : "") + (m.stream ? " · en live" : m.video ? " · caméra" : "");
-      f.append(avatarImg(m.avatar), h("span", "", m.name));
-      if (m.stream) f.append(h("em", "live", "LIVE"));
-      row.append(f);
-    }
-    card.append(head, row);
-    rooms.append(card);
-  }
-
-  // — Sur Hush —
-  const ppl = $("#homePeople");
-  ppl.textContent = "";
-  if (!isBot && !data) ppl.append(h("p", "hint", "Avec le bot Hush, tu verras ici les membres de tes serveurs qui ont Hush."));
-  else if (!data) ppl.append(h("p", "hint", "…"));
-  else if (!data.people.length) ppl.append(h("p", "hint", "Personne d'autre sur tes serveurs n'a encore Hush. Partage-le à tes potes !"));
-  for (const p of (data && data.people) || []) {
-    const row = h("div", "hm-person" + (p.online ? " online" : ""));
-    const avw = h("div", "hm-pav");
-    avw.append(avatarImg(p.avatar), h("i", "st"));
-    const t = h("div", "hm-ptext");
-    t.append(h("b", "", p.name), h("small", "", p.voice ? `🔊 ${p.voice} · ${p.guild}` : p.online ? "Hush ouvert" : `Hors ligne · ${p.guild}`));
-    row.append(avw, t);
-    if (p.voice && p.channelId) {
-      const j = h("button", "ghost small", "Rejoindre");
-      j.onclick = () => window.studio.voice.openChannel(p.guildId, p.channelId);
-      row.append(j);
-    }
-    ppl.append(row);
-  }
-
-  // — Derniers vocaux —
-  const hist = $("#homeHistory");
-  hist.textContent = "";
-  if (!S.history.length) hist.append(h("p", "hint", "Tes vocaux apparaîtront ici."));
-  for (const v of S.history.slice(0, 8)) {
-    const row = h("div", "hm-hist");
-    const t = h("div", "hm-ptext");
-    t.append(h("b", "", (v.call ? "📞 " : "🔊 ") + v.name), h("small", "", [v.guild, ago(v.at), dur(v.dur)].filter(Boolean).join(" · ")));
-    const faces = h("div", "hm-mini-faces");
-    for (const m of v.members.slice(0, 5)) { const i = avatarImg(m.avatar); i.title = m.name; faces.append(i); }
-    row.append(t, faces);
-    hist.append(row);
-  }
+  if (state.channel && state.status === "ready") return { text: `Vous êtes dans ${chanLabel(state.channel)}`, act: () => { Home.forced = false; renderHome(); } };
+  if (isBot && (state.status === "disconnected" || (info && (info.unreachable || info.online === false)))) return { text: "Hush est en maintenance" };
+  if (isBot && state.status === "needs-login") return { text: "Connectez-vous au bot", act: () => window.studio.bot.login() };
+  if (!isBot && state.status === "disconnected") return { text: "Ouvrez Discord" };
+  if (state.status === "connecting" || state.status === "idle") return { text: "Connexion…" };
+  return { text: "Rejoignez une voc" };
+}
+function drawHome() {
+  if ($("#home").hidden) return;
+  const m = homeMessage(), b = $("#homeMsg");
+  if (b.textContent !== m.text) { b.textContent = m.text; b.classList.remove("in"); void b.offsetWidth; b.classList.add("in"); }
+  b.classList.toggle("act", !!m.act);
+  b.disabled = !m.act;
+  b.onclick = m.act || null;
 }
 
 /* — Historique des vocaux, arrivées / départs, écran d'appel — */
@@ -218,8 +137,4 @@ function homeOnState(s) {
 
 // Bouton maison : ouvre l'accueil, ou le referme s'il est ouvert
 $("#homeBtn").onclick = () => { Home.forced = $("#home").hidden; renderHome(); };
-$("#homeClose").onclick = () => { Home.forced = false; renderHome(); if (!state.channel) showToast("Rejoins un vocal dans Discord pour le voir ici"); };
-$("#homeDemo").onclick = () => { Home.forced = false; setDemo(true); };
-$("#homeMini").onclick = () => openMini();
-$("#homeClips").onclick = () => window.studio.clip.show("");
-$("#homeSettings").onclick = () => { S.panel = true; apply(); };
+

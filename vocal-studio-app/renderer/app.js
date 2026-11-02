@@ -18,8 +18,8 @@ const SHAPES = {
   round: { r: "50%", c: "none" },
   squircle: { r: "30%", c: "none" },
 };
-const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [] };
+const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
+  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [] };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -895,7 +895,7 @@ if (false) $("#presetMontage").onclick = () => {
   apply();
 };
 $("#presetBase").onclick = () => {
-  Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "space", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
+  Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "pinkspace", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
   apply();
 };
 if (false) $("#presetBande").onclick = () => {
@@ -913,9 +913,11 @@ $("#players").oninput = (e) => {
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
-$("#ringColor").oninput = (e) => { S.ringColor = e.target.value; S.ringFrom = "custom"; apply(); };
+$("#ringColor").oninput = (e) => { S.ringColor = e.target.value; if (S.ringFrom !== "duo") S.ringFrom = "custom"; apply(); };
 $("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
+$("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = "duo"; apply(); };
+$("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "squash", "streamView"];
 // Polices proposées (Google Fonts), chargées à la demande
@@ -969,6 +971,8 @@ function applyRing() {
   let pal = null;
   if (S.ringFrom === "cover" && coverRing) pal = coverRing;
   else if (S.ringFrom === "custom" && S.ringColor) pal = { a: S.ringColor, b: mixWhite(S.ringColor, 0.55) };
+  // Dégradé de deux couleurs choisies (option bonus)
+  else if (S.ringFrom === "duo") pal = { a: S.ringColor || "#ff8cc6", b: S.ringColor2 || "#7c6cff", duo: true };
   else if (RING_ORIGIN[S.ring]) pal = { a: RING_ORIGIN[S.ring][0], b: RING_ORIGIN[S.ring][1] };
   const vars = pal ? {
     "--ring1": pal.a, "--ring2": pal.b,
@@ -998,6 +1002,9 @@ function apply() {
   applyRing();
   $("#ringColor").value = S.ringColor || (RING_ORIGIN[S.ring] ? RING_ORIGIN[S.ring][0] : S.accent || SKINS[S.skin].a);
   $("#ringCoverHint").hidden = S.ringFrom !== "cover";
+  $("#ringColor2Row").hidden = S.ringFrom !== "duo";
+  $("#ringColorLabel").textContent = S.ringFrom === "duo" ? "Couleur 1" : "Ma couleur";
+  $("#ringColor2").value = S.ringColor2 || "#7c6cff";
   $("#voiceMin").value = S.voiceMin; $("#voiceMinOut").textContent = S.voiceMin ? Math.round(S.voiceMin * 100) + " %" : "aucune";
   // Flou du fond
   const blur = S.bgBlur;
@@ -1031,6 +1038,8 @@ function apply() {
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
+  $("#bgColorRow").hidden = S.bg !== "solid";
+  $("#bgColor").value = S.bgColor || "#1a1024";
   $("#freeHint").hidden = S.layout !== "free";
   $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
   loadBgImg();
@@ -1087,7 +1096,11 @@ function drawBg(t, energy) {
     g.addColorStop(1, `hsl(${c.h} ${c.s}% ${L(c.l * 0.28)}%)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-  } else if (["space", "stars", "topo", "auto"].includes(S.bg)) {
+  } else if (S.bg === "solid") {
+    // Fond uni, de la couleur choisie
+    ctx.fillStyle = S.bgColor || "#1a1024";
+    ctx.fillRect(0, 0, w, h);
+  } else if (["space", "pinkspace", "stars", "topo", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
   } else if (S.bg === "profile") {
     drawProfileBg(t, w, h, energy);

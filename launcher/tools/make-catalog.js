@@ -12,7 +12,9 @@ const crypto = require("crypto");
 
 const root = path.join(__dirname, "..");
 const cfg = JSON.parse(fs.readFileSync(path.join(root, "publish.json"), "utf8"));
-const out = path.join(root, "site", "1999");
+// --out=site-test : dossier de sortie (le test local n'écrase jamais le vrai dossier à envoyer)
+const outArg = process.argv.find((x) => x.startsWith("--out="));
+const out = path.join(root, outArg ? outArg.slice(6) : "site", "1999");
 // --base=… remplace l'adresse du site (ex. file:///C:/…/site/1999 pour tester sans rien mettre en ligne)
 const baseArg = process.argv.find((x) => x.startsWith("--base="));
 const base = (baseArg ? baseArg.slice(7) : cfg.baseUrl).replace(/\/$/, "");

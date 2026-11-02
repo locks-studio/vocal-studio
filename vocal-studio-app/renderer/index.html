@@ -136,24 +136,9 @@
       <button class="cta small" id="incomingJoin">Rejoindre</button><button class="wb" id="incomingClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
 
-    <!-- Accueil : toi seul en fond (flouté), ton compte, les vocaux en cours, tes potes sur Hush, l'historique -->
+    <!-- Accueil sobre : toi seul en fond (flouté), et une phrase au centre -->
     <div class="home" id="home" hidden>
-      <div class="home-grid">
-        <section class="hm-card glass hm-account" id="homeAccount"></section>
-        <section class="hm-card glass hm-quick">
-          <h3>Raccourcis</h3>
-          <div class="hm-quick-grid">
-            <button class="ghost" id="homeSettings">⚙ Paramètres</button>
-            <button class="ghost" id="homeMini">▣ Overlay</button>
-            <button class="ghost" id="homeClips">⏺ Mes clips</button>
-            <button class="ghost" id="homeDemo">✦ Mode démo</button>
-          </div>
-        </section>
-        <section class="hm-card glass hm-rooms"><h3>Ça parle en ce moment</h3><div id="homeRooms"></div></section>
-        <section class="hm-card glass hm-people"><h3>Sur Hush</h3><div id="homePeople"></div></section>
-        <section class="hm-card glass hm-history"><h3>Derniers vocaux</h3><div id="homeHistory"></div></section>
-      </div>
-      <button class="home-close" id="homeClose">Voir la scène</button>
+      <button class="home-msg" id="homeMsg" type="button"></button>
     </div>
 
     <!-- Écrans d'état (connexion, configuration, salon vide) -->
@@ -197,7 +182,7 @@
           <div class="group">
             <div class="label">Styles prêts à l'emploi</div>
             <div class="presets">
-              <button class="cta" id="presetBase">Base · Espace</button>
+              <button class="cta" id="presetBase">Base · Espace rose</button>
             </div>
           </div>
           <div class="group">
@@ -242,8 +227,9 @@
           <div class="group"><div class="label">Anneau</div>
             <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
             <div class="label">Couleur de l'anneau</div>
-            <div class="seg" id="ringFromSeg"><button data-v="origin">Vert Discord</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button></div>
-            <div class="row" id="ringColorRow"><label for="ringColor">Ma couleur</label><input type="color" id="ringColor"></div>
+            <div class="seg" id="ringFromSeg"><button data-v="origin">Vert Discord</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button><button data-v="duo">Dégradé 2 couleurs</button></div>
+            <div class="row" id="ringColorRow"><label for="ringColor" id="ringColorLabel">Ma couleur</label><input type="color" id="ringColor"></div>
+            <div class="row" id="ringColor2Row" hidden><label for="ringColor2">Couleur 2</label><input type="color" id="ringColor2"></div>
             <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de la pochette du morceau en cours.</p>
           </div>
           <div class="group">
@@ -286,8 +272,9 @@
           </div>
           <h4 class="sec">Fond</h4>
           <div class="group">
-            <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="gradient">Dégradé</button><button data-v="profile">Profil</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
+            <div class="seg" id="bgSeg"><button data-v="pinkspace">Espace rose</button><button data-v="space">Espace</button><button data-v="solid">Uni</button><button data-v="gradient">Dégradé</button><button data-v="profile">Profil</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
+            <div class="row" id="bgColorRow" hidden><label for="bgColor">Couleur du fond</label><input type="color" id="bgColor"></div>
             <input type="file" id="bgFile" accept="image/*" hidden>
             <p class="hint">« Profil » : la photo de profil de celui qui parle, en grand et floutée. « Image / GIF » garde ton image en pleine qualité ; les GIF et les vidéos bougent.</p>
           </div>

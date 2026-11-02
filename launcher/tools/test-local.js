@@ -28,8 +28,8 @@ if (!fs.existsSync(zip) || stale) {
 }
 
 // 2. Catalogue local
-const base = pathToFileURL(path.join(root, "site", "1999")).href;
-run("node", [path.join("tools", "make-catalog.js"), `--base=${base}`], root);
+const base = pathToFileURL(path.join(root, "site-test", "1999")).href;
+run("node", [path.join("tools", "make-catalog.js"), `--base=${base}`, "--out=site-test"], root);
 
 // 3. Le launcher, branché sur ce catalogue
 const electron = require(path.join(root, "node_modules", "electron"));
