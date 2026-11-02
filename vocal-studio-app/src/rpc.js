@@ -8,15 +8,17 @@ const { randomUUID } = require("crypto");
 
 const OP = { HANDSHAKE: 0, FRAME: 1, CLOSE: 2, PING: 3, PONG: 4 };
 
-function pipePath(i) {
-  if (process.platform === "win32") return `\\\\?\\pipe\\discord-ipc-${i}`;
-  const base = process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || process.env.TMP || "/tmp";
-  return path.join(base.replace(/\/$/, ""), `discord-ipc-${i}`);
+// Emplacements possibles du tube : Windows, ou socket Unix (Mac, Linux ; sur Linux, Discord installé
+// en Flatpak ou en Snap le range dans un sous-dossier)
+function pipePaths(i) {
+  if (process.platform === "win32") return [`\\\\?\\pipe\\discord-ipc-${i}`];
+  const base = (process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || process.env.TMP || "/tmp").replace(/\/$/, "");
+  return ["", "app/com.discordapp.Discord", "app/com.discordapp.DiscordCanary", "snap.discord", "snap.discord-canary"].map((d) => path.join(base, d, `discord-ipc-${i}`));
 }
 
-function tryConnect(i) {
+function connectTo(p) {
   return new Promise((resolve, reject) => {
-    const sock = net.createConnection(pipePath(i));
+    const sock = net.createConnection(p);
     sock.once("connect", () => resolve(sock));
     sock.once("error", reject);
   });
@@ -33,8 +35,10 @@ class DiscordIPC extends EventEmitter {
 
   async connect() {
     let lastErr;
-    for (let i = 0; i < 10; i++) {
-      try { this.sock = await tryConnect(i); break; } catch (e) { lastErr = e; }
+    for (let i = 0; i < 10 && !this.sock; i++) {
+      for (const p of pipePaths(i)) {
+        try { this.sock = await connectTo(p); break; } catch (e) { lastErr = e; }
+      }
     }
     if (!this.sock) throw new Error("Discord n'est pas ouvert (aucun tube discord-ipc trouvé). " + (lastErr ? lastErr.code : ""));
 

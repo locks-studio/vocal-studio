@@ -106,7 +106,14 @@ class Installer {
       fs.rmSync(target, { recursive: true, force: true });
       fs.renameSync(staging, target);
       const exec = path.join(target, file.exec);
-      if (process.platform === "linux" && fs.existsSync(exec)) fs.chmodSync(exec, 0o755);
+      // Linux : un zip fabriqué sous Windows perd les droits « exécutable » ; on les remet au programme
+      // et à ses programmes d'aide (chrome_crashpad_handler, chrome-sandbox…) qui sont à la racine
+      if (process.platform === "linux") {
+        for (const f of fs.readdirSync(target)) {
+          const p = path.join(target, f);
+          if (fs.statSync(p).isFile() && (p === exec || !path.extname(f) || f.endsWith(".so") || /\.so\./.test(f))) fs.chmodSync(p, 0o755);
+        }
+      }
       // 4. On garde seulement la nouvelle version
       const old = this.state[app.id];
       this.state[app.id] = { version: app.version, dir: target, exec, installedAt: Date.now() };
@@ -140,7 +147,9 @@ class Installer {
     if (!s) throw new Error("Pas installé.");
     let child;
     if (process.platform === "darwin" && s.exec.endsWith(".app")) child = spawn("open", ["-n", s.exec], { detached: true, stdio: "ignore" });
-    else child = spawn(s.exec, [], { detached: true, stdio: "ignore", cwd: path.dirname(s.exec) });
+    // Linux : Ubuntu 24.04+ bloque le bac à sable de Chromium pour les applis non installées par le système,
+    // les applis Electron plantent au démarrage sans --no-sandbox
+    else child = spawn(s.exec, process.platform === "linux" ? ["--no-sandbox"] : [], { detached: true, stdio: "ignore", cwd: path.dirname(s.exec) });
     child.on("error", () => {});
     child.unref();
   }

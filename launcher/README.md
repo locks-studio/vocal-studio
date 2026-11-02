@@ -10,14 +10,14 @@ Comment ça marche :
 4. Les logiciels s'installent dans les données de l'utilisateur (pas besoin d'être administrateur). Désinstaller garde les réglages.
 5. Hors ligne, le launcher lance quand même ce qui est installé.
 
-## 1. Choisir l'adresse du site (une seule fois)
+## 1. L'adresse du site
 
-Remplace `TON-DOMAINE.fr` par ton vrai domaine dans **deux** fichiers (la même adresse) :
+C'est le sous-domaine **`1999.organisationphantom.fr`** : il a son propre dossier sur Hostinger, à part du site de la Phantom (que ses déploiements GitHub ne touchent donc jamais). Elle est écrite à deux endroits :
 
-- `config.json` → `catalogUrl` : `https://ton-domaine.fr/1999/catalog.json`
-- `publish.json` → `baseUrl` : `https://ton-domaine.fr/1999` (et `launcher.page`)
+- `config.json` → `catalogUrl` : `https://1999.organisationphantom.fr/catalog.json` (gravée dans le launcher quand on le fabrique)
+- `publish.json` → `baseUrl` et `launcher.page` : `https://1999.organisationphantom.fr`
 
-Puis refabrique le launcher (étape 2) : l'adresse est gravée dedans.
+Pour changer d'adresse plus tard : modifie ces deux fichiers, puis refabrique le launcher.
 
 ## 2. Fabriquer les fichiers
 
@@ -33,7 +33,19 @@ npm run dist:win
 - Hush → `vocal-studio-app/dist/Hush-<version>-win-x64.zip`
 - Launcher → `launcher/dist/1999-Setup-<version>-win-x64.exe` (installeur)
 
-**Mac et Linux** : impossible de les fabriquer depuis Windows (Apple l'interdit pour Mac). Le fichier `.github/workflows/build.yml` le fait pour toi sur GitHub, gratuitement :
+**Linux depuis Windows** (sans GitHub) : télécharge dans ton navigateur le moteur officiel `https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip`, décompresse-le dans un dossier, puis :
+
+```bash
+cd vocal-studio-app
+npx electron-builder --linux zip --x64 -c.electronDist=CHEMIN/DU/DOSSIER
+cd ../launcher
+npx electron-builder --linux dir --x64 -c.electronDist=CHEMIN/DU/DOSSIER
+python tools/pack-linux.py
+```
+
+`pack-linux.py` emballe le launcher en `.tar.gz` en gardant les droits « exécutable » (un zip fait sous Windows les perdrait). Pour Hush, c'est le launcher qui remet ces droits à l'installation.
+
+**Mac (et Linux proprement)** : impossible de fabriquer Mac depuis Windows (Apple l'interdit pour Mac). Le fichier `.github/workflows/build.yml` le fait pour toi sur GitHub, gratuitement :
 
 1. Mets le dossier `Vocal Studio` sur GitHub (dépôt privé possible).
 2. Onglet **Actions** › **Construire** › **Run workflow**.
@@ -50,7 +62,7 @@ node tools/make-catalog.js
 
 Ça prépare `launcher/site/1999/` : les fichiers, le `catalog.json` avec les empreintes, l'icône, et une **page de téléchargement** (`index.html`) avec un bouton par système.
 
-Envoie **tout le contenu** de `site/1999/` dans `public_html/1999/` sur Hostinger (Gestionnaire de fichiers, ou FTP avec FileZilla). Un système dont le fichier manque (par exemple Mac pas encore construit) est simplement sauté : le launcher y affichera « Bientôt ».
+Envoie **tout le contenu** de `site/1999/` dans le dossier du sous-domaine `1999.organisationphantom.fr` sur Hostinger (Gestionnaire de fichiers, ou FTP avec FileZilla). Un système dont le fichier manque (par exemple Mac pas encore construit) est simplement sauté : le launcher y affichera « Bientôt ».
 
 Pour une nouvelle version de Hush : augmente `version` dans `vocal-studio-app/package.json`, change les `notes` dans `publish.json`, refabrique, relance `make-catalog.js` et renvoie le dossier. Les launchers de tes amis proposeront **Mettre à jour** (ils relisent le catalogue toutes les 10 minutes et à chaque ouverture).
 

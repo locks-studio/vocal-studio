@@ -12,6 +12,8 @@ const CATALOG_URL = (arg && arg.slice(10)) || process.env.CATALOG_1999 || CONFIG
 
 // Une seule fenêtre de launcher à la fois
 if (!app.requestSingleInstanceLock()) app.quit();
+// Linux : même chose pour le launcher lui-même (sinon il ne s'ouvre pas sur Ubuntu 24.04+)
+if (process.platform === "linux") app.commandLine.appendSwitch("no-sandbox");
 
 let win, installer;
 const cacheFile = () => path.join(app.getPath("userData"), "catalog-cache.json");
@@ -54,7 +56,7 @@ async function getCatalog() {
 function createWindow() {
   win = new BrowserWindow({
     width: 1180, height: 720, minWidth: 900, minHeight: 560,
-    frame: false, backgroundColor: "#07060b", title: "1999",
+    frame: false, backgroundColor: "#fbe2ee", title: "1999",
     icon: path.join(__dirname, "..", "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

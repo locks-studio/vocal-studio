@@ -200,4 +200,13 @@ $("#close").onclick = () => L.win.close();
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("#about").hidden = true; });
 // Le catalogue est relu toutes les 10 minutes (nouvelles versions)
 setInterval(() => { if (!busy.size) load(); }, 10 * 60_000);
+// Reflet du verre : il suit la souris
+addEventListener("pointermove", (e) => {
+  for (const g of document.querySelectorAll(".glass")) {
+    const r = g.getBoundingClientRect();
+    if (!r.width) continue;
+    g.style.setProperty("--mx", ((e.clientX - r.left) / r.width) * 100 + "%");
+    g.style.setProperty("--my", ((e.clientY - r.top) / r.height) * 100 + "%");
+  }
+}, { passive: true });
 load();

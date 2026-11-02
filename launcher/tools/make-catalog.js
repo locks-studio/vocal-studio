@@ -53,17 +53,17 @@ if (cfg.launcher) {
     links.push([plat, url, path.basename(f)]);
     report.push(`  Launcher ${plat} : ok`);
   }
-  const names = { "win32-x64": "Windows", "darwin-arm64": "Mac (Apple Silicon : M1, M2, M3…)", "darwin-x64": "Mac (Intel)", "linux-x64": "Linux (AppImage)" };
+  const names = { "win32-x64": "Windows", "darwin-arm64": "Mac (Apple Silicon : M1, M2, M3…)", "darwin-x64": "Mac (Intel)", "linux-x64": "Linux" };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   fs.writeFileSync(path.join(out, "index.html"), `<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>1999 · Télécharger</title>
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#07060b;color:#f4f2fa;font-family:system-ui,sans-serif">
 <main style="width:min(520px,92vw);text-align:center"><h1 style="font-size:64px;margin:0;text-shadow:0 0 24px #ff3caa">1999</h1>
 <p style="color:#9a95ad">Le launcher de Locks : installe et met à jour Hush et les prochains logiciels. Version ${esc(lv)}.</p>
 ${links.map(([p, u, n]) => `<p><a href="${esc(u)}" style="display:block;padding:14px;border-radius:12px;background:#ff3caa;color:#fff;text-decoration:none;font-weight:700">Télécharger pour ${esc(names[p] || p)}</a></p>`).join("")}
-<p style="color:#9a95ad;font-size:13px">Windows peut afficher « Windows a protégé votre ordinateur » : clique sur « Informations complémentaires » puis « Exécuter quand même ». Sur Mac : clic droit sur l'app › Ouvrir.</p></main></body></html>`);
+<p style="color:#9a95ad;font-size:13px">Windows peut afficher « Windows a protégé votre ordinateur » : clique sur « Informations complémentaires » puis « Exécuter quand même ». Sur Mac : clic droit sur l'app › Ouvrir. Sur Linux : décompresse l'archive, puis double-clic sur <b>launcher-1999</b> (ou <code>./launcher-1999</code> dans un terminal).</p></main></body></html>`);
 }
 
 fs.writeFileSync(path.join(out, "catalog.json"), JSON.stringify(catalog, null, 2));
 console.log(`Dossier prêt : ${path.relative(process.cwd(), out)}`);
 console.log(report.join("\n"));
-console.log(`\nEnvoie le contenu de ce dossier sur ton site, dans public_html/1999/ (adresse : ${base}/catalog.json).`);
+console.log(`\nEnvoie le CONTENU de ce dossier dans le dossier du sous-domaine sur Hostinger (adresse finale : ${base}/catalog.json).`);
