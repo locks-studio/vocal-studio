@@ -198,8 +198,6 @@
             <div class="label">Styles prêts à l'emploi</div>
             <div class="presets">
               <button class="cta" id="presetBase">Base · Espace</button>
-              <button class="cta" id="presetMontage">Montage 1 · Cinéma</button>
-              <button class="cta alt" id="presetBande">Montage 2 · Bande</button>
             </div>
           </div>
           <div class="group">
@@ -212,11 +210,12 @@
           </div>
           <h4 class="sec">Disposition</h4>
           <div class="group">
-            <div class="seg" id="layoutSeg"><button data-v="strip">Bande</button><button data-v="cinema">Cinéma 3D</button><button data-v="column">Verticale</button><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="discord">Discord</button><button data-v="lyrics">Paroles</button></div>
+            <div class="seg" id="layoutSeg"><button data-v="strip">Bande</button><button data-v="cinema">Cinéma 3D</button><button data-v="free">Libre</button><button data-v="column">Verticale</button><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="discord">Discord</button></div>
+            <p class="hint" id="freeHint" hidden>Libre : fais glisser les membres où tu veux. La caméra 3D va vers celui qui parle (désactivable). <button class="linkbtn" id="freeReset" type="button">Les replacer en grille</button></p>
           </div>
           <div class="group">
             <div class="label"><label for="players">Joueurs affichés</label><output id="playersOut"></output></div>
-            <input type="range" id="players" min="1" max="16" step="1">
+            <input type="range" id="players" min="1" max="99" step="1">
             <p class="hint">Moins il y a de joueurs, plus les avatars sont grands. Quelqu'un qui parle est toujours affiché.</p>
           </div>
           <div class="group">
@@ -241,7 +240,7 @@
         <div class="tab-panel" data-tab="avatars" role="tabpanel">
           <h4 class="sec">Quand quelqu'un parle</h4>
           <div class="group"><div class="label">Anneau</div>
-            <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="energy">Énergie</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
+            <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
             <div class="label">Couleur de l'anneau</div>
             <div class="seg" id="ringFromSeg"><button data-v="origin">Vert Discord</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button></div>
             <div class="row" id="ringColorRow"><label for="ringColor">Ma couleur</label><input type="color" id="ringColor"></div>
@@ -263,13 +262,15 @@
           <div class="group"><div class="label">Forme</div>
             <div class="seg two" id="shapeSeg"><button data-v="round">Rond</button><button data-v="squircle">Carré</button></div>
             <div class="row"><span>Ombre portée</span><button class="switch" id="avShadow" role="switch" aria-label="Ombre portée sous les avatars"></button></div>
-            <div class="row"><span>Cartes derrière les avatars</span><button class="switch" id="cards" role="switch" aria-label="Cartes derrière les avatars"></button></div>
           </div>
           <h4 class="sec">Pseudos</h4>
           <div class="group">
             <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
+            <div class="label">Position</div>
+            <div class="seg two" id="namePosSeg"><button data-v="top">En haut</button><button data-v="bottom">En bas</button></div>
+            <div class="label"><label for="nameSize">Taille</label><output id="nameSizeOut"></output></div>
+            <input type="range" id="nameSize" min="0.5" max="2" step="0.05">
             <div class="row"><label for="fontSel">Police</label><select id="fontSel" class="field"></select></div>
-            <div class="row"><span>Police pixel</span><button class="switch" id="pixel" role="switch" aria-label="Pseudos en police pixel"></button></div>
             <div class="row"><span>« (toi) » après ton pseudo</span><button class="switch" id="showMe" role="switch" aria-label="Afficher (toi) après ton pseudo"></button></div>
             <div class="row"><span>Masquer les membres muets</span><button class="switch" id="hideMuted" role="switch" aria-label="Masquer les membres muets"></button></div>
           </div>
@@ -277,23 +278,23 @@
 
         <!-- ——— 3. Fond : ambiance, couleurs, fond, flou ——— -->
         <div class="tab-panel" data-tab="fond" role="tabpanel">
-          <h4 class="sec">Ambiance</h4>
-          <div class="group"><div class="skins" id="skins"></div></div>
+          <h4 class="sec">Couleur</h4>
+          <div class="skins" id="skins" hidden></div>
           <div class="group">
             <div class="row"><label class="label" for="accent">Couleur d'accent</label><input type="color" id="accent"></div>
             <button class="linkbtn" id="accentReset">Revenir à la couleur de l'ambiance</button>
           </div>
           <h4 class="sec">Fond</h4>
           <div class="group">
-            <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="pulse">Son</button><button data-v="gradient">Dégradé</button><button data-v="stars">Damier étoilé</button><button data-v="topo">Vagues</button><button data-v="auto">Change à chaque voix</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
+            <div class="seg" id="bgSeg"><button data-v="space">Espace</button><button data-v="gradient">Dégradé</button><button data-v="profile">Profil</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
             <input type="file" id="bgFile" accept="image/*" hidden>
-            <p class="hint">« Son » bouge avec les voix et la musique. « Image / GIF » garde ton image en pleine qualité ; les GIF et les vidéos bougent.</p>
+            <p class="hint">« Profil » : la photo de profil de celui qui parle, en grand et floutée. « Image / GIF » garde ton image en pleine qualité ; les GIF et les vidéos bougent.</p>
           </div>
           <div class="group">
             <div class="label"><label for="bgBlur">Flou du fond</label><output id="bgBlurOut"></output></div>
             <input type="range" id="bgBlur" min="0" max="30" step="1">
-            <div class="seg two" id="blurTypeSeg"><button data-v="gaussian">Doux</button><button data-v="motion">Mouvement</button><button data-v="frost">Verre dépoli</button><button data-v="tilt">Profondeur</button></div>
+            <div class="seg two" id="blurTypeSeg" style="grid-template-columns:repeat(3,1fr)"><button data-v="gaussian">Doux</button><button data-v="motion">Mouvement</button><button data-v="frost">Verre dépoli</button></div>
           </div>
         </div>
 
@@ -303,13 +304,14 @@
             <div class="row"><span>Lecteur musique</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher le lecteur musique"></button></div>
             <div class="music-box" id="musicFields">
               <div class="label">Source</div>
-              <div class="seg two" id="musicSrcSeg"><button data-v="files">Mes sons</button><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button><button data-v="manual">À la main</button></div>
+              <div class="seg two" id="musicSrcSeg"><button data-v="files">Mes sons</button><button data-v="pc">Ce PC</button><button data-v="spotify">Compte Spotify</button></div>
               <div class="music-fields" data-src="files">
                 <button class="ghost" id="soundsAdd">Ajouter des sons</button>
                 <button class="ghost rec" id="recBtn"><i></i><span>Enregistrer au micro</span></button>
                 <div class="label" style="flex-basis:100%"><label for="volume">Volume</label><output id="volumeOut"></output></div>
                 <input type="range" id="volume" min="0" max="1" step="0.01">
                 <ul class="sound-list" id="soundList"></ul>
+                <p class="hint">Chaque son a son titre (clic pour renommer), sa pochette 🖼 et ses paroles ♪.</p>
                 <p class="hint">Les sons sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran avec le son dans Discord.</p>
               </div>
               <div class="music-fields" data-src="pc">
@@ -392,5 +394,6 @@
 <script src="usermenu.js"></script>
 <script src="capture.js"></script>
 <script src="home.js"></script>
+<script src="colorwheel.js"></script>
 </body>
 </html>

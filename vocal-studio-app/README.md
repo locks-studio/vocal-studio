@@ -42,20 +42,20 @@ L'engrenage en haut à droite ouvre les **paramètres** au centre de l'écran, a
 En mode **Bande** avec la caméra active, celui qui parle est **toujours au centre de l'image**, même tout au bout de la rangée et quel que soit l'angle : l'appli mesure à chaque image où il est affiché et corrige l'écart. La caméra glisse vers lui sans à-coup, la rangée est un plan 3D légèrement plongeant qui s'enfonce du côté où il reste le plus de monde. Quand plusieurs personnes parlent, la caméra centre le groupe et dézoome juste assez pour les voir en entier. Si quelqu'un qui n'était pas affiché (au-delà du nombre de joueurs choisi) se met à parler, il prend la place d'un membre silencieux.
 
 **Fond Dégradé** : un fond sans motif, clair au centre et sombre sur les bords, dans la couleur d'accent. Le lecteur musique a aussi un réglage **Fond du lecteur** : Mosaïque ou Dégradé.
-- **Style montage 2 · Bande** : pseudos en police pixel, la caméra file vers celui qui parle avec un zoom « punch », et le fond change à chaque prise de parole (damier étoilé, vagues, espace).
 
 **Mes préréglages** (Paramètres › Général) : règle Hush comme tu aimes, donne un nom et **Enregistrer**. Un préréglage garde le look (disposition, anneau, couleurs, fond, flou, police, zoom). ▶ l'applique, ⟳ le remplace par les réglages actuels, ⇩ l'exporte en fichier `.hush` à partager ; « Importer un fichier .hush » le récupère.
 
 **Profils** (Paramètres › Compte) : chaque profil garde *tous* ses réglages (look, lecteur, noms de salons, notes…). Crée par exemple « Stream » et « Potes » et passe de l'un à l'autre avec la liste.
 
-**Fond « Son »** (Paramètres › Fond) : un cercle de barres et des ondes qui bougent avec les voix et la musique (celle de « Mes sons » est analysée en direct).
+**Fond « Profil »** (Paramètres › Fond) : la photo de profil de celui qui parle, en grand et floutée, qui change en fondu à chaque prise de parole.
+
+**Couleurs** : la couleur d'accent et celle de l'anneau se choisissent dans une roue de couleurs (teinte, saturation, luminosité, code hex, pipette pour prendre une couleur n'importe où à l'écran). L'interface reste lisible avec n'importe quelle couleur, même blanc ou noir.
 
 **Fond « Image / GIF »** : ton image est gardée en pleine qualité ; les GIF et les vidéos (MP4, WebM) bougent.
 
 **Flou du fond** (Paramètres › Fond) : de 0 à 30 px, en 4 types : Doux, Mouvement (flou horizontal), Verre dépoli (flou + grain) et Profondeur (net au centre, flou en haut et en bas).
 
 Quand tu modifies un réglage, les paramètres se rangent sur le côté : la scène et le lecteur se décalent pour rester centrés dans la partie encore visible.
-- **Style montage 1 · Cinéma** : décrit ci-dessous.
 
 Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements de caméra (modes Cinéma 3D et Bande). Coupé, tout le salon reste cadré et seul celui qui parle grossit un peu.
 
@@ -77,15 +77,6 @@ Elle s'affiche quand tu n'es dans aucun vocal (ou avec le bouton maison en haut)
 
 Dans un vocal : quand tu es seul, Hush affiche « Appel en cours… » (appel privé, en connexion directe) ou « en attente », avec ton avatar qui sonne ; chaque arrivée et départ est annoncé. Discord ne prévient aucune appli d'un appel entrant.
 
-## Le style « montage 1 » (Cinéma 3D)
-
-Le bouton **Style montage 1 · Cinéma** active d'un coup :
-
-- la disposition **Cinéma 3D** : les avatars flottent dans l'espace, la caméra pivote doucement et glisse vers celui qui parle ;
-- l'ambiance **Halo vert** avec l'anneau **Plein lumineux** autour de celui qui parle ;
-- le fond **Espace**. Avec **Image**, tu peux mettre ta propre image de fond ;
-- le **lecteur musique** en bas à droite.
-
 ## Voix, caméra et anneau
 
 - **Anneaux** (Paramètres › Style), tous animés selon le volume :
@@ -98,6 +89,10 @@ Le bouton **Style montage 1 · Cinéma** active d'un coup :
 - **Aplatissement** (Paramètres › Avatars) : l'avatar de celui qui parle s'écrase et s'étire en rythme, plus fort quand la voix est forte. Désactivable.
 - **Vue stream** : dès qu'une caméra ou un partage d'écran est actif, le flux s'affiche en grand à gauche dans un cadre qui s'allume en vert quand la personne parle, et les autres sont en zigzag sur un panneau sombre à droite. Pour les autres membres, Discord ne donne pas leur vidéo : Hush montre leur avatar flouté avec « à regarder dans Discord ». Désactivable (Paramètres › Affichage).
 - **Disposition Verticale** : une colonne d'avatars avec le pseudo à droite, tout le monde tient en hauteur.
+- **Disposition Libre** : fais glisser chaque membre où tu veux ; la caméra 3D se rapproche de celui qui parle, comme en Cinéma 3D. « Les replacer en grille » remet tout en place.
+- **Pseudos** (Paramètres › Avatars) : en haut ou en bas de l'avatar, taille réglable ; la police pixel est dans la liste des polices.
+- **Arrivées et départs** : l'avatar de celui qui arrive surgit avec une onde verte, celui qui part se rétracte et s'efface.
+- **Appel privé** (connexion directe) : tant que l'autre n'a pas décroché, son avatar s'affiche en transparence avec l'animation de sonnerie. Seul dans un salon de serveur, il n'y a pas de sonnerie (ça ne sonne chez personne), juste « en attente ».
 - **Ignorer les voix trop faibles** (Paramètres › Avatars, mode bot) : sous ce volume, l'anneau ne s'allume pas et la caméra ne va pas sur la personne (souffle, bruit de fond).
 - **Ombre portée** sous les avatars (désactivable dans Paramètres › Style).
 - **Volume réel** : avec le bot, Hush connaît le volume (dB) de chaque voix. Les plus fortes sont affichées en priorité et la caméra se pose sur la plus forte.
@@ -116,7 +111,8 @@ Un menu comme celui de Discord :
 - **Ajouter une note** : une note visible seulement par toi (au survol de l'avatar).
 - **Volume** : en connexion directe (RPC), c'est le vrai volume Discord de ce membre, pour toi seulement, et **Rendre muet (pour toi)** marche aussi. Avec le bot, c'est le **volume dans Hush** : il rend sa voix plus ou moins « forte » pour l'anneau et la caméra (utile pour un ami au micro faible).
 - **Masquer dans Hush** : le retire de la scène (clic droit sur le fond pour tout réafficher).
-- **Avec le bot** : Changer le pseudo, Rôles, Déplacer vers, Rendre muet / Mettre en sourdine sur le serveur, Déconnecter du vocal. Seulement si **toi** tu as la permission sur le serveur, et si le bot l'a aussi (réinvite-le avec le nouveau lien affiché au lancement du bot).
+- **Avec le bot** : Changer le pseudo, Rôles, Déplacer vers, Rendre muet / Mettre en sourdine sur le serveur, Déconnecter du vocal. Ça marche aussi en connexion directe, à condition que le bot tourne et que ton compte y soit lié (Compte › Modifier la connexion › Avec le bot, Se connecter, puis revenir en connexion directe si tu veux). Il faut que **toi** tu aies la permission sur le serveur, et que le bot l'ait aussi (réinvite-le avec le lien affiché au lancement du bot).
+- Le menu suit le zoom de la scène et rapetisse s'il est plus haut que la fenêtre.
 
 ## Mini-fenêtre et clips
 
@@ -157,14 +153,6 @@ Deezer ne permet plus de créer d'applications développeur, c'est pour ça qu'i
 Quand la source ne donne pas d'image (certains navigateurs, comme Opera GX, envoient une miniature vide pour YouTube), l'appli cherche la pochette dans le catalogue public de Deezer à partir du titre et de l'artiste. Elle ne l'affiche que si l'artiste correspond, pour éviter une mauvaise pochette.
 
 Les sons de **Mes sons** sont joués sur ton PC. Pour que tout le salon les entende, partage ton écran (ou la fenêtre Hush) avec le son dans Discord. La musique Spotify ou Deezer, elle, ne peut pas être rediffusée : pour écouter tous ensemble, utilise « Écouter ensemble » de Discord (Spotify).
-
-## Le mode Paroles
-
-Dans **Disposition**, choisis **Paroles** : un vinyle « radiographie » blanc lumineux tourne à gauche, et les paroles du morceau en cours apparaissent ligne par ligne à droite, synchronisées, avec des éclairs de lumière (sur les coups forts quand le son est joué dans l'appli).
-
-- Les paroles sont cherchées automatiquement dans la base libre [LRCLIB](https://lrclib.net) à partir du titre et de l'artiste. Ça marche avec toutes les sources (Mes sons, Deezer, Spotify…).
-- Pour un son importé, tu peux donner ton propre fichier de paroles `.lrc` : importe-le en même temps que le son (même nom de fichier), ou clique sur **♪** à côté du son dans la liste.
-- Si aucune parole n'est trouvée, l'appli l'indique à la place du texte.
 
 ## Ce qu'il faut savoir
 

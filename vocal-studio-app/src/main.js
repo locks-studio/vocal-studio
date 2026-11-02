@@ -112,6 +112,9 @@ function useMode(mode) {
   if (session) session.stop();
   data.mode = mode === "local" ? "local" : "bot";
   session = data.mode === "local" ? localSession : botLink;
+  // En connexion directe, on garde quand même le lien avec le bot si ton compte y est lié :
+  // il sert au menu clic droit (pseudo, rôles, déplacer, muet serveur…) et à la page d'accueil
+  if (session === localSession && botStore.getServer() && botStore.getToken()) botLink.start();
 }
 // Les nouvelles (salon, musique) vont à la fenêtre principale et à la mini-fenêtre si elle est ouverte
 function send(channel, payload) {
@@ -245,10 +248,11 @@ ipcMain.handle("voice:leave", () => session.leave());
 // Menu clic droit sur un membre
 ipcMain.handle("voice:user", async (_e, a) => {
   if (!a || !/^\d{5,25}$/.test(String(a.target || ""))) throw new Error("Membre inconnu.");
-  if (!session.userAction) throw new Error("Indisponible dans ce mode.");
-  return session.userAction(a);
+  // Volume et muet « pour toi » : Discord (connexion directe). Tout le reste : le bot.
+  if (session === localSession && (a.action === "volume" || a.action === "localMute")) return localSession.userAction(a);
+  return botLink.userAction(a);
 });
-ipcMain.handle("voice:home", () => (session === botLink ? botLink.home() : null));
+ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
 ipcMain.handle("bot:info", () => botLink.info());
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });

@@ -65,8 +65,8 @@ function openUserMenu(m, x, y) {
   document.body.appendChild(el);
   renderUserMenu(m);
   place(el, x, y);
-  // Bot : on demande au serveur ce que tu as le droit de faire sur ce membre (rôles, salons, pseudo…)
-  if (isBotMode() && m.id !== "me") {
+  // Bot (même en connexion directe, si ton compte y est lié) : on lui demande ce que tu as le droit de faire
+  if (!S.demo && /^\d{5,25}$/.test(m.id)) {
     userAct({ action: "info", target: m.id }).then((info) => {
       if (UM.target !== m.id || !UM.el) return;
       UM.info = info;
@@ -75,13 +75,23 @@ function openUserMenu(m, x, y) {
       place(UM.el, r.left, r.top, true);
     }).catch((e) => {
       if (UM.target !== m.id || !UM.el) return;
-      UM.info = { error: String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "") };
+      let msg = String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+      if (/Pas connecté au bot|n'a pas répondu/.test(msg)) msg = "Lance le bot et lie ton compte (Compte › Modifier la connexion › Avec le bot, puis Se connecter)";
+      UM.info = { error: msg };
       renderUserMenu(m);
     });
   }
 }
 
 function place(el, x, y, keep) {
+  // Le menu suit le zoom de la scène et rapetisse s'il est plus haut que la fenêtre : on voit tout jusqu'en bas
+  el.style.transform = "";
+  const full = el.scrollHeight + 12;
+  const s = Math.max(0.5, Math.min(1, S.zoom || 1, (innerHeight - 12) / full));
+  el.style.transformOrigin = "0 0";
+  el.style.transform = s < 1 ? `scale(${s.toFixed(3)})` : "";
+  el.style.maxHeight = s < 1 ? "none" : "";
+  el.dataset.scale = s;
   const r = el.getBoundingClientRect();
   const W = innerWidth, H = innerHeight;
   el.style.left = Math.max(6, Math.min(x, W - r.width - 6)) + "px";
@@ -153,7 +163,7 @@ function renderUserMenu(m) {
   el.appendChild(umSep());
 
   // — Serveur (bot) —
-  const botOff = !isBotMode() ? "Avec le bot Hush uniquement (onglet Compte)" : !info ? "Chargement…" : info.error || null;
+  const botOff = S.demo ? "Membre fictif (mode démo)" : !info ? "Demande au bot…" : info.error || null;
   const p = (info && info.perms) || {};
   const no = (ok, label) => botOff || (ok ? null : `Tu n'as pas la permission « ${label} » sur ce serveur`);
   el.appendChild(umItem("Changer le pseudo", { off: botOff || (p.nick ? null : "Tu ne peux pas changer le pseudo de ce membre"), onClick: () => nickEditor(m) }));
@@ -189,6 +199,8 @@ function subMenu(anchor, sub) {
   const a = anchor.getBoundingClientRect(), r = sub.getBoundingClientRect();
   const left = a.right + 4 + r.width < innerWidth ? a.right + 4 : a.left - r.width - 4;
   sub.style.position = "fixed";
+  const s = parseFloat(UM.el.dataset.scale) || 1;
+  if (s < 1) { sub.style.transformOrigin = "0 0"; sub.style.transform = `scale(${s})`; }
   sub.style.left = left + "px";
   sub.style.top = Math.max(6, Math.min(a.top - 6, innerHeight - r.height - 6)) + "px";
 }

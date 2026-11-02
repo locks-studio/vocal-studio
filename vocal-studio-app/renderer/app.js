@@ -19,7 +19,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "space", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, squash: true, streamView: true, history: [] };
+  ring: "aura", pixel: false, camera: true, bgImage: null, musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [] };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -28,11 +28,22 @@ try {
 } catch {}
 // Chaque profil a ses propres listes (jamais partagées avec les valeurs par défaut)
 function normS() {
-  for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames"]) S[k] = { ...(S[k] || {}) };
+  for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames", "freePos"]) S[k] = { ...(S[k] || {}) };
   S.hiddenUsers = [...(S.hiddenUsers || [])];
   S.userPresets = [...(S.userPresets || [])];
   S.history = [...(S.history || [])];
   if (!["general", "avatars", "fond", "sound", "video", "account"].includes(S.tab)) S.tab = "general";
+  // Réglages retirés : on bascule sur ce qui les remplace
+  if (S.layout === "lyrics") S.layout = "strip";
+  if (S.ring === "energy") S.ring = "aura";
+  if (S.pixel) { S.font = "Silkscreen"; S.pixel = false; }
+  S.cards = false;
+  S.skin = "nuit";
+  if (["pulse", "stars", "topo"].includes(S.bg)) S.bg = "space";
+  if (S.bg === "auto") S.bg = "profile";
+  if (S.blurType === "tilt") S.blurType = "gaussian";
+  if (S.musicSource === "manual") S.musicSource = "files";
+  S.players = Math.max(1, Math.min(99, S.players || 7));
   // Fonds retirés
   if (["aurora", "particles", "vignette", "grid"].includes(S.bg)) S.bg = "space";
 }
@@ -64,7 +75,7 @@ function createTile(m) {
   const el = document.createElement("div");
   el.className = "tile";
   el.dataset.id = m.id;
-  el.innerHTML = `<div class="av-wrap"><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
+  el.innerHTML = `<div class="av-wrap"><div class="av-drop"></div><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
     <div class="bars">${"<i></i>".repeat(5)}</div>
     <div class="name"><span></span><span class="chips"></span></div>`;
   const t = { el, bars: [...el.querySelectorAll(".bars i")], chips: el.querySelector(".chips"), lvl: 0, seed: Math.random() * 10, data: {} };
@@ -92,7 +103,6 @@ function updateTile(t, m) {
       av.appendChild(anim);
     }
     t.el.querySelector(".name span").textContent = m.name;
-    t.el.title = m.name;
   }
   t.chips.innerHTML = m.deaf ? `<span class="chip">Sourdine</span>` : m.muted ? `<span class="chip">Muet</span>` : "";
   t.el.classList.toggle("muted", m.muted || m.deaf);
@@ -100,9 +110,12 @@ function updateTile(t, m) {
   t.el.classList.toggle("me", !!(state.me && m.id === state.me.id));
   t.el.classList.toggle("video", !!m.video);
   t.el.classList.toggle("live", !!m.stream);
+  t.el.classList.toggle("ghost", !!m.ghost);
   t.data = { ...m };
 }
 
+let tilesReady = false; // le premier affichage du salon ne joue pas l'animation d'arrivée
+setTimeout(() => (tilesReady = true), 1500);
 const PLAYER_HUES = [235, 8, 150, 45, 285, 192, 330, 100, 25, 260, 170, 350, 60, 210, 305, 125];
 let lastOrder = "";
 const lastSpoke = new Map();
@@ -122,12 +135,25 @@ function syncTiles() {
   const keep = new Set([...loudFirst, ...ordered.filter((m) => !recent(m))].slice(0, S.players).map((m) => m.id));
   const list = ordered.filter((m) => keep.has(m.id));
   const ids = new Set(list.map((m) => m.id));
-  for (const [id, t] of tiles) if (!ids.has(id)) { t.el.remove(); tiles.delete(id); }
+  for (const [id, t] of tiles) {
+    if (ids.has(id)) continue;
+    tiles.delete(id);
+    // Départ : l'avatar se rétracte et s'efface (pas pour un appelé qui décroche : il est remplacé tout de suite)
+    if (t.data.ghost || reduced) { t.el.remove(); continue; }
+    t.el.classList.add("leaving");
+    t.el.style.pointerEvents = "none";
+    setTimeout(() => t.el.remove(), 650);
+  }
   for (const m of list) {
     let t = tiles.get(m.id);
-    if (!t) { t = createTile(m); tiles.set(m.id, t); stage.appendChild(t.el); }
+    if (!t) {
+      t = createTile(m);
+      tiles.set(m.id, t);
+      stage.appendChild(t.el);
+      // Arrivée (après le premier affichage) : l'avatar surgit avec une onde
+      if (tilesReady && !m.ghost && !reduced) { t.el.classList.add("joining"); setTimeout(() => t.el.classList.remove("joining"), 900); }
+    }
     updateTile(t, m);
-    t.el.title = m.name + (S.notes[m.id] ? " · note : " + S.notes[m.id] : "");
   }
   const order = list.map((m) => m.id).join(",");
   if (order !== lastOrder) { lastOrder = order; list.forEach((m) => stage.appendChild(tiles.get(m.id).el)); }
@@ -348,6 +374,9 @@ window.studio.voice.onState((s) => {
   if (typeof homeOnState === "function" && !MINI) homeOnState(s);
   // Hors vocal : on te montre seul dans la scène (le fond flouté de l'accueil)
   if (!s.channel && s.me && !MINI) s = { ...s, members: [{ ...s.me, muted: false, deaf: false, speaking: false }] };
+  // Appel privé qui sonne : on montre la personne appelée, en transparence, tant qu'elle n'a pas décroché
+  else if (s.channel && s.channel.call && s.channel.callee && s.members.length <= 1 && !s.members.some((m) => m.id === s.channel.callee.id))
+    s = { ...s, members: [...s.members, { ...s.channel.callee, ghost: true, muted: false, deaf: false, speaking: false }] };
   state = s;
   syncTiles();
   renderChrome();
@@ -454,6 +483,7 @@ $("#demoToggle").onclick = () => setDemo(!S.demo);
 
 /* ——— Disposition ——— */
 let focusId = null, focusAt = 0;
+let lastL = null;
 let L = "strip"; // disposition affichée (la choisie, ou « stream » quand une vidéo est à l'image)
 function layout() {
   const feat = featureSource();
@@ -483,16 +513,27 @@ function layout() {
   }
   const ring = $("#ring");
   const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || L !== "orbit");
+  // Les dispositions animées (bande, cinéma, libre) placent les avatars à chaque image : on ne les remet
+  // à zéro que si la disposition change, sinon ils se retrouveraient empilés le temps d'une image
+  // (c'était le chevauchement pendant qu'on modifie un réglage)
+  const moving = ["strip", "cinema", "free"].includes(L);
+  const fresh = L !== lastL;
+  lastL = L;
   for (const t of tiles.values()) {
-    t.el.style.left = t.el.style.top = t.el.style.transform = "";
+    if (fresh || !moving) t.el.style.left = t.el.style.top = t.el.style.transform = "";
     t.el.classList.toggle("focus", L === "scene" && t.data.id === focusId);
   }
   $("#music").hidden = !(S.musicOn && hasMusic());
   placeMusic();
   $("#lyricsScene").hidden = L !== "lyrics";
-  for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
+  if (fresh || !moving) for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
   if (L === "cinema") {
     const c = Math.round(Math.max(40, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
+    stage.style.setProperty("--ctile", c + "px");
+  } else if (L === "free") {
+    // Taille pour que la grille de départ ne se chevauche pas (pseudo compris)
+    const cols = Math.ceil(Math.sqrt(n * 1.6)), rows = Math.ceil(n / cols);
+    const c = Math.round(Math.max(30, Math.min((W * 0.7) / cols * 0.6, (H * 0.6) / rows * 0.62, 240) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else if (L === "strip") {
     // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
@@ -593,7 +634,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -849,7 +890,7 @@ $("#soundsAdd").onclick = addSounds;
 $("#recBtn").onclick = () => toggleRecording();
 $("#musicAdd").onclick = addSounds;
 $("#volume").oninput = (e) => { S.volume = +e.target.value; if (Sounds.audio) Sounds.audio.volume = S.volume; apply(); };
-$("#presetMontage").onclick = () => {
+if (false) $("#presetMontage").onclick = () => {
   Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "space", glow: 85, names: false, cards: false, musicOn: true });
   apply();
 };
@@ -857,7 +898,7 @@ $("#presetBase").onclick = () => {
   Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "space", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
   apply();
 };
-$("#presetBande").onclick = () => {
+if (false) $("#presetBande").onclick = () => {
   Object.assign(S, { skin: "vert", accent: null, layout: "strip", shape: "round", ring: "solid", bg: "auto", glow: 75, names: true, pixel: true, cards: false, musicOn: false });
   apply();
 };
@@ -873,16 +914,18 @@ $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
 $("#ringColor").oninput = (e) => { S.ringColor = e.target.value; S.ringFrom = "custom"; apply(); };
+$("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "pixel", "cards", "hideMuted", "autoHide", "avShadow", "clipAudio", "squash", "streamView"];
+const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "squash", "streamView"];
 // Polices proposées (Google Fonts), chargées à la demande
-const FONTS = ["Syne", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
+const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
 FONTS.forEach((f) => { const o = document.createElement("option"); o.value = o.textContent = f; o.style.fontFamily = `"${f}"`; fontSel.appendChild(o); });
 fontSel.onchange = () => { S.font = fontSel.value; apply(); };
 function loadFont(f) {
-  if (!f || document.querySelector(`link[data-font="${f}"]`)) return;
+  // Silkscreen (police pixel) est déjà chargée par la page
+  if (!f || f === "Silkscreen" || document.querySelector(`link[data-font="${f}"]`)) return;
   const l = document.createElement("link");
   l.rel = "stylesheet";
   l.dataset.font = f;
@@ -893,6 +936,23 @@ function loadFont(f) {
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
 
 // Couleurs d'origine des anneaux dessinés (vert comme la vidéo pour l'Aura et les Vagues, bleu pour le feu et l'énergie)
+// L'interface (boutons, onglets, interrupteurs) reste lisible avec n'importe quel accent :
+// trop sombre, on l'éclaircit ; et le texte posé dessus est noir ou blanc selon sa clarté.
+function uiColors() {
+  const b = document.body;
+  const acc = S.accent || getComputedStyle(b).getPropertyValue("--accent").trim() || "#ffffff";
+  const m = /^#?([0-9a-f]{6})$/i.exec(acc);
+  if (!m) return;
+  let rgb = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  const lum = (c) => { const [r, g, bl] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * bl; };
+  // Sur le fond sombre de l'interface (~#14161e), il faut un contraste d'au moins 3:1
+  let k = 0;
+  while (lum(rgb) < 0.13 && k < 1) { k += 0.1; rgb = rgb.map((v) => Math.round(v + (255 - v) * 0.12)); }
+  const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
+  b.style.setProperty("--ui", hex);
+  b.style.setProperty("--on-ui", lum(rgb) > 0.45 ? "#111318" : "#ffffff");
+}
+
 // Couleur d'origine de tous les anneaux : le vert de Discord quand quelqu'un parle
 const DISCORD_GREEN = ["#23a559", "#8af0b0"];
 const RING_ORIGIN = { aura: DISCORD_GREEN, wave: DISCORD_GREEN, flame: DISCORD_GREEN, energy: DISCORD_GREEN, gradient: DISCORD_GREEN, solid: DISCORD_GREEN };
@@ -934,6 +994,7 @@ function apply() {
   b.style.setProperty("--radius", SHAPES[S.shape].r);
   b.style.setProperty("--clip", SHAPES[S.shape].c);
   if (S.accent) b.style.setProperty("--accent", S.accent); else b.style.removeProperty("--accent");
+  uiColors();
   applyRing();
   $("#ringColor").value = S.ringColor || (RING_ORIGIN[S.ring] ? RING_ORIGIN[S.ring][0] : S.accent || SKINS[S.skin].a);
   $("#ringCoverHint").hidden = S.ringFrom !== "cover";
@@ -970,6 +1031,7 @@ function apply() {
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
+  $("#freeHint").hidden = S.layout !== "free";
   $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
   loadBgImg();
   $("#bgMedia").style.filter = cv.style.filter;
@@ -988,8 +1050,14 @@ function apply() {
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
   $("#accent").value = S.accent || SKINS[S.skin].a;
   SWITCHES.forEach((k) => $("#" + k).setAttribute("aria-checked", S[k]));
-  b.classList.toggle("pixel", S.pixel);
+  // Pseudos : en haut ou en bas de l'avatar, et leur taille
+  b.classList.toggle("name-top", S.namePos !== "bottom");
+  b.classList.toggle("name-bottom", S.namePos === "bottom");
+  b.style.setProperty("--nk", S.nameSize);
+  b.classList.toggle("font-pixel", S.font === "Silkscreen");
+  $("#nameSize").value = S.nameSize; $("#nameSizeOut").textContent = Math.round(S.nameSize * 100) + " %";
   colors = null;
+  if (typeof ColorWheel !== "undefined") ColorWheel.sync();
   save();
   requestAnimationFrame(layout);
 }
@@ -1021,14 +1089,55 @@ function drawBg(t, energy) {
     ctx.fillRect(0, 0, w, h);
   } else if (["space", "stars", "topo", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
-  } else if (S.bg === "pulse") {
-    drawPulse(t, w, h, energy);
+  } else if (S.bg === "profile") {
+    drawProfileBg(t, w, h, energy);
   } else if (S.bg === "image") {
     // L'image est affichée par #bgMedia ; ici, juste un léger assombrissement des bords
     const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.8);
     v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.45)");
     ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
   }
+}
+
+/* ——— Fond « Profil » : la photo de profil de celui qui parle, en grand, très floutée ———
+   Pré-floutée une fois dans une petite image, puis agrandie (doux et pas coûteux). Fondu à chaque changement. */
+const profBg = { url: null, cur: null, prev: null, at: 0, cache: new Map() };
+function blurredAvatar(url) {
+  if (profBg.cache.has(url)) return profBg.cache.get(url);
+  const entry = { ready: false, cv: document.createElement("canvas") };
+  profBg.cache.set(url, entry);
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    entry.cv.width = 160; entry.cv.height = 90;
+    const x = entry.cv.getContext("2d");
+    x.filter = "blur(5px) saturate(1.35)";
+    const k = Math.max(160 / img.width, 90 / img.height) * 1.25;
+    x.drawImage(img, (160 - img.width * k) / 2, (90 - img.height * k) / 2, img.width * k, img.height * k);
+    entry.ready = true;
+  };
+  img.src = url;
+  return entry;
+}
+function drawProfileBg(t, w, h, energy) {
+  const ft = tiles.get(focusId);
+  const url = (ft && (ft.data.avatar || null)) || (state.me && state.me.avatar) || null;
+  if (url !== profBg.url) { profBg.prev = profBg.cur; profBg.cur = url ? blurredAvatar(url) : null; profBg.url = url; profBg.at = t; }
+  const fade = Math.min(1, (t - profBg.at) / 700);
+  const z = 1.08 + 0.03 * Math.sin(t * 0.00015 * S.speed) + energy * 0.03;
+  const draw = (e, a) => {
+    if (!e || !e.ready || a <= 0) return;
+    ctx.globalAlpha = a;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(e.cv, (w - w * z) / 2, (h - h * z) / 2, w * z, h * z);
+  };
+  draw(profBg.prev, 1 - fade);
+  draw(profBg.cur, fade);
+  ctx.globalAlpha = 1;
+  // Voile sombre pour que les avatars et les pseudos ressortent
+  const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.75);
+  v.addColorStop(0, "rgba(0,0,0,.35)"); v.addColorStop(1, "rgba(0,0,0,.75)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
 }
 
 /* ——— Fond « Son » : un cercle de barres qui suit le son, et des ondes qui partent à chaque coup fort ———
@@ -1095,6 +1204,84 @@ function hexA(col, a) {
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
   return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a)).toFixed(3)})`;
 }
+
+/* ——— Disposition « Libre » ———
+   Chaque membre est posé où tu veux (glisser-déposer), sur un plan en 3D.
+   La caméra fonctionne comme en Cinéma 3D : elle glisse et zoome vers celui qui parle, le plan pivote un peu. */
+const freeCam = { x: 0, y: 0, z: 1 };
+let freeDrag = null;
+function freePosOf(id, i, n) {
+  if (S.freePos[id]) return S.freePos[id];
+  // Pas encore placé : en grille au centre (chacun déplace ensuite qui il veut)
+  const cols = Math.ceil(Math.sqrt(Math.max(1, n) * 1.6)), rows = Math.ceil(n / cols);
+  const r = Math.floor(i / cols), inRow = r === rows - 1 ? n - r * cols : cols, c = i % cols;
+  return { x: inRow <= 1 ? 0 : (c / (inRow - 1) - 0.5) * 0.66 * (inRow / cols), y: rows <= 1 ? 0.06 : (r / (rows - 1) - 0.5) * 0.4 + 0.08 };
+}
+function free(t) {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const list = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
+  const cam = S.camera && !reduced && !freeDrag;
+  // Cible : le membre verrouillé (Ctrl+clic) ou celui qui parle ; personne : tout le monde au centre
+  const n = list.length;
+  const pos = new Map(list.map((x, i) => [x.data.id, freePosOf(x.data.id, i, n)]));
+  const speaking = Date.now() - (lastSpoke.get(focusId) || 0) < 2500;
+  const aimId = view.lock || (speaking ? focusId : null);
+  // La caméra se rapproche de celui qui parle sans perdre tout le groupe de vue (60 % du chemin)
+  const tp = cam && aimId && pos.get(aimId);
+  const aim = tp ? { x: tp.x * 0.6, y: tp.y * 0.6 } : { x: 0, y: 0 };
+  const zAim = cam && aimId ? 1.15 : 1;
+  const k = reduced ? 1 : 0.04 * S.speed;
+  if (!freeDrag) {
+    freeCam.x += (aim.x - freeCam.x) * k;
+    freeCam.y += (aim.y - freeCam.y) * k;
+    freeCam.z += (zAim - freeCam.z) * k;
+  }
+  const sp = reduced ? 0 : S.speed;
+  // Le plan pivote vers celui qu'on regarde, comme une caméra qui se tourne, plus une respiration lente
+  const yaw = cam ? -freeCam.x * 28 + 4 * Math.sin(t * 0.0003 * sp) : 0;
+  const pitch = cam ? freeCam.y * 18 + 3 * Math.sin(t * 0.00023 * sp) : 0;
+  for (const x of list) {
+    const p = pos.get(x.data.id);
+    const px = (p.x - freeCam.x) * W * freeCam.z;
+    const py = (p.y - freeCam.y) * H * freeCam.z;
+    const bob = 5 * Math.sin(t * 0.001 * sp + x.seed);
+    x.el.style.transform = `rotateX(${pitch.toFixed(2)}deg) rotateY(${yaw.toFixed(2)}deg) translate3d(${px.toFixed(1)}px, ${(py + bob).toFixed(1)}px, 0) scale(${freeCam.z.toFixed(3)})`;
+    x.el.style.zIndex = x === (freeDrag && freeDrag.tile) ? "50" : "";
+  }
+  // Comme ailleurs : aucun avatar coupé par le bord (il s'efface, et réapparaît en entier)
+  if (!freeDrag) hideClipped(list);
+}
+// Glisser un membre pour le placer
+stage.addEventListener("pointerdown", (e) => {
+  if (L !== "free" || e.button !== 0 || e.ctrlKey) return;
+  const el = e.target.closest(".tile");
+  const tile = el && [...tiles.values()].find((x) => x.el === el);
+  if (!tile) return;
+  e.preventDefault(); e.stopPropagation();
+  const list = [...tiles.values()];
+  const p = { ...freePosOf(tile.data.id, list.indexOf(tile), list.length) };
+  freeDrag = { tile, x: e.clientX, y: e.clientY, p };
+  el.setPointerCapture(e.pointerId);
+  el.classList.add("dragging");
+});
+stage.addEventListener("pointermove", (e) => {
+  if (!freeDrag) return;
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const p = {
+    x: Math.max(-0.48, Math.min(0.48, freeDrag.p.x + (e.clientX - freeDrag.x) / (W * freeCam.z))),
+    y: Math.max(-0.45, Math.min(0.45, freeDrag.p.y + (e.clientY - freeDrag.y) / (H * freeCam.z))),
+  };
+  S.freePos[freeDrag.tile.data.id] = p;
+});
+const endFreeDrag = () => {
+  if (!freeDrag) return;
+  freeDrag.tile.el.classList.remove("dragging");
+  freeDrag = null;
+  save();
+};
+stage.addEventListener("pointerup", endFreeDrag);
+stage.addEventListener("pointercancel", endFreeDrag);
+$("#freeReset").onclick = () => { S.freePos = {}; save(); };
 
 /* ——— Caméra du mode Cinéma 3D ———
    Les avatars sont posés sur un plan ; la caméra glisse vers celui qui parle,
@@ -1330,7 +1517,7 @@ function showToast(msg) {
 }
 
 mainEl.addEventListener("pointerdown", (e) => {
-  if (!camLayout() || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen")) return;
+  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen")) return;
   const tileEl = e.target.closest(".tile");
   if (e.ctrlKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
@@ -1343,6 +1530,7 @@ mainEl.addEventListener("pointerdown", (e) => {
     }
     return;
   }
+  if (L === "free") return; // en Libre, glisser déplace le membre (voir plus haut)
   e.preventDefault();
   view.dragging = true;
   view.px = e.clientX; view.py = e.clientY;
@@ -1435,6 +1623,7 @@ function frame(t) {
   }
   if (L === "cinema") cinema(t);
   if (L === "strip") strip(t);
+  if (L === "free") free(t);
   updateLoupes();
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }

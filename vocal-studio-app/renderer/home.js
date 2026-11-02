@@ -40,11 +40,11 @@ function renderHome() {
 }
 
 async function refreshHome() {
-  const isBot = state.mode === "bot";
-  if (isBot && Date.now() - Home.infoAt > 15_000) { Home.info = await window.studio.bot.info(); Home.infoAt = Date.now(); }
-  if (isBot && state.me && state.status === "ready") {
+  // Infos du bot et suggestions : aussi en connexion directe, si ton compte est lié au bot
+  if (Date.now() - Home.infoAt > 15_000) { Home.info = await window.studio.bot.info(); Home.infoAt = Date.now(); }
+  if (state.me && state.status === "ready") {
     try {
-      Home.data = await window.studio.voice.home();
+      Home.data = (await window.studio.voice.home()) || null;
       Home.dataAt = Date.now();
       noticeNewRooms(Home.data.rooms);
     } catch { /* bot injoignable : on garde les dernières données */ }
@@ -116,7 +116,7 @@ function drawHome() {
   const rooms = $("#homeRooms");
   rooms.textContent = "";
   const data = Home.data;
-  if (!isBot) rooms.append(h("p", "hint", "Les suggestions de vocaux marchent avec le bot Hush (Connexion › Avec le bot)."));
+  if (!isBot && !data) rooms.append(h("p", "hint", "Lie ton compte au bot Hush (Connexion › Avec le bot, puis Se connecter) pour voir les vocaux de tes serveurs."));
   else if (!data) rooms.append(h("p", "hint", state.status === "ready" ? "Chargement…" : "Lie ton compte pour voir les vocaux de tes serveurs."));
   else if (!data.rooms.length) rooms.append(h("p", "hint", "Personne avec Hush n'est en vocal sur tes serveurs pour l'instant."));
   for (const r of (data && data.rooms) || []) {
@@ -144,7 +144,7 @@ function drawHome() {
   // — Sur Hush —
   const ppl = $("#homePeople");
   ppl.textContent = "";
-  if (!isBot) ppl.append(h("p", "hint", "Avec le bot Hush, tu verras ici les membres de tes serveurs qui ont Hush."));
+  if (!isBot && !data) ppl.append(h("p", "hint", "Avec le bot Hush, tu verras ici les membres de tes serveurs qui ont Hush."));
   else if (!data) ppl.append(h("p", "hint", "…"));
   else if (!data.people.length) ppl.append(h("p", "hint", "Personne d'autre sur tes serveurs n'a encore Hush. Partage-le à tes potes !"));
   for (const p of (data && data.people) || []) {
@@ -203,13 +203,16 @@ function homeOnState(s) {
     }
     prevIds = ids;
   }
-  // Appel : tu es seul (ça sonne chez l'autre, ou tu attends que quelqu'un arrive)
-  const alone = !!(ch && s.status === "ready" && s.members.length <= 1);
-  document.body.classList.toggle("calling", alone);
+  // Appel privé qui sonne : la personne appelée s'affiche (en transparence) avec l'animation de sonnerie.
+  // Seul dans un salon de serveur : simple bandeau « en attente », sans sonnerie (ça ne sonne chez personne).
+  const alone = !!(ch && s.status === "ready" && s.members.filter((m) => !m.ghost).length <= 1);
+  const ringing = alone && !!ch.call;
+  document.body.classList.toggle("calling", ringing);
   $("#callBanner").hidden = !alone;
+  $("#callBanner").classList.toggle("ringing", ringing);
   if (alone) {
-    $("#callTitle").textContent = ch.call ? "Appel en cours…" : `Tu es seul dans #${chanLabel(ch)}`;
-    $("#callSub").textContent = ch.call ? "Ça sonne : Hush affichera l'autre dès qu'il décroche." : "En attente : Hush affichera chaque personne qui arrive.";
+    $("#callTitle").textContent = ringing ? `Appel à ${ch.callee ? ch.callee.name : "…"}` : `Tu es seul dans #${chanLabel(ch)}`;
+    $("#callSub").textContent = ringing ? "Ça sonne : Hush l'affichera dès qu'il décroche." : "En attente : chaque personne qui arrive s'affichera ici.";
   }
 }
 

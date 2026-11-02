@@ -154,7 +154,15 @@ class VoiceSession {
       try { guild = (await ipc.request("GET_GUILD", { guild_id: ch.guild_id })).name; } catch {}
     }
     // type 1 : appel privé, 3 : appel de groupe
-    this.channel = { id: ch.id, name: ch.name || "Appel privé", guild, call: ch.type === 1 || ch.type === 3 };
+    const call = ch.type === 1 || ch.type === 3;
+    let callee = null;
+    if (call) {
+      const meId = this.me && this.me.id;
+      const users = [...(ch.recipients || []), ...((ch.messages || []).map((m) => m.author))].filter((u) => u && u.id && u.id !== meId);
+      const u = users[0];
+      if (u) callee = { id: u.id, name: u.global_name || u.username || "?", avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=256` : null };
+    }
+    this.channel = { id: ch.id, name: ch.name || (callee ? callee.name : "Appel privé"), guild, call, callee };
     for (const vs of ch.voice_states || []) {
       const m = toMember(vs);
       this.members.set(m.id, m);
