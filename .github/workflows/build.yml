@@ -1,0 +1,56 @@
+# Fabrique Hush et le launcher 1999 pour Windows, Mac et Linux.
+# Une version Mac ne peut être fabriquée que sur un Mac : GitHub en prête un gratuitement le temps de la construction.
+# Lancement : onglet « Actions » du dépôt › « Construire » › « Run workflow » (ou en poussant un tag v1.2.3).
+# Résultat : les fichiers à récupérer dans « Artifacts », à mettre dans les dossiers dist/ puis à publier
+# avec `node launcher/tools/make-catalog.js` (voir launcher/README.md).
+name: Construire
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            hush: dist:win
+            launcher: dist:win
+          - os: macos-latest
+            hush: dist:mac
+            launcher: dist:mac
+          - os: ubuntu-latest
+            hush: dist:linux
+            launcher: dist:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Hush
+        working-directory: vocal-studio-app
+        run: |
+          npm ci
+          npm run ${{ matrix.hush }}
+
+      - name: Launcher 1999
+        working-directory: launcher
+        run: |
+          npm ci
+          npm run ${{ matrix.launcher }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builds-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            vocal-studio-app/dist/*.zip
+            launcher/dist/*.exe
+            launcher/dist/*.dmg
+            launcher/dist/*.AppImage

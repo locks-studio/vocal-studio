@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: file:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+<title>1999</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="titlebar">
+  <div class="brand"><b>1999</b><span>launcher</span></div>
+  <div class="tb-status" id="netStatus"></div>
+  <div class="winbtns">
+    <button class="wb" id="min" aria-label="Réduire"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+    <button class="wb" id="max" aria-label="Agrandir"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>
+    <button class="wb close" id="close" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- Rail : un bouton par logiciel -->
+  <nav class="rail" aria-label="Logiciels">
+    <div class="rail-apps" id="rail"></div>
+    <div class="rail-soon" title="D'autres logiciels arrivent bientôt"><span>+</span></div>
+    <div class="rail-bottom">
+      <button class="rail-btn" id="aboutBtn" title="À propos" aria-label="À propos"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+    </div>
+  </nav>
+
+  <!-- Page du logiciel sélectionné -->
+  <main class="page" id="page">
+    <div class="hero" id="hero">
+      <div class="hero-art" id="heroArt"></div>
+      <div class="hero-shade"></div>
+      <div class="hero-content">
+        <p class="eyebrow" id="appEyebrow">Logiciel</p>
+        <h1 id="appName"></h1>
+        <p class="tagline" id="appTagline"></p>
+
+        <div class="actions">
+          <button class="play" id="playBtn"><span id="playLabel">Installer</span></button>
+          <button class="icon-btn" id="folderBtn" title="Ouvrir le dossier d'installation" aria-label="Ouvrir le dossier d'installation"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+          <button class="icon-btn danger" id="uninstallBtn" title="Désinstaller" aria-label="Désinstaller"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+        </div>
+
+        <div class="progress" id="progress" hidden>
+          <div class="progress-top"><span id="progPhase">Téléchargement</span><span id="progPct">0 %</span></div>
+          <div class="bar"><i id="progBar"></i></div>
+          <div class="progress-bottom"><span id="progSize"></span><span id="progSpeed"></span></div>
+        </div>
+        <p class="status-line" id="statusLine"></p>
+      </div>
+    </div>
+
+    <aside class="side">
+      <section class="card">
+        <h2>Nouveautés</h2>
+        <p class="ver" id="notesVer"></p>
+        <ul class="notes" id="notes"></ul>
+      </section>
+      <section class="card">
+        <h2>Infos</h2>
+        <dl class="infos">
+          <dt>Version disponible</dt><dd id="infoVer">—</dd>
+          <dt>Installée</dt><dd id="infoInstalled">—</dd>
+          <dt>Taille</dt><dd id="infoSize">—</dd>
+          <dt>Système</dt><dd id="infoPlatform">—</dd>
+        </dl>
+        <p class="desc" id="appDesc"></p>
+      </section>
+    </aside>
+  </main>
+
+  <!-- Aucun logiciel (catalogue introuvable) -->
+  <div class="empty" id="empty" hidden>
+    <h2>Le catalogue est introuvable</h2>
+    <p id="emptyText">Vérifie ta connexion internet, puis réessaie.</p>
+    <button class="play small" id="retryBtn">Réessayer</button>
+  </div>
+</div>
+
+<div class="dialog" id="about" hidden>
+  <div class="card">
+    <h2>1999</h2>
+    <p>Le launcher de Locks. Il installe, met à jour et lance ses logiciels, sur Windows, Mac et Linux.</p>
+    <p class="muted" id="aboutVer"></p>
+    <button class="play small" id="aboutClose">Fermer</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

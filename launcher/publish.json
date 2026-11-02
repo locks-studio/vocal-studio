@@ -1,0 +1,37 @@
+{
+  "baseUrl": "https://TON-DOMAINE.fr/1999",
+  "launcher": {
+    "package": "package.json",
+    "page": "https://TON-DOMAINE.fr/1999/",
+    "artifacts": {
+      "win32-x64": ["dist/1999-Setup-{version}-win-x64.exe", "dist/1999-Setup-{version}-win-x64.zip"],
+      "darwin-arm64": "dist/1999-Setup-{version}-mac-arm64.dmg",
+      "darwin-x64": "dist/1999-Setup-{version}-mac-x64.dmg",
+      "linux-x64": "dist/1999-Setup-{version}-linux-x86_64.AppImage"
+    }
+  },
+  "apps": [
+    {
+      "id": "hush",
+      "name": "Hush",
+      "kind": "Overlay vocal Discord",
+      "tagline": "Tes vocaux Discord en version cinéma : anneaux animés, caméra qui suit celui qui parle, musique et overlay pour le stream.",
+      "description": "Hush affiche ton salon vocal Discord avec des avatars animés, une caméra 3D, la musique en cours et un overlay transparent pour OBS.",
+      "accent": "#23a559",
+      "package": "../vocal-studio-app/package.json",
+      "icon": "../vocal-studio-app/build/icon.png",
+      "banner": null,
+      "notes": [
+        "Page d'accueil, vue stream, disposition Libre et Verticale",
+        "Roue de couleurs avec pipette, fond Profil",
+        "Overlay transparent (Ctrl+O), clips (F9), menu clic droit"
+      ],
+      "artifacts": {
+        "win32-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-win-x64.zip", "exec": "Hush.exe" },
+        "darwin-arm64": { "file": "../vocal-studio-app/dist/Hush-{version}-mac-arm64.zip", "exec": "Hush.app" },
+        "darwin-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-mac-x64.zip", "exec": "Hush.app" },
+        "linux-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-linux-x64.zip", "exec": "hush" }
+      }
+    }
+  ]
+}
