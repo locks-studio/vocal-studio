@@ -27,6 +27,7 @@ class BotLink {
   set(state) { this.state = state; this.onState(state); }
   snapshot() { return this.state; }
   server() { return (this.store.getServer() || "").replace(/\/$/, ""); }
+  isLocal() { return /^https?:\/\/(localhost|127\.0\.0\.1)/.test(this.server()); }
 
   start() {
     this.stop();
@@ -75,7 +76,8 @@ class BotLink {
     clearInterval(this.loginTimer);
     // Le serveur du bot doit tourner, sinon le navigateur tomberait sur une page vide et on tournerait en rond
     if (!(await this.serverUp())) {
-      return this.set(this.blank("needs-login", `Le serveur du bot ne répond pas à ${this.server()}. Lance « Lancer le bot.bat » (dossier vocal-studio-bot), puis réessaie.`));
+      const hint = this.isLocal() ? "Lance « Lancer le bot.bat » (dossier vocal-studio-bot), puis réessaie." : "Vérifie ta connexion internet ou réessaie dans un moment.";
+      return this.set(this.blank("needs-login", `Le serveur du bot ne répond pas à ${this.server()}. ${hint}`));
     }
     const state = crypto.randomBytes(18).toString("base64url");
     this.openUrl(`${this.server()}/auth/login?state=${state}`);
@@ -96,7 +98,7 @@ class BotLink {
         // Serveur injoignable plusieurs fois de suite : il a été fermé pendant la connexion
         if (++misses >= 5) {
           clearInterval(this.loginTimer);
-          this.set(this.blank("needs-login", "Le serveur du bot s'est arrêté pendant la connexion. Relance « Lancer le bot.bat », puis réessaie."));
+          this.set(this.blank("needs-login", this.isLocal() ? "Le serveur du bot s'est arrêté pendant la connexion. Relance « Lancer le bot.bat », puis réessaie." : "Le serveur du bot ne répond plus. Réessaie dans un moment."));
         }
       }
     }, 2000);

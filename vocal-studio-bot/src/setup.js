@@ -69,7 +69,7 @@ function ask(question, { hidden = false, def = "" } = {}) {
   }
   console.log("   ✓ Client Secret valide.\n");
 
-  const publicUrl = await ask("3) Adresse du serveur (sur ton PC : http://localhost:8787) :", { def: env.PUBLIC_URL || "http://localhost:8787" });
+  const publicUrl = await ask("3) Adresse du serveur (en ligne : https://bot.tondomaine.fr ; sur ton PC : http://localhost:8787) :", { def: env.PUBLIC_URL || "http://localhost:8787" });
   const port = env.PORT || "8787";
 
   fs.writeFileSync(ENV, [

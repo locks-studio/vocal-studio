@@ -18,5 +18,7 @@ if not exist node_modules (
   echo Installation des dependances...
   call npm install
 )
+rem Tunnel Tailscale : rend le bot joignable par tes amis (adresse https://...ts.net)
+if exist "%ProgramFiles%\Tailscale\tailscale.exe" "%ProgramFiles%\Tailscale\tailscale.exe" funnel --bg 8787
 node src\index.js
 pause

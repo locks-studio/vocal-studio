@@ -330,7 +330,7 @@ async function renderSetup(card, screen) {
   // Mode bot : juste l'adresse du serveur Hush
   const botBox = el("div", { class: "setup-box" });
   botBox.append(el("p", {}, "Le bot Hush rejoint ton salon vocal et transmet qui parle. Ça marche pour tout le monde, il suffit que le bot soit invité sur le serveur."),
-    f("Adresse du serveur Hush", "cfgServer", cfg.botServer || "http://localhost:8787", { placeholder: "https://…" }));
+    f("Adresse du serveur Hush", "cfgServer", cfg.botServer, { placeholder: "https://…" }));
 
   // Mode direct (RPC) : réservé à toi et à tes testeurs
   const localBox = el("div", { class: "setup-box" });

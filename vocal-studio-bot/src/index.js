@@ -22,10 +22,12 @@ if (missing.length) {
 }
 
 // ——— Sessions des applis connectées (gardées sur disque pour survivre à un redémarrage) ———
-const SESSIONS_FILE = path.join(__dirname, "..", "sessions.json");
+// DATA_DIR : dossier qui survit aux mises à jour du code (sur le VPS : /var/lib/hush-bot)
+const SESSIONS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "sessions.json");
 let sessions = {};
 try { sessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8")); } catch {}
-const saveSessions = () => fs.writeFile(SESSIONS_FILE, JSON.stringify(sessions), () => {});
+// Écriture dans un fichier temporaire puis renommage : un arrêt brutal ne laisse jamais un fichier à moitié écrit
+const saveSessions = () => fs.writeFile(SESSIONS_FILE + ".tmp", JSON.stringify(sessions), (e) => { if (!e) fs.rename(SESSIONS_FILE + ".tmp", SESSIONS_FILE, () => {}); });
 const pending = new Map(); // state → { at, token?, error? }
 
 function page(res, title, text) {
@@ -107,7 +109,18 @@ function push(c) {
   if (s !== c.last) { c.last = s; c.ws.send(s); }
 }
 
+// Ping toutes les 30 s : garde la liaison ouverte derrière le proxy HTTPS et repère les applis disparues
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.alive === false) { ws.terminate(); continue; }
+    ws.alive = false;
+    ws.ping();
+  }
+}, 30_000).unref();
+
 wss.on("connection", (ws) => {
+  ws.alive = true;
+  ws.on("pong", () => { ws.alive = true; });
   const c = { ws, user: null, last: null };
   const authTimer = setTimeout(() => ws.close(4001, "auth"), 10_000);
   ws.on("message", async (raw) => {
@@ -153,7 +166,7 @@ bot.on("change", () => {
 
 // Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles
 const INVITE_PERMS = (1n << 10n) | (1n << 20n) | (1n << 22n) | (1n << 23n) | (1n << 24n) | (1n << 27n) | (1n << 28n);
-server.listen(PORT, () => {
+server.listen(PORT, process.env.HOST || undefined, () => {
   console.log(`Serveur Hush sur ${PUBLIC_URL} (port ${PORT})`);
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);
   const invite = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`;

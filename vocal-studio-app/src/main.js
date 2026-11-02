@@ -52,8 +52,11 @@ const store = {
 };
 
 // Mode bot : adresse du serveur Hush et session de l'appli sur ce serveur
+// Par défaut : le bot qui tourne sur le PC du créateur, ouvert à internet par un tunnel Tailscale,
+// pour qu'un ami qui installe Hush n'ait rien à régler (plus tard : un VPS)
+const DEFAULT_BOT_SERVER = "https://laptop-gl25nhmh.tail048932.ts.net";
 const botStore = {
-  getServer: () => data.botServer || "",
+  getServer: () => data.botServer || DEFAULT_BOT_SERVER,
   getToken: () => unseal(data.botToken),
   setToken: (t) => { if (t) data.botToken = seal(t); else delete data.botToken; persist(); },
 };
