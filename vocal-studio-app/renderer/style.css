@@ -758,3 +758,27 @@ body.name-bottom .stage.strip .name,body.name-bottom .stage.cinema .name,body.na
 .titlebar{text-shadow:0 1px 3px rgba(90,10,50,.45)}
 .titlebar .meta{color:rgba(255,255,255,.85)}
 .stage .name{text-shadow:0 1px 2px rgba(90,10,50,.6),0 0 12px rgba(90,10,50,.3)}
+.setup-adv summary{cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:8px}
+.setup-adv[open]{display:flex;flex-direction:column;gap:12px}
+
+/* ——— Accueil : onglets discrets en bas, panneau de verre au-dessus ——— */
+.home{grid-template-rows:1fr auto auto}
+.home-msg{grid-row:1;align-self:center;justify-self:center}
+.home-tabs{grid-row:3;justify-self:center;display:flex;gap:4px;padding:4px;border-radius:999px;margin-bottom:6px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.home-tabs button{border:0;background:none;color:rgba(255,255,255,.88);padding:7px 16px;border-radius:999px;font-weight:600;font-size:13px;
+  text-shadow:0 1px 2px rgba(90,10,50,.45);transition:background .2s,color .2s}
+.home-tabs button:hover{background:rgba(255,255,255,.2)}
+.home-tabs button[aria-pressed="true"]{background:rgba(255,255,255,.85);color:#3b1530;text-shadow:none}
+.home-panel{grid-row:2;justify-self:center;width:min(520px,100%);max-height:min(46vh,420px);overflow:auto;border-radius:22px;padding:16px;margin-bottom:10px;animation:pop .2s both}
+.home-panel[hidden]{display:none}
+.home-pane{display:flex;flex-direction:column;gap:10px}
+.home-pane[hidden]{display:none}
+.home-panel .hm-me h2{font-size:22px;margin:0 0 4px}
+.home-panel .hm-av.big{width:60px;height:60px}
+.home-panel .hm-line,.home-panel .hm-ptext b{color:var(--fg)}
+.home-panel .hint{margin:0}
+.home-panel{--fg:#3b1530;--muted:#80526f;--line:rgba(120,40,90,.16);--surface:rgba(255,255,255,.38);color:var(--fg)}
+.home-panel .hint,.home-panel small{color:var(--muted)}
+.home-panel .hm-person + .hm-person,.home-panel .hm-hist + .hm-hist{border-top-color:rgba(120,40,90,.12)}
+.home-panel .ghost{background:rgba(255,255,255,.5);border-color:rgba(255,255,255,.8);color:var(--fg)}

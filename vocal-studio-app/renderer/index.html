@@ -139,6 +139,17 @@
     <!-- Accueil sobre : toi seul en fond (flouté), et une phrase au centre -->
     <div class="home" id="home" hidden>
       <button class="home-msg" id="homeMsg" type="button"></button>
+      <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
+      <section class="home-panel glass" id="homePanel" hidden>
+        <div class="home-pane" data-ht="account" id="homeAccount"></div>
+        <div class="home-pane" data-ht="people" id="homePeople"></div>
+        <div class="home-pane" data-ht="history" id="homeHistory"></div>
+      </section>
+      <nav class="home-tabs" id="homeTabs" aria-label="Accueil">
+        <button type="button" data-ht="account">Connexion</button>
+        <button type="button" data-ht="people">Sur Hush</button>
+        <button type="button" data-ht="history">Historique</button>
+      </nav>
     </div>
 
     <!-- Écrans d'état (connexion, configuration, salon vide) -->

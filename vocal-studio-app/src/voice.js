@@ -62,11 +62,18 @@ class VoiceSession {
   async start() {
     this.stopped = false;
     clearTimeout(this.retry);
-    const { clientId } = this.store.getConfig();
-    if (!clientId) return this.setStatus("needs-config");
-
     this.reset();
     this.setStatus("connecting");
+    // Sans Client ID saisi (un ami), on prend celui de l'appli du serveur Hush
+    let clientId;
+    try { clientId = await this.clientId(); this.appId = clientId; }
+    catch (e) {
+      if (this.stopped) return;
+      this.setStatus("disconnected", e.message);
+      this.retry = setTimeout(() => this.start(), 5000);
+      return;
+    }
+    if (this.stopped) return;
     const ipc = new DiscordIPC(clientId);
     this.ipc = ipc;
     ipc.on("event", (evt, data) => this.onEvent(evt, data));
@@ -114,14 +121,40 @@ class VoiceSession {
     }
     // Première fois : Discord affiche une fenêtre « Autoriser Hush ? »
     this.setStatus("authorizing");
-    const { clientId, redirectUri } = this.store.getConfig();
+    const { redirectUri } = this.store.getConfig();
+    const clientId = await this.clientId();
     const { code } = await this.ipc.request("AUTHORIZE", { client_id: clientId, scopes: SCOPES });
     const t = await this.tokenRequest({ grant_type: "authorization_code", code, redirect_uri: redirectUri });
     await this.useToken(t.access_token);
   }
 
+  // Identifiant de l'appli Discord : celui saisi, sinon celui du serveur Hush (connexion directe d'un ami)
+  async clientId() {
+    const { clientId, botServer } = this.store.getConfig();
+    if (clientId) return clientId;
+    if (this._serverClientId) return this._serverClientId;
+    const info = await fetch(`${botServer.replace(/\/$/, "")}/info`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).catch(() => null);
+    if (!info || !info.clientId) throw new Error("Le serveur Hush ne répond pas : impossible de préparer la connexion directe.");
+    return (this._serverClientId = info.clientId);
+  }
+
   async tokenRequest(params) {
-    const { clientId, clientSecret } = this.store.getConfig();
+    const { clientSecret, botServer } = this.store.getConfig();
+    // Pas de secret sur ce PC (un ami) : c'est le serveur Hush qui fait l'échange, le secret n'en sort jamais
+    if (!clientSecret) {
+      const res = await fetch(`${botServer.replace(/\/$/, "")}/rpc/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params.grant_type === "refresh_token" ? params : { grant_type: params.grant_type, code: params.code }),
+        signal: AbortSignal.timeout(15000),
+      }).catch(() => null);
+      if (!res) throw new Error("Le serveur Hush ne répond pas (il doit tourner pour la première connexion).");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.access_token) throw new Error(`Connexion refusée (${res.status}) : ${body.error_description || body.error || "réessaie"}`);
+      this.store.setToken(body);
+      return body;
+    }
+    const clientId = await this.clientId();
     const res = await fetch(`${API}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -164,11 +197,18 @@ class VoiceSession {
     }
     this.channel = { id: ch.id, name: ch.name || (callee ? callee.name : "Appel privé"), guild, call, callee };
     for (const vs of ch.voice_states || []) {
+      if (this.isHushBot(vs)) continue;
       const m = toMember(vs);
       this.members.set(m.id, m);
     }
     for (const evt of CHANNEL_EVENTS) await ipc.subscribe(evt, { channel_id: channelId });
     this.emit();
+  }
+
+  // Le bot Hush (1999) dans le salon : on ne l'affiche pas (son compte a le même identifiant que l'appli)
+  isHushBot(vs) {
+    const u = (vs && vs.user) || {};
+    return !!this.appId && u.id === this.appId;
   }
 
   onEvent(evt, data) {
@@ -181,6 +221,7 @@ class VoiceSession {
         break;
       case "VOICE_STATE_CREATE":
       case "VOICE_STATE_UPDATE": {
+        if (this.isHushBot(data)) return;
         const m = toMember(data);
         const old = this.members.get(m.id);
         if (old) m.speaking = old.speaking && !m.muted;

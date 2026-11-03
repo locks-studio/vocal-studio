@@ -334,21 +334,22 @@ async function renderSetup(card, screen) {
 
   // Mode direct (RPC) : réservé à toi et à tes testeurs
   const localBox = el("div", { class: "setup-box" });
-  const intro = el("p");
-  intro.append("Réservé au propriétaire de l'appli Discord et à ses testeurs. Colle les identifiants de la page OAuth2 du ");
-  intro.append(el("a", { href: "https://discord.com/developers/applications", target: "_blank" }, "portail développeur Discord"), ".");
-  localBox.append(intro,
-    f("Client ID", "cfgId", cfg.clientId, { inputmode: "numeric", placeholder: "123456789012345678" }),
-    f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret ? "Déjà enregistré (laisse vide pour le garder)" : "Colle le secret ici" }),
+  // Rien à remplir : Hush lit le Discord ouvert sur ce PC, et le serveur Hush fait l'échange secret.
+  // Les identifiants ne servent qu'au propriétaire de l'appli (rangés dans « Avancé »).
+  const intro = el("p", {}, "Hush lit directement ton Discord ouvert sur ce PC : il voit tous tes vocaux, sur n'importe quel serveur, et tes appels. Rien à remplir. Il faut juste que le créateur de Hush t'ait ajouté comme testeur de l'appli (tu reçois une invitation Discord à accepter).");
+  const adv = el("details", { class: "setup-adv" });
+  adv.append(el("summary", {}, "Avancé (créateur de l'appli seulement)"),
+    f("Client ID", "cfgId", cfg.clientId, { inputmode: "numeric", placeholder: "Vide = celui du serveur Hush" }),
+    f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret ? "Déjà enregistré (laisse vide pour le garder)" : "Vide = échange par le serveur Hush" }),
     f("URL de redirection (la même que sur le portail)", "cfgRedirect", cfg.redirectUri));
+  localBox.append(intro, adv);
 
   function show() {
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === mode));
     botBox.hidden = mode !== "bot";
     localBox.hidden = mode !== "local";
     $("#cfgServer").required = mode === "bot";
-    $("#cfgId").required = mode === "local";
-    $("#cfgSecret").required = mode === "local" && !cfg.hasSecret;
+
   }
 
   form.append(el("h3", {}, "Connecter Discord"), seg, botBox, localBox);

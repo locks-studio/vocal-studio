@@ -6,7 +6,7 @@
    - « Sur Hush » : les membres de tes serveurs qui ont Hush (en ligne, en vocal) ;
    - tes derniers vocaux, et des raccourcis.
    Aussi ici : les arrivées / départs dans ton vocal, et l'écran d'appel quand tu es seul à attendre. */
-const Home = { forced: false, info: null, infoAt: 0, data: null, dataAt: 0, timer: null, rooms: new Set(), first: true };
+const Home = { tab: null, forced: false, info: null, infoAt: 0, data: null, dataAt: 0, timer: null, rooms: new Set(), first: true };
 
 function homeWanted() {
   if (MINI || S.demo || editingConfig) return false;
@@ -94,6 +94,81 @@ function drawHome() {
   b.classList.toggle("act", !!m.act);
   b.disabled = !m.act;
   b.onclick = m.act || null;
+  // Onglets : seul celui qui est ouvert est dessiné
+  document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => t.setAttribute("aria-pressed", t.dataset.ht === Home.tab));
+  $("#homePanel").hidden = !Home.tab;
+  document.querySelectorAll(".home-pane").forEach((p) => (p.hidden = p.dataset.ht !== Home.tab));
+  if (Home.tab === "account") drawAccount();
+  if (Home.tab === "people") drawPeople();
+  if (Home.tab === "history") drawHistory();
+}
+document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => (t.onclick = () => { Home.tab = Home.tab === t.dataset.ht ? null : t.dataset.ht; drawHome(); }));
+
+// — Connexion : ton compte, comment Hush est connecté, et l'état du bot —
+function drawAccount() {
+  const isBot = state.mode === "bot";
+  const info = Home.info;
+  const acc = $("#homeAccount");
+  acc.textContent = "";
+  const me = state.me;
+  const top = h("div", "hm-me");
+  top.append(avatarImg(me && me.avatar, "hm-av big"));
+  const who = h("div");
+  who.append(h("h2", "", me ? me.name : "Pas connecté"));
+  const lines = h("div", "hm-status");
+  const line = (ok, text) => { const p = h("p", "hm-line " + (ok === true ? "ok" : ok === false ? "err" : "warn")); p.append(h("i", "dot"), text); lines.append(p); };
+  if (isBot) line(state.status === "ready", state.status === "ready" ? "Connecté avec le bot Hush" : state.status === "needs-login" ? "Compte Discord pas encore lié au bot" : (STATUS[state.status] || STATUS.idle)[1]);
+  else line(state.status === "ready", state.status === "ready" ? "Connexion directe à Discord" : (STATUS[state.status] || STATUS.idle)[1]);
+  if (!info || info.unreachable) line(false, "Serveur du bot injoignable");
+  else line(info.online, info.online ? `Bot ${info.name || ""} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
+  who.append(lines);
+  top.append(who);
+  acc.append(top);
+  const btns = h("div", "hm-actions");
+  const b = (label, cls, fn) => { const x = h("button", cls, label); x.onclick = fn; btns.append(x); };
+  if (isBot && state.status === "needs-login") b("Lier mon compte", "cta small", () => window.studio.bot.login());
+  if (info && info.invite) b(`Inviter ${info.name || "le bot"}`, "ghost small", () => window.open(info.invite));
+  b("Modifier la connexion", "ghost small", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); });
+  acc.append(btns);
+}
+
+// — Sur Hush : les membres de tes serveurs qui ont Hush (en ligne, en vocal) —
+function drawPeople() {
+  const ppl = $("#homePeople");
+  ppl.textContent = "";
+  const data = Home.data;
+  if (!data) ppl.append(h("p", "hint", "Lie ton compte au bot Hush pour voir qui, sur tes serveurs, a Hush."));
+  else if (!data.people.length) ppl.append(h("p", "hint", "Personne d'autre sur tes serveurs n'a encore Hush."));
+  for (const p of (data && data.people) || []) {
+    const row = h("div", "hm-person" + (p.online ? " online" : ""));
+    const avw = h("div", "hm-pav");
+    avw.append(avatarImg(p.avatar), h("i", "st"));
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", p.name), h("small", "", p.voice ? `🔊 ${p.voice} · ${p.guild}` : p.online ? "Hush ouvert" : `Hors ligne · ${p.guild}`));
+    row.append(avw, t);
+    if (p.voice && p.channelId) {
+      const j = h("button", "ghost small", "Rejoindre");
+      j.onclick = () => window.studio.voice.openChannel(p.guildId, p.channelId);
+      row.append(j);
+    }
+    ppl.append(row);
+  }
+}
+
+// — Historique : tes derniers vocaux —
+function drawHistory() {
+  const hist = $("#homeHistory");
+  hist.textContent = "";
+  if (!S.history.length) hist.append(h("p", "hint", "Tes vocaux apparaîtront ici."));
+  for (const v of S.history.slice(0, 10)) {
+    const row = h("div", "hm-hist");
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", (v.call ? "📞 " : "🔊 ") + v.name), h("small", "", [v.guild, ago(v.at), dur(v.dur)].filter(Boolean).join(" · ")));
+    const faces = h("div", "hm-mini-faces");
+    for (const m of v.members.slice(0, 5)) { const i = avatarImg(m.avatar); i.title = m.name; faces.append(i); }
+    row.append(t, faces);
+    hist.append(row);
+  }
 }
 
 /* — Historique des vocaux, arrivées / départs, écran d'appel — */

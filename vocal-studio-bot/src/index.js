@@ -14,6 +14,9 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || "http://localhost:8787").replace(/
 const PORT = Number(process.env.PORT || 8787);
 const REDIRECT = `${PUBLIC_URL}/auth/callback`;
 const API = "https://discord.com/api/v10";
+// Connexion directe (RPC) des amis : le serveur fait l'échange du code à leur place, avec le secret qu'il est seul à connaître.
+// Doit être une des URL de redirection déclarées sur le portail Discord (la même que la connexion directe du propriétaire).
+const RPC_REDIRECT = (process.env.RPC_REDIRECT_URI || PUBLIC_URL).replace(/\/$/, "");
 
 const missing = ["DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET"].filter((k) => !process.env[k]);
 if (missing.length) {
@@ -87,14 +90,53 @@ const server = http.createServer((req, res) => {
       name: u ? u.username : null,
       avatar: u ? u.displayAvatarURL({ size: 128, extension: "png" }) : null,
       servers: bot.client.isReady() ? bot.client.guilds.cache.size : 0,
+      clientId: DISCORD_CLIENT_ID,
       invite: `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`,
     }));
+  } else if (url.pathname === "/rpc/token" && req.method === "POST") {
+    rpcToken(req, res);
   } else if (url.pathname === "/") {
     page(res, "Hush", "Le serveur du bot tourne.");
   } else {
     res.writeHead(404).end();
   }
 });
+
+// ——— Échange de jeton pour la connexion directe (RPC) d'un ami ———
+// Hush reçoit un code de SON Discord (fenêtre « Autoriser Hush ? »), nous l'envoie, et nous le transformons en jeton
+// avec le Client Secret, qui ne quitte jamais ce serveur. On ne garde rien : le jeton est renvoyé à Hush, c'est tout.
+const rpcHits = new Map(); // ip → [horodatages] (20 demandes par minute au plus)
+function rpcToken(req, res) {
+  const ip = req.socket.remoteAddress || "?";
+  const now = Date.now();
+  const hits = (rpcHits.get(ip) || []).filter((t) => now - t < 60_000);
+  hits.push(now);
+  rpcHits.set(ip, hits);
+  const reply = (status, body) => { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(body)); };
+  if (hits.length > 20) return reply(429, { error: "Trop de demandes, réessaie dans une minute." });
+  let raw = "";
+  req.on("data", (d) => { raw += d; if (raw.length > 4096) req.destroy(); });
+  req.on("end", async () => {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return reply(400, { error: "Demande illisible." }); }
+    const params = msg.grant_type === "refresh_token" && typeof msg.refresh_token === "string"
+      ? { grant_type: "refresh_token", refresh_token: msg.refresh_token }
+      : msg.grant_type === "authorization_code" && typeof msg.code === "string"
+        ? { grant_type: "authorization_code", code: msg.code, redirect_uri: RPC_REDIRECT }
+        : null;
+    if (!params) return reply(400, { error: "Demande invalide." });
+    try {
+      const r = await fetch(`${API}/oauth2/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_id: DISCORD_CLIENT_ID, client_secret: DISCORD_CLIENT_SECRET, ...params }),
+      });
+      const body = await r.json().catch(() => ({}));
+      reply(r.status, body);
+    } catch (e) { reply(502, { error: `Discord injoignable : ${e.message}` }); }
+  });
+}
+setInterval(() => { const now = Date.now(); for (const [k, v] of rpcHits) if (v.every((t) => now - t > 60_000)) rpcHits.delete(k); }, 60_000).unref();
 
 // Les demandes de connexion non terminées expirent après 10 minutes
 setInterval(() => { for (const [k, p] of pending) if (Date.now() - p.at > 600_000) pending.delete(k); }, 60_000).unref();

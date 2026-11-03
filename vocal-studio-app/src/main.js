@@ -49,6 +49,8 @@ const store = {
     clientId: data.clientId || "",
     clientSecret: unseal(data.clientSecret) || "",
     redirectUri: data.redirectUri || "http://localhost",
+    // Sans Client Secret, la connexion directe passe par le serveur du bot pour l'échange du code (cas des amis)
+    botServer: data.botServer || DEFAULT_BOT_SERVER,
   }),
   getToken: () => unseal(data.token),
   setToken: (t) => { data.token = seal(t); persist(); },
