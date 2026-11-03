@@ -183,7 +183,7 @@ function renderChrome() {
   $("#coreName").textContent = ch ? chanLabel(ch) : "Hush";
   $("#guild").textContent = ch && ch.guild ? ch.guild : "";
   $("#count").textContent = ch ? `${state.members.length} dans le salon` : "";
-  document.title = ch ? `${chanLabel(ch)} · Hush` : "Hush";
+  if (!MINI) document.title = ch ? `${chanLabel(ch)} · Hush` : "Hush";
 
   const inCall = !!ch;
   ["#mic", "#deaf", "#leave"].forEach((id) => ($(id).disabled = !inCall));
@@ -1737,6 +1737,66 @@ $("#miniBtn").onclick = openMini;
 $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
+
+
+/* ——— Linux : mode d'affichage et règle de fenêtre pour l'overlay ———
+   Sous Wayland, une appli ne peut pas se placer elle-même au-dessus des autres ni choisir sa position :
+   c'est le gestionnaire de fenêtres qui décide. On donne donc la bonne règle pour le bureau détecté. */
+const LINUX_RULES = {
+  niri: {
+    file: "~/.config/niri/config.kdl",
+    text: `// Hush : l'overlay flotte au-dessus des autres fenêtres, sans fond ni bordure (transparence)
+window-rule {
+    match title="^Hush · mini$"
+    open-floating true
+    draw-border-with-background false
+    focus-ring { off; }
+    border { off; }
+    shadow { off; }
+}`,
+    tip: "Les fenêtres flottantes de niri restent au-dessus. Pour la déplacer : Mod + glisser.",
+  },
+  hyprland: {
+    file: "~/.config/hypr/hyprland.conf",
+    text: `# Hush : l'overlay flotte, reste au-dessus sur tous les bureaux, sans bordure ni flou
+windowrulev2 = float, title:^(Hush · mini)$
+windowrulev2 = pin, title:^(Hush · mini)$
+windowrulev2 = noborder, title:^(Hush · mini)$
+windowrulev2 = noblur, title:^(Hush · mini)$
+windowrulev2 = noshadow, title:^(Hush · mini)$`,
+    tip: "Pour la déplacer : Super + glisser.",
+  },
+  sway: {
+    file: "~/.config/sway/config",
+    text: `# Hush : l'overlay flotte et reste visible sur tous les bureaux
+for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`,
+    tip: "Pour la déplacer : Mod + glisser.",
+  },
+};
+(async () => {
+  const info = await window.studio.linux.info();
+  if (!info || MINI) return;
+  $("#linuxGroup").hidden = false;
+  const seg = $("#linuxModeSeg");
+  const show = (m) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === m));
+  show(info.mode);
+  seg.querySelectorAll("button").forEach((b) => (b.onclick = async () => {
+    await window.studio.linux.setMode(b.dataset.v);
+    show(b.dataset.v);
+    showToast("Changement pris en compte au prochain lancement (lancer-hush.sh)");
+  }));
+  const rule = LINUX_RULES[info.desktop];
+  if (rule) {
+    $("#linuxRuleLabel").textContent = `Règle pour l'overlay · ${info.desktop} (à ajouter dans ${rule.file})`;
+    $("#linuxRule").textContent = rule.text;
+    $("#linuxRuleHint").textContent = rule.tip + (info.mode !== "wayland" ? " Pour la transparence, choisis aussi l'affichage Wayland." : "");
+    $("#linuxCopy").onclick = () => { window.studio.voice.copy(rule.text); showToast("Règle copiée : colle-la dans " + rule.file); };
+  } else {
+    $("#linuxRule").hidden = $("#linuxCopy").hidden = true;
+    $("#linuxRuleLabel").textContent = `Bureau : ${info.desktop}`;
+    $("#linuxRuleHint").textContent = "Sur KDE et GNOME, l'overlay reste au-dessus tout seul (bouton épingle).";
+  }
+})();
 
 /* ——— Démarrage ——— */
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage

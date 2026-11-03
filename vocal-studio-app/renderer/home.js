@@ -94,6 +94,10 @@ function drawHome() {
   b.classList.toggle("act", !!m.act);
   b.disabled = !m.act;
   b.onclick = m.act || null;
+  // La raison exacte quand ça ne marche pas (message de Discord ou du serveur), en petit sous la phrase
+  const why = ["disconnected", "error", "needs-login"].includes(state.status) && state.error ? state.error : "";
+  $("#homeWhy").hidden = !why;
+  $("#homeWhy").textContent = why;
   // Onglets : seul celui qui est ouvert est dessiné
   document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => t.setAttribute("aria-pressed", t.dataset.ht === Home.tab));
   $("#homePanel").hidden = !Home.tab;

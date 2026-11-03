@@ -64,6 +64,10 @@ contextBridge.exposeInMainWorld("studio", {
     end: (id) => ipcRenderer.invoke("clip:end", id),
     show: (file) => ipcRenderer.invoke("clip:show", file),
   },
+  linux: {
+    info: () => ipcRenderer.invoke("linux:info"),
+    setMode: (m) => ipcRenderer.invoke("linux:mode", m),
+  },
   win: {
     minimize: () => ipcRenderer.invoke("win:minimize"),
     maximize: () => ipcRenderer.invoke("win:maximize"),

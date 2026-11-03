@@ -2,18 +2,42 @@
 // Discord écoute sur un tube nommé \\?\pipe\discord-ipc-N (Windows) ou un socket Unix.
 // Chaque trame = opcode (int32 LE) + longueur (int32 LE) + JSON.
 const net = require("net");
+const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
 const { randomUUID } = require("crypto");
 
 const OP = { HANDSHAKE: 0, FRAME: 1, CLOSE: 2, PING: 3, PONG: 4 };
 
-// Emplacements possibles du tube : Windows, ou socket Unix (Mac, Linux ; sur Linux, Discord installé
-// en Flatpak ou en Snap le range dans un sous-dossier)
-function pipePaths(i) {
-  if (process.platform === "win32") return [`\\\\?\\pipe\\discord-ipc-${i}`];
-  const base = (process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || process.env.TMP || "/tmp").replace(/\/$/, "");
-  return ["", "app/com.discordapp.Discord", "app/com.discordapp.DiscordCanary", "snap.discord", "snap.discord-canary"].map((d) => path.join(base, d, `discord-ipc-${i}`));
+// Dossiers où Discord peut ranger son socket sur Mac / Linux
+function unixRoots() {
+  const uid = typeof process.getuid === "function" ? process.getuid() : null;
+  const roots = [process.env.XDG_RUNTIME_DIR, uid !== null ? `/run/user/${uid}` : null, process.env.TMPDIR, process.env.TMP, process.env.TEMP, "/tmp"];
+  return [...new Set(roots.filter(Boolean).map((r) => r.replace(/\/$/, "")))];
+}
+
+// Cherche tous les sockets « discord-ipc-N » : à la racine de ces dossiers ou un peu plus bas.
+// Discord en Flatpak (app/com.discordapp.Discord, ou .flatpak/<id>/xdg-run selon la version), en Snap (snap.discord)…
+// L'emplacement change d'une installation à l'autre : on le trouve plutôt que de le deviner.
+function findUnixSockets() {
+  const found = [];
+  const walk = (dir, depth) => {
+    let list;
+    try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of list) {
+      const p = path.join(dir, e.name);
+      if (/^discord-ipc-\d+$/.test(e.name)) found.push(p);
+      else if (depth > 0 && e.isDirectory() && !e.isSymbolicLink()) walk(p, depth - 1);
+    }
+  };
+  for (const r of unixRoots()) walk(r, 3);
+  // Le n° 0 d'abord (c'est le premier Discord lancé), puis 1, 2…
+  return [...new Set(found)].sort((a, b) => Number(a.match(/(\d+)$/)[1]) - Number(b.match(/(\d+)$/)[1]));
+}
+
+function pipePaths() {
+  if (process.platform === "win32") return Array.from({ length: 10 }, (_, i) => `\\\\?\\pipe\\discord-ipc-${i}`);
+  return findUnixSockets();
 }
 
 function connectTo(p) {
@@ -35,12 +59,17 @@ class DiscordIPC extends EventEmitter {
 
   async connect() {
     let lastErr;
-    for (let i = 0; i < 10 && !this.sock; i++) {
-      for (const p of pipePaths(i)) {
-        try { this.sock = await connectTo(p); break; } catch (e) { lastErr = e; }
-      }
+    const paths = pipePaths();
+    for (const p of paths) {
+      try { this.sock = await connectTo(p); break; } catch (e) { lastErr = e; }
     }
-    if (!this.sock) throw new Error("Discord n'est pas ouvert (aucun tube discord-ipc trouvé). " + (lastErr ? lastErr.code : ""));
+    if (!this.sock) {
+      // Message qui dit ce qui a été cherché, pour comprendre tout de suite où ça coince
+      const where = process.platform === "win32" ? "" : paths.length
+        ? ` Trouvé mais refusé : ${paths.join(", ")} (${lastErr ? lastErr.code : "?"}).`
+        : ` Cherché dans : ${unixRoots().join(", ")}.`;
+      throw new Error("Discord n'est pas ouvert (aucun tube discord-ipc trouvé)." + where);
+    }
 
     this.sock.on("data", (d) => this._onData(d));
     this.sock.on("close", () => this._onClose("Connexion à Discord fermée."));

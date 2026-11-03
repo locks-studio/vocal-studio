@@ -12,9 +12,18 @@ out = os.path.join(root, "dist", f"Hush-{version}-linux-x64.tar.gz")
 
 SCRIPT = """#!/bin/sh
 # Lance Hush avec les options utiles sous Linux.
-# Si la fenêtre reste noire ou ne s'ouvre pas : ./lancer-hush.sh --disable-gpu
+# Le mode d'affichage se choisit dans Hush (Paramètres > Vidéo > Linux) et s'applique au lancement suivant :
+#   x11     : le plus sûr (XWayland), par défaut
+#   wayland : Wayland natif, pour la vraie transparence de l'overlay (niri, Hyprland, Sway)
+#   nogpu   : sans accélération graphique, si la fenêtre reste noire
 cd "$(dirname "$0")"
-exec ./hush --no-sandbox --ozone-platform=x11 "$@"
+MODE=$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/Hush/linux-display" 2>/dev/null)
+case "$MODE" in
+  wayland) FLAGS="--ozone-platform=wayland" ;;
+  nogpu)   FLAGS="--ozone-platform=x11 --disable-gpu" ;;
+  *)       FLAGS="--ozone-platform=x11" ;;
+esac
+exec ./hush --no-sandbox $FLAGS "$@"
 """
 
 def executable(name):

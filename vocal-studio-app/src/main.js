@@ -6,6 +6,7 @@ const { VoiceSession } = require("./voice");
 const { BotLink } = require("./botlink");
 const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 const { registerScheme, SoundLibrary } = require("./sounds");
+const { UnixMedia } = require("./media-unix");
 
 registerScheme();
 const ICON = path.join(__dirname, "..", "build", "icon.png");
@@ -99,7 +100,23 @@ function startPcMedia() {
   });
   mediaProc.on("exit", () => { mediaProc = null; });
 }
-function stopPcMedia() { if (mediaProc) mediaProc.kill(); mediaProc = null; }
+function stopPcMedia() {
+  if (mediaProc) mediaProc.kill();
+  mediaProc = null;
+  if (unixMedia) unixMedia.stop();
+  unixMedia = null;
+}
+// Linux et Mac : même source « Ce PC », lue autrement (MPRIS sous Linux, Spotify / Musique sous Mac)
+let unixMedia = null;
+function startUnixMedia() {
+  sendMusic({ status: "connected", error: null, track: null });
+  unixMedia = new UnixMedia((r) => {
+    if (r.error) return sendMusic({ status: "connected", error: r.error, track: null });
+    const t = r.track;
+    sendMusic({ status: "connected", error: null, track: t && t.title ? { ...t, at: t.updated || Date.now() } : null });
+  });
+  unixMedia.start();
+}
 
 function setMusicSource(src) {
   musicSource = src;
@@ -107,7 +124,7 @@ function setMusicSource(src) {
   spotify.stop();
   if (src === "pc") {
     if (process.platform === "win32") startPcMedia();
-    else sendMusic({ status: "error", error: "La lecture de « Ce PC » ne marche que sous Windows.", track: null });
+    else startUnixMedia();
   } else if (src === "spotify") spotify.start();
   // « Mes sons » et « À la main » sont gérés directement par l'interface
   else sendMusic({ status: "off", error: null, track: null });
@@ -140,6 +157,8 @@ function toggleMini() {
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   mini.setAlwaysOnTop(true, "floating");
+  // Titre fixe « Hush · mini » : sous Linux, les règles des gestionnaires de fenêtres (niri, Hyprland, Sway) le ciblent
+  mini.on("page-title-updated", (e) => e.preventDefault());
   mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
   mini.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mini.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -273,6 +292,7 @@ ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
 ipcMain.handle("music:control", (_e, cmd) => {
   if (!["toggle", "next", "prev"].includes(cmd)) return;
   if (musicSource === "pc" && mediaProc) mediaProc.stdin.write(cmd + "\n");
+  else if (musicSource === "pc" && unixMedia) return unixMedia.control(cmd);
   else if (musicSource === "spotify") return spotify.control(cmd);
 });
 ipcMain.handle("sounds:list", () => sounds.list());
@@ -302,6 +322,23 @@ ipcMain.handle("win:close", (e) => winOf(e).close());
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
 ipcMain.handle("win:mini", () => toggleMini());
+
+// ——— Linux : quel bureau, et quel mode d'affichage (lu par lancer-hush.sh au démarrage) ———
+const linuxModeFile = () => path.join(app.getPath("userData"), "linux-display");
+ipcMain.handle("linux:info", () => {
+  if (process.platform !== "linux") return null;
+  const e = process.env;
+  const desktop = e.NIRI_SOCKET ? "niri" : e.HYPRLAND_INSTANCE_SIGNATURE ? "hyprland" : e.SWAYSOCK ? "sway"
+    : /kde/i.test(e.XDG_CURRENT_DESKTOP || "") ? "kde" : /gnome/i.test(e.XDG_CURRENT_DESKTOP || "") ? "gnome" : (e.XDG_CURRENT_DESKTOP || "autre").toLowerCase();
+  let mode = "x11";
+  try { mode = fs.readFileSync(linuxModeFile(), "utf8").trim() || "x11"; } catch {}
+  return { desktop, session: e.XDG_SESSION_TYPE || "", mode, wayland: !!e.WAYLAND_DISPLAY };
+});
+ipcMain.handle("linux:mode", (_e, mode) => {
+  if (process.platform !== "linux" || !["x11", "wayland", "nogpu"].includes(mode)) return;
+  fs.mkdirSync(app.getPath("userData"), { recursive: true });
+  fs.writeFileSync(linuxModeFile(), mode + "\n");
+});
 // Déplacement / taille à la main (mini-fenêtre) : suit le curseur, et peut sortir de l'écran
 let winDrag = null;
 ipcMain.on("win:drag", (e, phase, mode) => {

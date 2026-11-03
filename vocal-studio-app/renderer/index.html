@@ -139,6 +139,7 @@
     <!-- Accueil sobre : toi seul en fond (flouté), et une phrase au centre -->
     <div class="home" id="home" hidden>
       <button class="home-msg" id="homeMsg" type="button"></button>
+      <p class="home-why" id="homeWhy" hidden></p>
       <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
       <section class="home-panel glass" id="homePanel" hidden>
         <div class="home-pane" data-ht="account" id="homeAccount"></div>
@@ -356,6 +357,17 @@
             <div class="row"><span>Toujours au premier plan</span><button class="switch" id="setPin" role="switch" aria-label="Toujours au premier plan"></button></div>
             <div class="row"><span>Plein écran (F11)</span><button class="ghost" id="setFull">Basculer</button></div>
             <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
+          </div>
+          <!-- Linux seulement : chaque bureau gère les fenêtres à sa façon -->
+          <div class="group" id="linuxGroup" hidden>
+            <h4 class="sec">Linux</h4>
+            <div class="label">Affichage (au prochain lancement)</div>
+            <div class="seg" id="linuxModeSeg"><button data-v="x11">X11</button><button data-v="wayland">Wayland</button><button data-v="nogpu">Sans accélération</button></div>
+            <p class="hint">X11 : le plus sûr. Wayland : la vraie transparence de l'overlay sur niri, Hyprland, Sway. Sans accélération : si la fenêtre reste noire. Relance Hush avec lancer-hush.sh après un changement.</p>
+            <div class="label" id="linuxRuleLabel">Règle pour l'overlay</div>
+            <pre class="linux-rule" id="linuxRule"></pre>
+            <div class="row" style="justify-content:flex-start;gap:8px"><button class="ghost" id="linuxCopy">Copier la règle</button></div>
+            <p class="hint" id="linuxRuleHint"></p>
           </div>
         </div>
 
