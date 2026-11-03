@@ -25,8 +25,9 @@ const Rings = (() => {
     if (!tile.fxCheck || --tile.fxCheck <= 0) {
       tile.fxCheck = 30;
       const w = cv.parentElement.offsetWidth || 100;
-      const dpr = Math.min(devicePixelRatio || 1, 2);
-      const px = Math.min(720, Math.round(w * 2 * dpr));
+      // Économie : moitié moins de pixels à dessiner (l'anneau est flou et lumineux, ça ne se voit presque pas)
+      const dpr = window.HUSH_ECO ? 1 : Math.min(devicePixelRatio || 1, 2);
+      const px = Math.min(window.HUSH_ECO ? 400 : 720, Math.round(w * (window.HUSH_ECO ? 1.6 : 2) * dpr));
       if (px !== tile.fxSize) { cv.width = cv.height = tile.fxSize = px; }
     }
     return cv;

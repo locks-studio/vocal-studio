@@ -18,9 +18,9 @@ html,body{height:100%;margin:0}
 /* Fond translucide : la fenêtre est en verre (Acrylic / Vibrancy), on ne fait que la teinter de rose */
 /* Fond presque invisible : la fenêtre est en verre (le bureau flouté par le système), juste un voile rose clair */
 body{color:var(--ink);font:14px/1.45 var(--f-body);overflow:hidden;user-select:none;display:flex;flex-direction:column;
-  background:linear-gradient(160deg,rgba(255,240,248,.10) 0%,rgba(255,226,240,.05) 50%,rgba(255,232,244,.10) 100%)}
-/* Linux : pas de flou du système, on remet un fond rose plein derrière le verre */
-body.no-os-glass{background:linear-gradient(160deg,#ffeef6 0%,#fbd9ea 45%,#f6cfe4 100%)}
+  background:transparent;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+/* Fenêtre transparente : pas de taches de couleur sur le bureau, juste le verre des panneaux */
+.blobs{display:none}
 button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--pink-deep);outline-offset:2px}
 
@@ -38,7 +38,7 @@ button{font:inherit;color:inherit;cursor:pointer}
    un fin liseré lumineux. C'est l'épaisseur du verre qu'on voit, pas une couleur. */
 /* Façon iPhone (Liquid Glass) : quasi transparent, presque pas de flou, le fond se tord sur les bords,
    un liseré très lumineux en haut à gauche, plus discret en bas à droite, et une ombre douce sous le verre */
-.glass{position:relative;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 50%,rgba(255,255,255,.06));
+.glass{position:relative;background:linear-gradient(135deg,rgba(255,244,250,.30),rgba(255,236,246,.16) 50%,rgba(255,240,248,.24));
   border:1px solid rgba(255,255,255,.4);
   box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.95),inset -1px -1px 0 rgba(255,255,255,.45),
     inset 0 10px 22px -14px rgba(255,255,255,.75),inset 0 -14px 26px -16px rgba(255,255,255,.4),0 10px 30px rgba(120,30,80,.10);
@@ -53,7 +53,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* Barre de titre */
 .titlebar{position:relative;z-index:2;height:44px;flex:none;display:flex;align-items:center;gap:16px;padding:0 8px 0 18px;-webkit-app-region:drag;
-  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.04));border-bottom:1px solid rgba(255,255,255,.45);
+  background:linear-gradient(180deg,rgba(255,244,250,.42),rgba(255,240,248,.22));border-bottom:1px solid rgba(255,255,255,.45);border-radius:16px 16px 0 0;
   -webkit-backdrop-filter:blur(6px) saturate(1.6);backdrop-filter:blur(6px) saturate(1.6)}
 .brand{display:flex;align-items:baseline;gap:8px}
 .brand b{font:800 18px var(--f-display);letter-spacing:.02em;color:var(--pink-deep);text-shadow:0 1px 0 #fff,0 0 18px rgba(255,120,190,.45)}

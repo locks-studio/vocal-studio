@@ -162,6 +162,11 @@ function toggleMini() {
   mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
   mini.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mini.webContents.on("will-navigate", (e) => e.preventDefault());
+  mini.once("ready-to-show", () => {
+    if (!mini) return;
+    mini.setBackgroundColor("#00000000");
+    if (process.platform === "win32" && mini.setBackgroundMaterial) mini.setBackgroundMaterial("none"); // jamais d'Acrylic derrière
+  });
   mini.on("closed", () => { mini = null; send("win:mini", false); });
   return true;
 }
@@ -224,7 +229,16 @@ ipcMain.handle("usage:top", async () => {
   catch { return null; }
 });
 
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
+app.on("second-instance", () => {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show(); win.focus();
+});
+
 app.whenReady().then(() => {
+  if (!gotLock) return;
   load();
   loadUsage();
   setInterval(tickUsage, 60_000);
@@ -374,8 +388,9 @@ ipcMain.handle("linux:info", () => {
   const e = process.env;
   const desktop = e.NIRI_SOCKET ? "niri" : e.HYPRLAND_INSTANCE_SIGNATURE ? "hyprland" : e.SWAYSOCK ? "sway"
     : /kde/i.test(e.XDG_CURRENT_DESKTOP || "") ? "kde" : /gnome/i.test(e.XDG_CURRENT_DESKTOP || "") ? "gnome" : (e.XDG_CURRENT_DESKTOP || "autre").toLowerCase();
-  let mode = "x11";
-  try { mode = fs.readFileSync(linuxModeFile(), "utf8").trim() || "x11"; } catch {}
+  let mode = "";
+  try { mode = fs.readFileSync(linuxModeFile(), "utf8").trim(); } catch {}
+  if (!mode) mode = e.WAYLAND_DISPLAY ? "wayland" : "x11"; // même choix que lancer-hush.sh
   return { desktop, session: e.XDG_SESSION_TYPE || "", mode, wayland: !!e.WAYLAND_DISPLAY };
 });
 ipcMain.handle("linux:mode", (_e, mode) => {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: vsmedia: https://cdn.discordapp.com https://i.scdn.co https://cdn-images.dzcdn.net https://e-cdns-images.dzcdn.net; media-src 'self' blob: vsmedia:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
 <title>Hush</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" media="print" id="gfonts" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="cards">
@@ -141,6 +141,11 @@
     <!-- Accueil sobre : toi seul en fond (flouté), et une phrase au centre -->
     <div class="home" id="home" hidden>
       <button class="home-msg" id="homeMsg" type="button"></button>
+      <!-- Sur le côté : tes salons les plus utilisés, et tes favoris -->
+      <aside class="home-side glass" id="homeSide">
+        <nav class="hs-tabs" aria-label="Salons"><button type="button" data-hs="top">Top salons</button><button type="button" data-hs="fav">Favoris</button></nav>
+        <div class="hs-list" id="homeSideList"></div>
+      </aside>
       <p class="home-why" id="homeWhy" hidden></p>
       <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
       <section class="home-panel glass" id="homePanel" hidden>
@@ -405,12 +410,17 @@
             <div class="row"><span>Plein écran (F11)</span><button class="ghost" id="setFull">Basculer</button></div>
             <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
           </div>
+          <h4 class="sec">Performances</h4>
+          <div class="group">
+            <div class="seg" id="perfSeg" style="grid-template-columns:repeat(3,1fr)"><button data-v="auto">Auto</button><button data-v="eco">Économie</button><button data-v="max">Maximum</button></div>
+            <p class="hint" id="perfHint">Économie : mêmes fonctions, mais le verre est plus simple, le fond et les anneaux sont dessinés moins souvent et en plus petit. Pour les PC modestes et Linux. Auto : économie sous Linux et sur les petites machines.</p>
+          </div>
           <!-- Linux seulement : chaque bureau gère les fenêtres à sa façon -->
           <div class="group" id="linuxGroup" hidden>
             <h4 class="sec">Linux</h4>
             <div class="label">Affichage (au prochain lancement)</div>
-            <div class="seg" id="linuxModeSeg"><button data-v="x11">X11</button><button data-v="wayland">Wayland</button><button data-v="nogpu">Sans accélération</button></div>
-            <p class="hint">X11 : le plus sûr. Wayland : la vraie transparence de l'overlay sur niri, Hyprland, Sway. Sans accélération : si la fenêtre reste noire. Relance Hush avec lancer-hush.sh après un changement.</p>
+            <div class="seg" id="linuxModeSeg"><button data-v="wayland">Wayland</button><button data-v="x11">X11</button><button data-v="nogpu">Sans accélération</button></div>
+            <p class="hint">Wayland (par défaut sur niri, Hyprland, Sway, GNOME, KDE) : la vraie transparence de l'overlay. X11 : si Wayland pose souci. Sans accélération : si la fenêtre reste noire. Relance Hush avec lancer-hush.sh après un changement.</p>
             <div class="label" id="linuxRuleLabel">Règle pour l'overlay</div>
             <pre class="linux-rule" id="linuxRule"></pre>
             <div class="row" style="justify-content:flex-start;gap:8px"><button class="ghost" id="linuxCopy">Copier la règle</button></div>

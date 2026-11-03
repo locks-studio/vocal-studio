@@ -106,6 +106,7 @@ function drawHome() {
   if (Home.tab === "people") drawPeople();
   if (Home.tab === "history") drawHistory();
   if (Home.tab === "top") drawTop();
+  drawSide();
 }
 $("#homeStudio").onclick = () => setSandbox(true);
 document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => (t.onclick = () => { Home.tab = Home.tab === t.dataset.ht ? null : t.dataset.ht; drawHome(); }));
@@ -201,6 +202,50 @@ function drawHistory() {
   }
 }
 
+// — Sur le côté : tes salons les plus utilisés (temps passé, nombre de fois) et tes favoris —
+function addChanStat(c, ms) {
+  const s = S.chanStats[c.id] || { id: c.id, ms: 0, count: 0 };
+  Object.assign(s, { guildId: c.guildId || s.guildId || null, name: c.name, guild: c.guild, call: !!c.call, last: Date.now() });
+  s.ms += ms; s.count += 1;
+  S.chanStats[c.id] = s;
+  save();
+}
+// Premier lancement de cette version : on part de l'historique déjà là
+if (!Object.keys(S.chanStats).length && S.history.length) {
+  for (const v of [...S.history].reverse()) addChanStat({ id: v.id, guildId: v.guildId, name: v.name, guild: v.guild, call: v.call }, v.dur || 0);
+}
+const isFav = (id) => S.favChans.some((f) => f.id === id);
+function toggleFav(c) {
+  if (isFav(c.id)) S.favChans = S.favChans.filter((f) => f.id !== c.id);
+  else S.favChans = [...S.favChans, { id: c.id, guildId: c.guildId || null, name: c.name, guild: c.guild, call: !!c.call }];
+  save();
+  drawSide();
+}
+function drawSide() {
+  const tab = S.homeSide === "fav" ? "fav" : "top";
+  document.querySelectorAll("#homeSide [data-hs]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.hs === tab));
+  const box = $("#homeSideList");
+  box.textContent = "";
+  const list = tab === "fav"
+    ? S.favChans.map((f) => ({ ...f, ...(S.chanStats[f.id] || {}), name: (S.chanStats[f.id] || f).name }))
+    : Object.values(S.chanStats).sort((a, b) => b.ms - a.ms).slice(0, 10);
+  if (!list.length) box.append(h("p", "hint", tab === "fav" ? "Touche l'étoile d'un salon pour l'ajouter ici." : "Tes salons apparaîtront ici après quelques vocaux."));
+  list.forEach((c, i) => {
+    const row = h("div", "hs-row");
+    if (tab === "top") row.append(h("span", "hs-pos", String(i + 1)));
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", (c.call ? "📞 " : "🔊 ") + c.name), h("small", "", [c.guild, c.ms ? dur(c.ms) : null, c.count ? `${c.count} fois` : null].filter(Boolean).join(" · ")));
+    const star = h("button", "hs-star" + (isFav(c.id) ? " on" : ""), isFav(c.id) ? "★" : "☆");
+    star.title = isFav(c.id) ? "Retirer des favoris" : "Ajouter aux favoris";
+    star.onclick = (e) => { e.stopPropagation(); toggleFav(c); };
+    row.append(t, star);
+    row.title = `Rejoindre ${c.name}`;
+    row.onclick = () => joinVoice(c.id, c.guildId, c.name);
+    box.append(row);
+  });
+}
+document.querySelectorAll("#homeSide [data-hs]").forEach((b) => (b.onclick = () => { S.homeSide = b.dataset.hs; save(); drawSide(); }));
+
 // — Classement : les plus gros utilisateurs de Hush en vocal (heures comptées par le serveur du bot) —
 const Top = { list: null, at: 0, me: null };
 async function drawTop() {
@@ -237,6 +282,7 @@ function homeOnState(s) {
         ...S.history.filter((x) => !(x.id === curCall.id && Math.abs(x.at - curCall.start) < 1000))].slice(0, 12);
       save();
     }
+    if (d > 60_000) addChanStat(curCall, d);
     curCall = null; prevIds = null;
   }
   if (ch && s.status === "ready") {

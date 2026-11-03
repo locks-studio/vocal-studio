@@ -300,7 +300,7 @@ const clampL = (v) => Math.max(0, Math.min(100, v));
 function drawMosaic(c) {
   const cv = document.querySelector("#musicMosaic");
   const box = cv.getBoundingClientRect();
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = window.HUSH_ECO ? 1 : Math.min(devicePixelRatio || 1, 2);
   cv.width = Math.max(1, box.width * dpr);
   cv.height = Math.max(1, box.height * dpr);
   const x = cv.getContext("2d");
@@ -348,10 +348,10 @@ function drawMosaic(c) {
 function drawWave(t, playing) {
   const cv = document.querySelector("#musicWave");
   if (!cv || document.querySelector("#music").hidden) return;
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = window.HUSH_ECO ? 1 : Math.min(devicePixelRatio || 1, 2);
   // La mosaïque est redessinée si la carte a changé de taille (fenêtre redimensionnée, carte réaffichée)
   const mos = document.querySelector("#musicMosaic");
-  if (Math.abs(mos.width - mos.clientWidth * Math.min(devicePixelRatio || 1, 2)) > 2) drawMosaic(cardColor);
+  if (Math.abs(mos.width - mos.clientWidth * dpr) > 2) drawMosaic(cardColor);
   const w = cv.clientWidth * dpr, h = cv.clientHeight * dpr;
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const x = cv.getContext("2d");

@@ -510,7 +510,7 @@ body.mini .app:hover .mini-bar{opacity:1}
 /* Mode transparent : plus de fond ni de cadre, il ne reste que les avatars */
 body.mini-clear .app{background:transparent;border-color:transparent}
 body.mini-clear #bg,body.mini-clear .bg-tilt,body.mini-clear .bg-grain{display:none}
-body.mini-clear .app:hover{border-color:rgba(255,255,255,.18)}
+body.mini-clear .app:hover{border-color:transparent}
 
 /* ——— Caméra, partage d'écran, clips ——— */
 .av video.selfcam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:1}
@@ -887,3 +887,39 @@ body.glitch-snow .tile.glitching .av::before{content:"";position:absolute;inset:
 .bg-snow{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;mix-blend-mode:screen;
   background:repeating-linear-gradient(rgba(0,0,0,.35) 0 1px,transparent 1px 3px),var(--noise) 0 0/96px 96px;animation:snowTv .09s steps(3) infinite}
 @keyframes snowTv{0%{background-position:0 0,0 0}33%{background-position:0 0,-37px 19px}66%{background-position:0 0,23px -41px}100%{background-position:0 0,11px 5px}}
+
+/* ——— Économie : le verre sans déformation SVG (le plus coûteux), pas de zoom lent sur les fonds en image ——— */
+body.eco .glass,body.eco .settings{-webkit-backdrop-filter:blur(12px) saturate(1.5)!important;backdrop-filter:blur(12px) saturate(1.5)!important}
+body.eco.mini .glass{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.eco .bg-media img,body.eco .bg-media video{animation:none;transform:scale(1.03)}
+body.eco .stage.strip .tile{will-change:auto}
+
+/* Overlay transparent : rien ne floute ce qu'il y a derrière (seuls les avatars et les pseudos restent) */
+body.mini-clear *:not(.mini-bar):not(.mini-bar *){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html:has(body.mini-clear),body.mini-clear,body.mini-clear .app,body.mini-clear .main,body.mini-clear .stage{background:transparent!important;box-shadow:none}
+
+/* ——— Mini-fenêtre : aucun verre, même la barre de boutons du survol ——— */
+body.mini .mini-bar,body.mini .mini-bar.glass{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(30,12,26,.55)!important;border-color:transparent!important;box-shadow:none!important}
+body.mini .mini-bar.glass::before,body.mini .mini-bar.glass::after{display:none}
+body.mini #miniClear{display:none}
+
+/* ——— Accueil : salons sur le côté (top et favoris) ——— */
+.home-side{position:absolute;left:clamp(12px,2vw,28px);top:50%;translate:0 -50%;width:min(260px,32vw);max-height:62vh;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:20px;z-index:2;
+  --fg:#3b1530;--muted:#80526f;color:var(--fg)}
+.hs-tabs{display:flex;gap:4px;padding:3px;border-radius:999px;background:rgba(255,255,255,.3)}
+.hs-tabs button{flex:1;border:0;background:none;color:var(--fg);padding:6px 8px;border-radius:999px;font-weight:600;font-size:12.5px}
+.hs-tabs button[aria-pressed="true"]{background:rgba(255,255,255,.9)}
+.hs-list{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
+.hs-list .hint{margin:6px 4px;color:var(--muted);font-size:12.5px}
+.hs-row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:12px;cursor:pointer;transition:background .15s}
+.hs-row:hover{background:rgba(255,255,255,.45)}
+.hs-row .hm-ptext{min-width:0;flex:1}
+.hs-row .hm-ptext b,.hs-row .hm-ptext small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-row .hm-ptext small{color:var(--muted)}
+.hs-pos{width:18px;flex:none;text-align:center;font-weight:800;font-size:12px;color:var(--muted)}
+.hs-star{border:0;background:none;font-size:17px;line-height:1;color:var(--muted);padding:2px 4px;border-radius:8px;flex:none}
+.hs-star.on{color:#e0a100}
+.hs-star:hover{background:rgba(255,255,255,.5)}
+@media (max-width:760px){.home-side{display:none}}
+.home:has(.home-side){padding-left:calc(min(260px,32vw) + clamp(30px,4vw,56px))}
+@media (max-width:760px){.home:has(.home-side){padding-left:clamp(14px,3vw,40px)}}

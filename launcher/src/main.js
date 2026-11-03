@@ -14,7 +14,12 @@ const CATALOG_URL = (arg && arg.slice(10)) || process.env.CATALOG_1999 || CONFIG
 if (!app.requestSingleInstanceLock()) app.quit();
 if (process.platform === "win32") app.setAppUserModelId("fr.locks.launcher1999");
 // Linux : même chose pour le launcher lui-même (sinon il ne s'ouvre pas sur Ubuntu 24.04+)
-if (process.platform === "linux") app.commandLine.appendSwitch("no-sandbox");
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("no-sandbox");
+  // Transparence de la fenêtre : Wayland natif si dispo, et les « visuels transparents » sous X11 / XWayland
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+  app.commandLine.appendSwitch("enable-transparent-visuals");
+}
 
 let win, installer;
 const cacheFile = () => path.join(app.getPath("userData"), "catalog-cache.json");
@@ -55,11 +60,9 @@ async function getCatalog() {
 }
 
 function createWindow() {
-  // Vrai verre : la fenêtre laisse voir le bureau derrière, flouté par le système
-  // (Acrylic sur Windows 11, Vibrancy sur Mac). Ailleurs : fond rose translucide dessiné par la page.
-  const glass = process.platform === "win32" ? { backgroundMaterial: "acrylic", backgroundColor: "#00000000" }
-    : process.platform === "darwin" ? { vibrancy: "under-window", visualEffectState: "active", backgroundColor: "#00000000", transparent: true }
-    : { backgroundColor: "#fbe2ee" };
+  // Fenêtre transparente : le bureau se voit NET derrière (aucun flou du système), seuls les panneaux de verre
+  // sont dessinés par la page — comme l'overlay transparent de Hush.
+  const glass = { transparent: true, backgroundColor: "#00000000", hasShadow: false };
   win = new BrowserWindow({
     width: 1180, height: 720, minWidth: 900, minHeight: 560,
     frame: false, title: "1999", ...glass,

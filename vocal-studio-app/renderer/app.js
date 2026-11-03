@@ -19,7 +19,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb" };
+  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top" };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -28,7 +28,8 @@ try {
 } catch {}
 // Chaque profil a ses propres listes (jamais partagées avec les valeurs par défaut)
 function normS() {
-  for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames", "freePos"]) S[k] = { ...(S[k] || {}) };
+  for (const k of ["notes", "userGain", "userVol", "localMuted", "chanNames", "freePos", "chanStats"]) S[k] = { ...(S[k] || {}) };
+  S.favChans = [...(S.favChans || [])];
   S.hiddenUsers = [...(S.hiddenUsers || [])];
   S.userPresets = [...(S.userPresets || [])];
   S.history = [...(S.history || [])];
@@ -81,7 +82,7 @@ function createTile(m) {
   el.innerHTML = `<div class="av-wrap"><div class="av-drop"></div><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
     <div class="bars">${"<i></i>".repeat(5)}</div>
     <div class="name"><span></span><span class="chips"></span></div>`;
-  const t = { el, bars: [...el.querySelectorAll(".bars i")], chips: el.querySelector(".chips"), lvl: 0, seed: Math.random() * 10, data: {} };
+  const t = { el, bars: [...el.querySelectorAll(".bars i")], chips: el.querySelector(".chips"), lvl: 0, seed: Math.random() * 10, ringPhase: tiles.size % 2, data: {} };
   el.querySelector(".av").style.setProperty("--h", hue(m.id));
   return t;
 }
@@ -738,7 +739,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -1133,6 +1134,12 @@ function apply() {
   b.classList.toggle("av-outline-auto", !!S.avOutline && !!S.avOutlineAuto);
   $("#avOutlineAutoRow").hidden = !S.avOutline;
   b.classList.toggle("glitch-snow", S.glitchStyle === "snow");
+  // Mode économie : mêmes fonctions, rendu plus léger (voir ECO)
+  ECO = S.perf === "eco" || (S.perf !== "max" && AUTO_ECO);
+  window.HUSH_ECO = ECO;
+  b.classList.toggle("eco", ECO);
+  $("#perfHint").dataset.on = ECO ? "1" : "0";
+  if (bgScale() !== bgScaleNow) sizeCanvas();
   for (const m of ["pop", "fade", "glitch", "none"]) b.classList.toggle("join-" + m, (S.joinAnim || "pop") === m);
   $("#glitchAmt").value = S.glitchAmt; $("#glitchAmtOut").textContent = Math.round(S.glitchAmt * 100) + " %";
   $("#glitchAmt").disabled = $("#glitchVoice").disabled = S.glitch === "off";
@@ -1192,15 +1199,43 @@ function apply() {
 }
 
 /* ——— Fond animé ——— */
+/* ——— Économie ———
+   Auto : sous Linux (souvent une puce graphique intégrée) et sur les petites machines.
+   Rien n'est retiré : le verre passe en simple flou (sans la déformation SVG, très coûteuse), le fond est dessiné
+   une image sur deux et moins fin (et en demi-résolution quand il est flouté, ça ne se voit pas), les anneaux et
+   l'onde du lecteur une image sur deux, sans le zoom lent des fonds en image. */
+const AUTO_ECO = /Linux/.test(navigator.userAgent) || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+let ECO = AUTO_ECO, frameN = 0, bgScaleNow = 0;
 const cv = $("#bg"), ctx = cv.getContext("2d");
+// Résolution du fond : pleine (écran HD/retina), 1 en économie, moitié si le fond est bien flouté (invisible à l'œil)
+function bgScale() {
+  const d = ECO ? 1 : Math.min(devicePixelRatio || 1, 2);
+  return (S.bgBlur || 0) >= 10 && S.blurType !== "tilt" ? d * 0.5 : d;
+}
 function sizeCanvas() {
-  const d = Math.min(devicePixelRatio || 1, 2);
-  cv.width = cv.clientWidth * d; cv.height = cv.clientHeight * d;
+  const d = (bgScaleNow = bgScale());
+  cv.width = Math.max(1, Math.round(cv.clientWidth * d)); cv.height = Math.max(1, Math.round(cv.clientHeight * d));
   ctx.setTransform(d, 0, 0, d, 0, 0);
 }
+// Carte graphique saturée (fond GIF lourd, puce Intel…) : le canvas du fond peut être « perdu » et rester noir.
+// On le récupère dès que possible au lieu de garder un fond noir.
+cv.addEventListener("contextlost", (e) => e.preventDefault());
+cv.addEventListener("contextrestored", () => { colors = null; sizeCanvas(); });
 addEventListener("resize", sizeCanvas);
+// Contexte perdu plus de 2 s (il ne revient pas tout seul) : on remet un canvas neuf à la place
+let lostSince = 0;
+function bgLost() {
+  if (!lostSince) lostSince = performance.now();
+  if (performance.now() - lostSince < 2000) return;
+  lostSince = 0;
+  // Une seule fois par lancement : si la carte graphique perd encore le fond, on ne boucle pas
+  try { if (sessionStorage.getItem("hush-bg-reloaded")) return; sessionStorage.setItem("hush-bg-reloaded", "1"); } catch { return; }
+  console.warn("Hush : fond perdu par la carte graphique, rechargement de l'affichage");
+  location.reload(); // tout le rendu repart proprement (les réglages sont gardés)
+}
 function drawBg(t, energy) {
   const w = cv.clientWidth, h = cv.clientHeight;
+  if (w && Math.abs(cv.width - Math.round(w * bgScaleNow)) > 1) sizeCanvas();
   if (!colors) {
     const cs = getComputedStyle(document.body);
     colors = { a: cs.getPropertyValue("--accent").trim(), b: cs.getPropertyValue("--accent2").trim() };
@@ -1822,7 +1857,7 @@ function frame(t) {
       const s = tile.lvl * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.018 * S.speed + i * 1.3 + tile.seed)));
       b.style.transform = `scaleY(${Math.max(0.12, s)})`;
     });
-    if (L !== "discord") Rings.draw(tile, S.ring, t, ringCol);
+    if (L !== "discord" && (!ECO || (frameN + tile.ringPhase) % 2 === 0)) Rings.draw(tile, S.ring, t, ringCol);
     energy += tile.lvl;
     if (speaking && (!loud || tile.lvl > loud.lvl)) loud = tile;
   }
@@ -1861,13 +1896,15 @@ function frame(t) {
     $("#musicProgress").style.width = (pos / len) * 100 + "%";
     $("#musicNow").textContent = fmtTime(pos);
     $("#musicLen").textContent = "-" + fmtTime(len - pos);
-    drawWave(t, lt ? lt.playing : S.musicSource === "manual");
+    if (!ECO || frameN % 2 === 0) drawWave(t, lt ? lt.playing : S.musicSource === "manual");
   }
   if (L === "lyrics") lyricsFrame(lt, pos * 1000);
   const names = state.members.filter(heard).map((m) => maskName(m.name));
   $("#talkers").textContent = names.length ? names.slice(0, 3).join(" & ") + (names.length > 1 ? " parlent" : " parle") : "personne ne parle";
-  drawBg(t, Math.min(1, energy / 2));
-  glitchFrame(t, Math.min(1, energy / 2));
+  frameN++;
+  if (!ECO || frameN % 2 === 0) {
+    if (ctx.isContextLost && ctx.isContextLost()) bgLost(); else { drawBg(t, Math.min(1, energy / 2)); glitchFrame(t, Math.min(1, energy / 2)); }
+  }
   maskNames(t);
   requestAnimationFrame(frame);
 }
@@ -1999,7 +2036,7 @@ function miniLook() {
   S.layout = vertical ? "column" : "strip";
   S.players = 99; S.camera = false; S.zoom = 1;
   S.panel = false; S.musicOn = false;
-  const clear = miniGet("hush-mini-clear") === "1";
+  const clear = true; // l'overlay est toujours entièrement transparent : seuls les avatars et les pseudos
   document.body.classList.toggle("mini-clear", clear);
   $("#miniClear").classList.toggle("on", clear);
   $("#miniLayout").classList.toggle("on", vertical);
@@ -2123,6 +2160,7 @@ for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`
 })();
 
 /* ——— Démarrage ——— */
+$("#gfonts").media = "all"; // polices chargées sans bloquer le premier affichage
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage
 loadBgImg();
 apply();
