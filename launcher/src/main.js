@@ -92,6 +92,14 @@ ipcMain.handle("app:install", async (_e, entry) => {
   return installer.state;
 });
 ipcMain.handle("app:cancel", (_e, id) => installer.cancel(id));
+// Temps d'utilisation d'un logiciel : il l'écrit lui-même dans son dossier de données (usage.json)
+ipcMain.handle("app:usage", (_e, entry) => {
+  const dirs = [].concat((entry && entry.usageDir) || []).map(String).filter((d) => /^[\w .-]+$/.test(d));
+  for (const d of dirs) {
+    try { return JSON.parse(fs.readFileSync(path.join(app.getPath("appData"), d, "usage.json"), "utf8")); } catch {}
+  }
+  return null;
+});
 ipcMain.handle("app:launch", (_e, id) => { installer.launch(id); return true; });
 ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); return installer.state; });
 ipcMain.handle("app:folder", (_e, id) => { const s = installer.installed(id); shell.openPath(s ? s.dir : installer.appsDir); });

@@ -19,7 +19,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [] };
+  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb" };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -32,9 +32,12 @@ function normS() {
   S.hiddenUsers = [...(S.hiddenUsers || [])];
   S.userPresets = [...(S.userPresets || [])];
   S.history = [...(S.history || [])];
-  if (!["general", "avatars", "fond", "sound", "video", "account"].includes(S.tab)) S.tab = "general";
+  if (!["general", "avatars", "effets", "anim", "fond", "sound", "video", "account"].includes(S.tab)) S.tab = "general";
   // Réglages retirés : on bascule sur ce qui les remplace
   if (S.layout === "lyrics") S.layout = "strip";
+  if (S.joinAnim === "glitch") S.joinAnim = "pop"; // arrivée « glitch » retirée
+  // L'ancienne disposition « Verticale » devient la Bande en mode vertical (la mini-fenêtre garde sa colonne)
+  if (S.layout === "column" && typeof MINI !== "undefined" && !MINI) { S.layout = "strip"; S.vertical = true; }
   if (S.ring === "energy") S.ring = "aura";
   if (S.pixel) { S.font = "Silkscreen"; S.pixel = false; }
   S.cards = false;
@@ -83,6 +86,38 @@ function createTile(m) {
   return t;
 }
 
+// Couleur dominante d'une photo de profil (la plus vive), pour le contour « couleur de l'avatar »
+const avColors = new Map();
+function avatarColor(url) {
+  if (avColors.has(url)) return avColors.get(url);
+  const p = new Promise((res) => {
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 16;
+        const x = c.getContext("2d");
+        x.drawImage(i, 0, 0, 16, 16);
+        const d = x.getImageData(0, 0, 16, 16).data;
+        let r = 0, g = 0, b = 0, w = 0;
+        for (let k = 0; k < d.length; k += 4) {
+          const mx = Math.max(d[k], d[k + 1], d[k + 2]), mn = Math.min(d[k], d[k + 1], d[k + 2]);
+          const s = mx ? (mx - mn) / mx : 0, wt = s * s * (mx / 255) + 0.02; // les pixels vifs comptent plus
+          r += d[k] * wt; g += d[k + 1] * wt; b += d[k + 2] * wt; w += wt;
+        }
+        const hx = "#" + [r, g, b].map((v) => Math.round(v / w).toString(16).padStart(2, "0")).join("");
+        const h = hexHsl(hx);
+        res(`hsl(${h.h} ${Math.max(45, h.s)}% ${Math.max(38, Math.min(62, h.l))}%)`);
+      } catch { res(null); }
+    };
+    i.onerror = () => res(null);
+    i.src = url;
+  });
+  avColors.set(url, p);
+  return p;
+}
+
 function updateTile(t, m) {
   const av = t.el.querySelector(".av");
   if (t.data.avatar !== m.avatar || t.data.avatarAnim !== m.avatarAnim || t.data.name !== m.name) {
@@ -103,6 +138,8 @@ function updateTile(t, m) {
       av.appendChild(anim);
     }
     t.el.querySelector(".name span").textContent = m.name;
+    if (m.avatar) avatarColor(m.avatar).then((c) => c && t.el.style.setProperty("--oc-auto", c));
+    else t.el.style.setProperty("--oc-auto", `hsl(${hue(m.id)} 62% 54%)`);
   }
   t.chips.innerHTML = m.deaf ? `<span class="chip">Sourdine</span>` : m.muted ? `<span class="chip">Muet</span>` : "";
   t.el.classList.toggle("muted", m.muted || m.deaf);
@@ -139,7 +176,7 @@ function syncTiles() {
     if (ids.has(id)) continue;
     tiles.delete(id);
     // Départ : l'avatar se rétracte et s'efface (pas pour un appelé qui décroche : il est remplacé tout de suite)
-    if (t.data.ghost || reduced) { t.el.remove(); continue; }
+    if (t.data.ghost || reduced || S.joinAnim === "none") { t.el.remove(); continue; }
     t.el.classList.add("leaving");
     t.el.style.pointerEvents = "none";
     setTimeout(() => t.el.remove(), 650);
@@ -151,7 +188,7 @@ function syncTiles() {
       tiles.set(m.id, t);
       stage.appendChild(t.el);
       // Arrivée (après le premier affichage) : l'avatar surgit avec une onde
-      if (tilesReady && !m.ghost && !reduced) { t.el.classList.add("joining"); setTimeout(() => t.el.classList.remove("joining"), 900); }
+      if (tilesReady && !m.ghost && !reduced && S.joinAnim !== "none") { t.el.classList.add("joining"); setTimeout(() => t.el.classList.remove("joining"), 900); }
     }
     updateTile(t, m);
   }
@@ -370,9 +407,12 @@ async function renderSetup(card, screen) {
 }
 
 /* ——— Source des données : Discord ou démo ——— */
-window.studio.voice.onState((s) => {
+window.studio.voice.onState(onVoiceState);
+function onVoiceState(s) {
   if (S.demo) return;
   if (typeof homeOnState === "function" && !MINI) homeOnState(s);
+  // En mode Personnaliser, on garde le vrai état de côté pour le retrouver en sortant
+  if (sandbox) { sandbox.real = s; return; }
   // Hors vocal : on te montre seul dans la scène (le fond flouté de l'accueil)
   if (!s.channel && s.me && !MINI) s = { ...s, members: [{ ...s.me, muted: false, deaf: false, speaking: false }] };
   // Appel privé qui sonne : on montre la personne appelée, en transparence, tant qu'elle n'a pas décroché
@@ -381,7 +421,60 @@ window.studio.voice.onState((s) => {
   state = s;
   syncTiles();
   renderChrome();
-});
+}
+
+/* ——— Mode Personnaliser (depuis l'accueil) ———
+   Un vocal simulé où tu es seul (avec des invités fictifs si tu veux), les paramètres ouverts : on essaie
+   toutes les dispositions, anneaux, effets… sans être en vocal. Ta voix est simulée par moments
+   (bouton « Je parle »). Rien n'est envoyé à Discord. */
+let sandbox = null;
+function setSandbox(on) {
+  if (sandbox) clearInterval(sandbox.timer);
+  if (on && !sandbox) {
+    const me = state.me || { id: "me", name: "Toi", avatar: null };
+    sandbox = { real: state, talk: true, guests: false, me, phase: 0 };
+    state = { status: "demo", error: null, me, channel: { id: "sandbox", name: "Personnalisation", guild: "Hush" },
+      members: [{ ...me, muted: false, deaf: false, speaking: false }], settings: { mute: false, deaf: false } };
+    sandbox.timer = setInterval(sandboxTick, 380);
+    Home.forced = false;
+    S.panel = true;
+    apply();
+    dockSettings(); // paramètres sur le côté : on voit le résultat en direct
+  } else if (!on && sandbox) {
+    const real = sandbox.real;
+    sandbox = null;
+    onVoiceState(real);
+    window.studio.voice.state().then((s) => { if (!sandbox && !S.demo) onVoiceState(s); }).catch(() => {});
+  }
+  document.body.classList.toggle("sandbox", !!sandbox);
+  $("#sandboxPill").hidden = !sandbox;
+  syncTiles(); renderChrome();
+}
+function sandboxTick() {
+  const sb = sandbox;
+  // Toi : des phrases de 1,5 à 4 s, puis un silence de 1 à 3 s
+  const me = state.members[0];
+  sb.phase -= 380;
+  if (sb.phase <= 0) { me.speaking = sb.talk && !me.speaking; sb.phase = me.speaking ? 1500 + Math.random() * 2500 : 1000 + Math.random() * 2000; }
+  if (!sb.talk) me.speaking = false;
+  me.level = me.speaking ? Math.max(0.15, Math.min(1, (me.level || 0.5) + (Math.random() - 0.5) * 0.5)) : 0;
+  // Invités fictifs : même petit jeu que le mode démo
+  const want = sb.guests ? Math.max(0, S.players - 1) : 0;
+  if (state.members.length - 1 !== want) {
+    state.members = [me, ...demoMembers().slice(1, 1 + want)];
+    syncTiles(); renderChrome();
+  }
+  const talking = state.members.filter((m) => m.speaking).length;
+  for (const m of state.members.slice(1)) {
+    if (m.muted || m.deaf) { m.speaking = false; continue; }
+    if (m.speaking) { if (Math.random() < 0.22) m.speaking = false; }
+    else if (talking < 2 && Math.random() < 0.08) m.speaking = true;
+    m.level = m.speaking ? Math.max(0.1, Math.min(1, (m.level || 0.5) + (Math.random() - 0.5) * 0.5)) : 0;
+  }
+}
+$("#sandboxQuit").onclick = () => setSandbox(false);
+$("#sandboxTalk").onclick = () => { sandbox.talk = !sandbox.talk; $("#sandboxTalk").classList.toggle("on", sandbox.talk); };
+$("#sandboxGuests").onclick = () => { sandbox.guests = !sandbox.guests; $("#sandboxGuests").classList.toggle("on", sandbox.guests); };
 
 const DEMO_NAMES = ["Nova", "Kenji", "Sasha", "Milo", "Inès", "Rayan", "Luzz", "Imo", "Sanji", "Elo", "Nura", "Maroa", "Kaze", "Yuna", "Orel"];
 // Joueurs fictifs : toi + autant d'autres que le réglage « Joueurs affichés »
@@ -420,12 +513,12 @@ function setDemo(on, silent) {
     window.studio.voice.start();
   }
 }
-function demoMe() { return state.members.find((m) => m.id === "me"); }
+function demoMe() { return state.members.find((m) => m.id === (sandbox ? sandbox.me.id : "me")); }
 
 /* ——— Boutons d'appel ——— */
 $("#mic").onclick = () => {
   const { mute, deaf } = state.settings;
-  if (S.demo) {
+  if (S.demo || sandbox) {
     state.settings = deaf ? { mute: false, deaf: false } : { mute: !mute, deaf: false };
     Object.assign(demoMe(), { muted: state.settings.mute, deaf: false });
     syncTiles(); return renderChrome();
@@ -434,7 +527,7 @@ $("#mic").onclick = () => {
 };
 $("#deaf").onclick = () => {
   const deaf = !state.settings.deaf;
-  if (S.demo) {
+  if (S.demo || sandbox) {
     state.settings = { mute: deaf, deaf };
     Object.assign(demoMe(), { muted: deaf, deaf });
     syncTiles(); return renderChrome();
@@ -443,6 +536,7 @@ $("#deaf").onclick = () => {
 };
 $("#leave").onclick = () => {
   if (S.demo) return setDemo(false);
+  if (sandbox) return setSandbox(false);
   window.studio.voice.leave();
 };
 
@@ -489,35 +583,42 @@ let L = "strip"; // disposition affichée (la choisie, ou « stream » quand une
 function layout() {
   const feat = featureSource();
   L = feat ? "stream" : S.layout;
-  stage.className = "stage " + L;
+  const vert = !!S.vertical && ["strip", "film", "cinema", "grid", "discord"].includes(L);
+  stage.className = "stage " + (L === "film" ? "cinema film" : L) + (vert ? " vertical" : "");
   renderFeature(feat);
   mainEl.classList.toggle("cam-move", camLayout());
   if (!camLayout()) { view.lock = null; view.y = 0; }
   const n = Math.max(1, tiles.size);
   const W = stage.clientWidth, H = stage.clientHeight;
   // Grille : on cherche le nombre de colonnes qui donne les plus grands avatars
-  let size = 0;
+  let size = 0, bestCols = 1;
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
-    size = Math.max(size, Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35));
+    if (vert && cols > rows) break;
+    const sz = Math.min((W - (cols - 1) * 14) / cols, (H - (rows - 1) * 14) / rows / 1.35);
+    if (sz > size) { size = sz; bestCols = cols; }
   }
+  stage.style.gridTemplateColumns = vert && L === "grid" ? `repeat(${bestCols}, var(--tile))` : "";
   if (L === "orbit") size = Math.min(size, (Math.min(W, H) * 2.4) / Math.max(n, 3));
   stage.style.setProperty("--tile", Math.round(Math.max(36, Math.min(size * S.zoom, 320 * S.zoom))) + "px");
   // Disposition Discord classique : tuiles 16:9, on cherche le nombre de colonnes qui les rend les plus grandes
   if (L === "discord") {
-    let dw = 0;
+    let dw = 0, dcols = 1;
     for (let cols = 1; cols <= n; cols++) {
       const rows = Math.ceil(n / cols);
-      dw = Math.max(dw, Math.min((W - (cols - 1) * 8) / cols, ((H - (rows - 1) * 8) / rows) * 16 / 9));
+      if (vert && cols > rows) break;
+      const w = Math.min((W - (cols - 1) * 8) / cols, ((H - (rows - 1) * 8) / rows) * 16 / 9);
+      if (w > dw) { dw = w; dcols = cols; }
     }
     stage.style.setProperty("--dw", Math.round(Math.max(120, dw * Math.min(1, S.zoom))) + "px");
+    stage.style.setProperty("--dcols", dcols);
   }
   const ring = $("#ring");
   const list = [...stage.querySelectorAll(".tile")].filter((e) => e.offsetParent !== null || L !== "orbit");
   // Les dispositions animées (bande, cinéma, libre) placent les avatars à chaque image : on ne les remet
   // à zéro que si la disposition change, sinon ils se retrouveraient empilés le temps d'une image
   // (c'était le chevauchement pendant qu'on modifie un réglage)
-  const moving = ["strip", "cinema", "free"].includes(L);
+  const moving = ["strip", "cinema", "film", "free"].includes(L);
   const fresh = L !== lastL;
   lastL = L;
   for (const t of tiles.values()) {
@@ -528,8 +629,10 @@ function layout() {
   placeMusic();
   $("#lyricsScene").hidden = L !== "lyrics";
   if (fresh || !moving) for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
-  if (L === "cinema") {
-    const c = Math.round(Math.max(40, Math.min(H * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), W * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
+  if (L === "cinema" || L === "film") {
+    // En vertical, on échange largeur et hauteur : les avatars s'alignent en hauteur
+    const [a, b] = vert ? [W, H] : [H, W];
+    const c = Math.round(Math.max(40, Math.min(a * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), b * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else if (L === "free") {
     // Taille pour que la grille de départ ne se chevauche pas (pseudo compris)
@@ -539,7 +642,7 @@ function layout() {
   } else if (L === "strip") {
     // Caméra active : on vise une personne à la fois, inutile que tout le monde tienne à l'écran
     const fit = S.camera ? Math.min(n, 5) : n;
-    const c = Math.round(Math.max(30, Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400) * S.zoom));
+    const c = Math.round(Math.max(30, (vert ? Math.min(W * 0.5, (H * 0.9) / (fit * 1.5), 400) : Math.min(H * 0.5, (W * 0.9) / (fit * 1.18), 400)) * S.zoom));
     stage.style.setProperty("--ctile", c + "px");
   } else {
     stage.style.removeProperty("--ctile");
@@ -635,7 +738,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -824,9 +927,10 @@ addEventListener("resize", () => placeMusic());
   grab.addEventListener("pointermove", (e) => {
     if (!drag) return;
     // Le coin en haut à gauche reste en place : tirer vers le bas/la droite agrandit, l'inverse rapetisse
-    const grow = Math.abs(e.clientX - drag.x) > Math.abs(e.clientY - drag.y) * 1.9 ? e.clientX - drag.x : (e.clientY - drag.y) * 1.9;
-    const max = Math.min(680, mainEl.clientWidth - dockW() - drag.left, (mainEl.clientHeight - drag.top) * 1.9);
-    S.playerW = Math.round(Math.max(200, Math.min(max, drag.w + grow)));
+    const ar = card.offsetWidth / Math.max(1, card.offsetHeight); // 1,9 en carte, moins en mini-vinyle
+    const grow = Math.abs(e.clientX - drag.x) > Math.abs(e.clientY - drag.y) * ar ? e.clientX - drag.x : (e.clientY - drag.y) * ar;
+    const max = Math.min(680, mainEl.clientWidth - dockW() - drag.left, (mainEl.clientHeight - drag.top) * ar);
+    S.playerW = Math.round(Math.max(140, Math.min(max, drag.w + grow)));
     card.style.width = S.playerW + "px";
     S.playerPos = { r: mainEl.clientWidth - dockW() - drag.left - card.offsetWidth, b: mainEl.clientHeight - drag.top - card.offsetHeight };
     placeMusic();
@@ -835,6 +939,8 @@ addEventListener("resize", () => placeMusic());
   grab.addEventListener("pointerup", end);
   grab.addEventListener("pointercancel", end);
   grab.addEventListener("dblclick", () => { S.playerW = null; card.style.width = ""; requestAnimationFrame(placeMusic); save(); });
+  // Assez petite, la carte devient un mini-vinyle : la pochette, le disque qui dépasse et le bras, le titre dessous
+  new ResizeObserver(() => { const m = card.offsetWidth > 0 && card.offsetWidth < 240; if (m !== card.classList.contains("mp-mini")) { card.classList.toggle("mp-mini", m); placeMusic(); } }).observe(card);
 
   // Déplacer : glisser la carte (pas ses boutons). Un simple clic reste un clic.
   let move = null;
@@ -920,7 +1026,8 @@ $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
 $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = "duo"; apply(); };
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "squash", "streamView"];
+$("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
+const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "squash", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -1017,6 +1124,18 @@ function apply() {
   b.classList.toggle("blur-tilt", !!blur && S.blurType === "tilt");
   b.classList.toggle("blur-frost", !!blur && S.blurType === "frost");
   b.classList.toggle("av-shadow", S.avShadow);
+  for (const m of ["hide", "blur", "glitch", "snow"]) b.classList.toggle("nm-" + m, S.nameMask === m);
+  b.classList.toggle("nm-hover", !!S.nameHover && S.nameMask === "blur");
+  $("#nameHoverRow").hidden = S.nameMask !== "blur";
+  $("#vertNameRow").hidden = !S.vertical;
+  b.classList.toggle("vname-top", !!S.vertNameTop);
+  b.classList.toggle("av-outline", !!S.avOutline);
+  b.classList.toggle("av-outline-auto", !!S.avOutline && !!S.avOutlineAuto);
+  $("#avOutlineAutoRow").hidden = !S.avOutline;
+  b.classList.toggle("glitch-snow", S.glitchStyle === "snow");
+  for (const m of ["pop", "fade", "glitch", "none"]) b.classList.toggle("join-" + m, (S.joinAnim || "pop") === m);
+  $("#glitchAmt").value = S.glitchAmt; $("#glitchAmtOut").textContent = Math.round(S.glitchAmt * 100) + " %";
+  $("#glitchAmt").disabled = $("#glitchVoice").disabled = S.glitch === "off";
   b.classList.toggle("no-names", !S.names);
   b.classList.toggle("cards", S.cards);
   b.classList.toggle("hide-muted", S.hideMuted);
@@ -1297,7 +1416,81 @@ stage.addEventListener("pointerup", endFreeDrag);
 stage.addEventListener("pointercancel", endFreeDrag);
 $("#freeReset").onclick = () => { S.freePos = {}; save(); };
 
-/* ——— Caméra du mode Cinéma 3D ———
+/* ——— Cinéma 3D : une caméra qui « réalise » ———
+   Comme au montage : plan large sur tout le salon quand personne ne parle, plan moyen sur celui qui prend
+   la parole, gros plan s'il parle longtemps ou fort, plan à deux quand deux personnes se répondent.
+   Les zooms suivent le débit (volume moyen récent de celui qu'on filme) : la caméra pousse doucement vers
+   quelqu'un qui s'emballe et recule quand ça se calme. Mouvements amortis, travelling et orbite lents. */
+const film = { x: 0, z: 1, vx: 0, vz: 0, yaw: 0, pitch: 8, energy: 0, shot: "wide", since: 0, lastFocus: null };
+function filmFrame(t) {
+  const c = parseFloat(stage.style.getPropertyValue("--ctile")) || 200;
+  const items = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
+  const n = items.length;
+  if (!n) return;
+  const vert = !!S.vertical;
+  const span = vert ? stage.clientHeight : stage.clientWidth, other = vert ? stage.clientWidth : stage.clientHeight;
+  const gap = c * 1.5;
+  const now = Date.now();
+  const talking = items.map((x, i) => (now - (lastSpoke.get(x.data.id) || 0) < 2500 ? i : -1)).filter((i) => i >= 0);
+  const fi = items.findIndex((x) => x.data.id === focusId);
+  const lockI = items.findIndex((x) => x.data.id === view.lock);
+  const cam = S.camera && !reduced;
+  // Débit : le volume moyen de celui qu'on filme, lissé sur quelques secondes
+  const subject = lockI >= 0 ? items[lockI] : fi >= 0 ? items[fi] : null;
+  film.energy += ((subject ? subject.lvl : 0) - film.energy) * 0.025;
+  // Choix du plan
+  let shot;
+  if (!cam) shot = "wide";
+  else if (lockI >= 0) shot = film.energy > 0.35 ? "close" : "medium";
+  else if (talking.length >= 2) shot = "two";
+  else if (talking.length === 1) {
+    if (film.lastFocus !== focusId) { film.lastFocus = focusId; film.since = t; }
+    shot = (t - film.since > 4000 && film.energy > 0.2) || film.energy > 0.5 ? "close" : "medium";
+  } else shot = "wide";
+  film.shot = shot;
+  let aim, zAim;
+  const fitAll = Math.min(1.1, (span * 0.86) / (n * gap));
+  if (shot === "wide") { aim = (n - 1) / 2; zAim = fitAll; }
+  else if (shot === "two") {
+    const a = Math.min(...talking), b = Math.max(...talking);
+    aim = (a + b) / 2; zAim = Math.min(1.3, (span * 0.72) / ((b - a + 1) * gap));
+  } else {
+    aim = lockI >= 0 ? lockI : Math.max(0, fi);
+    zAim = shot === "close" ? 1.7 + film.energy * 0.4 : 1.15 + film.energy * 0.3;
+  }
+  // Jamais plus gros que l'écran, jamais minuscule
+  zAim = Math.max(0.22, Math.min(zAim, (other * 0.72) / c));
+  // Ressorts amortis : le cadrage glisse (plus vite pour suivre quelqu'un, très lentement en plan large)
+  if (viewFree() && view.x !== null) { film.x = view.x; film.vx = 0; }
+  else {
+    const kx = (shot === "wide" ? 0.006 : shot === "two" ? 0.01 : 0.016) * S.speed;
+    film.vx += (aim - film.x) * kx; film.vx *= 1 - 2 * Math.sqrt(kx); film.x += film.vx;
+  }
+  const kz = 0.006 * S.speed;
+  film.vz += (zAim - film.z) * kz; film.vz *= 1 - 2 * Math.sqrt(kz); film.z += film.vz;
+  // Mouvements : travelling lent, orbite qui suit le cadrage, plongée plus forte en plan large
+  const sp = reduced ? 0 : S.speed;
+  const drift = cam ? Math.sin(t * 0.00011 * sp) * 0.22 : 0;
+  const yawAim = cam ? (aim - film.x) * -7 + Math.sin(t * 0.00016 * sp) * 8 + (shot === "close" ? -5 : 0) : 0;
+  const pitchAim = cam ? (shot === "wide" ? 11 : shot === "close" ? 3 : 7) + Math.sin(t * 0.0002 * sp) * 2 : 0;
+  film.yaw += (yawAim - film.yaw) * 0.03;
+  film.pitch += (pitchAim - film.pitch) * 0.03;
+  const roll = cam && shot === "close" ? Math.sin(t * 0.0003 * sp) * 1.2 : 0;
+  view.slotPx = gap * film.z;
+  items.forEach((it, i) => {
+    const d = i - film.x - drift;
+    const along = d * gap * film.z;
+    const depth = cam ? -Math.abs(d) * c * 0.35 * film.z : 0; // ceux qui sont loin du cadre reculent
+    const bob = 6 * Math.sin(t * 0.0009 * sp + it.seed);
+    it.el.style.transform = vert
+      ? `rotateZ(${roll.toFixed(2)}deg) rotateX(${(-film.yaw).toFixed(2)}deg) rotateY(${(film.pitch * 0.4).toFixed(2)}deg) translate3d(${bob.toFixed(1)}px, ${along.toFixed(1)}px, ${depth.toFixed(1)}px) scale(${film.z.toFixed(3)})`
+      : `rotateZ(${roll.toFixed(2)}deg) rotateX(${film.pitch.toFixed(2)}deg) rotateY(${film.yaw.toFixed(2)}deg) translate3d(${along.toFixed(1)}px, ${bob.toFixed(1)}px, ${depth.toFixed(1)}px) scale(${film.z.toFixed(3)})`;
+    it.el.style.zIndex = String(100 - Math.round(Math.abs(d) * 4));
+  });
+  hideClipped(items);
+}
+
+/* ——— Caméra du mode Dynamique (l'ancien Cinéma 3D) ———
    Les avatars sont posés sur un plan ; la caméra glisse vers celui qui parle,
    le plan pivote doucement (lacet + roulis) et avance/recule comme un travelling. */
 let camX = 0;
@@ -1311,7 +1504,8 @@ function cinema(t) {
   // Caméra désactivée : on cadre tout le salon (le plan est réduit pour que tout rentre)
   const fi = cam ? Math.max(0, items.findIndex((x) => x.id === focusId)) : -1;
   const aim = cam ? fi : (total - 1) / 2;
-  const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.92) / (total * c * 1.25));
+  const vert = !!S.vertical;
+  const k = cam ? 1 : Math.min(1, ((vert ? stage.clientHeight : stage.clientWidth) * 0.92) / (total * c * 1.25));
   // Caméra verrouillée sur quelqu'un (Ctrl+clic) ou déplacée à la main (clic-glisser)
   const lockI = items.findIndex((x) => x.id === view.lock);
   const target = lockI >= 0 ? lockI : aim;
@@ -1333,7 +1527,9 @@ function cinema(t) {
     const x = (d * c * gap + shift) * k;
     const z = cam ? near * c * 0.3 - Math.abs(d) * c * 0.2 + dolly : 0;
     const y = 8 * Math.sin(t * 0.0009 * sp + it.seed);
-    it.el.style.transform = `rotateZ(${roll}deg) rotateY(${yaw}deg) translate3d(${x}px, ${y}px, ${z}px) scale(${k})`;
+    it.el.style.transform = vert
+      ? `rotateZ(${roll}deg) rotateX(${-yaw}deg) translate3d(${y}px, ${x}px, ${z}px) scale(${k})`
+      : `rotateZ(${roll}deg) rotateY(${yaw}deg) translate3d(${x}px, ${y}px, ${z}px) scale(${k})`;
   });
   hideClipped(items.map((it) => it.tile));
 }
@@ -1389,7 +1585,7 @@ function strip(t) {
   // On garde, du plus fort au moins fort, ceux qui tiennent ensemble à l'écran sans descendre sous 45 % de zoom
   let group = null;
   if (lockI < 0 && talking.length >= 2) {
-    const maxSpan = ((stage.clientWidth * 0.75) / MIN_GROUP_ZOOM - c * 1.5) / gap;
+    const maxSpan = (((S.vertical ? stage.clientHeight : stage.clientWidth) * 0.75) / MIN_GROUP_ZOOM - c * 1.5) / gap;
     const kept = [];
     for (const i of [...talking].sort((a, b) => list[b].lvl - list[a].lvl)) {
       const span = Math.max(i, ...kept) - Math.min(i, ...kept);
@@ -1399,7 +1595,8 @@ function strip(t) {
   }
   const loudest = talking.length ? [...talking].sort((a, b) => list[b].lvl - list[a].lvl)[0] : fi;
   const aim = lockI >= 0 ? lockI : !cam ? (list.length - 1) / 2 : group ? (Math.min(...group) + Math.max(...group)) / 2 : talking.length ? loudest : fi;
-  const k = cam ? 1 : Math.min(1, (stage.clientWidth * 0.94) / (list.length * c * 1.26));
+  const vert = !!S.vertical;
+  const k = cam ? 1 : Math.min(1, ((vert ? stage.clientHeight : stage.clientWidth) * 0.94) / (list.length * c * (vert ? 1.5 : 1.26)));
 
   if (stripX === null) { stripX = aim; stripV = 0; }
   if (viewFree() && view.x !== null) { stripX = view.x; stripV = 0; }
@@ -1433,14 +1630,19 @@ function strip(t) {
     if (cam) {
       const px = (i - stripX) * gap * z;
       // Correction mesurée (frameFix) en premier : elle s'applique à l'écran, après toute la 3D
-      x.el.style.transform =
-        `translate(${frameFix.x.toFixed(1)}px, ${frameFix.y.toFixed(1)}px) rotate(${roll.toFixed(2)}deg) ` +
-        `rotateX(${(-plunge).toFixed(2)}deg) rotateY(${shot.curYaw.toFixed(2)}deg) ` +
-        `translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateY(${(-shot.curYaw * 0.7).toFixed(2)}deg) rotateX(${(plunge * 0.8).toFixed(2)}deg) ` +
-        `scale(${(x.fs * z).toFixed(3)})`;
+      // En vertical, la rangée devient une colonne : on échange les axes (et les rotations avec)
+      x.el.style.transform = vert
+        ? `translate(${frameFix.x.toFixed(1)}px, ${frameFix.y.toFixed(1)}px) rotate(${roll.toFixed(2)}deg) ` +
+          `rotateY(${plunge.toFixed(2)}deg) rotateX(${(-shot.curYaw).toFixed(2)}deg) ` +
+          `translate3d(${y.toFixed(1)}px, ${px.toFixed(1)}px, 0) rotateX(${(shot.curYaw * 0.7).toFixed(2)}deg) rotateY(${(-plunge * 0.8).toFixed(2)}deg) ` +
+          `scale(${(x.fs * z).toFixed(3)})`
+        : `translate(${frameFix.x.toFixed(1)}px, ${frameFix.y.toFixed(1)}px) rotate(${roll.toFixed(2)}deg) ` +
+          `rotateX(${(-plunge).toFixed(2)}deg) rotateY(${shot.curYaw.toFixed(2)}deg) ` +
+          `translate3d(${px.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateY(${(-shot.curYaw * 0.7).toFixed(2)}deg) rotateX(${(plunge * 0.8).toFixed(2)}deg) ` +
+          `scale(${(x.fs * z).toFixed(3)})`;
     } else {
-      const px = (i - stripX) * c * 1.26 * k;
-      x.el.style.transform = `translate(${px}px, ${y}px) scale(${x.fs * k})`;
+      const px = (i - stripX) * c * (vert ? 1.5 : 1.26) * k;
+      x.el.style.transform = vert ? `translate(${y}px, ${px}px) scale(${x.fs * k})` : `translate(${px}px, ${y}px) scale(${x.fs * k})`;
     }
     x.el.style.filter = blur > 1.2 ? `blur(${blur.toFixed(1)}px)` : "";
     x.el.style.zIndex = String(100 - Math.round(Math.abs(i - stripX) * 2));
@@ -1461,7 +1663,9 @@ function strip(t) {
   }
   if (group) {
     // Le groupe doit tenir dans 75 % de la largeur et 70 % de la hauteur, avec une marge pour les pseudos
-    const fill = Math.max((box.r - box.l) / (sr.width * 0.75), (box.b - box.t + c * 0.4) / (sr.height * 0.7));
+    const fill = vert
+      ? Math.max((box.b - box.t) / (sr.height * 0.75), (box.r - box.l + c * 0.6) / (sr.width * 0.7))
+      : Math.max((box.r - box.l) / (sr.width * 0.75), (box.b - box.t + c * 0.4) / (sr.height * 0.7));
     groupZoom = Math.max(MIN_GROUP_ZOOM, Math.min(1, groupZoom * (1 + (1 - fill) * 0.04)));
   }
 }
@@ -1518,7 +1722,7 @@ function updateLoupes() {
    (Ctrl+clic à nouveau, ou sur le fond, pour libérer). Sans action pendant 2,5 s, la caméra repart toute seule. */
 const FREE_MS = 2500;
 const view = { dragging: false, px: 0, py: 0, until: 0, x: null, y: 0, zoom: 1, lock: null, slotPx: 200 };
-const camLayout = () => L === "strip" || L === "cinema";
+const camLayout = () => L === "strip" || L === "cinema" || L === "film";
 const viewFree = () => view.dragging || performance.now() < view.until;
 const mainEl = document.querySelector(".main");
 
@@ -1548,7 +1752,7 @@ mainEl.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   view.dragging = true;
   view.px = e.clientX; view.py = e.clientY;
-  view.x = L === "strip" ? stripX : camX;
+  view.x = L === "strip" ? stripX : L === "film" ? film.x : camX;
   mainEl.classList.add("grabbing");
 });
 addEventListener("pointermove", (e) => {
@@ -1638,6 +1842,7 @@ function frame(t) {
   if (L === "cinema") cinema(t);
   if (L === "strip") strip(t);
   if (L === "free") free(t);
+  if (L === "film") filmFrame(t);
   updateLoupes();
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }
@@ -1659,10 +1864,129 @@ function frame(t) {
     drawWave(t, lt ? lt.playing : S.musicSource === "manual");
   }
   if (L === "lyrics") lyricsFrame(lt, pos * 1000);
-  const names = state.members.filter(heard).map((m) => m.name);
+  const names = state.members.filter(heard).map((m) => maskName(m.name));
   $("#talkers").textContent = names.length ? names.slice(0, 3).join(" & ") + (names.length > 1 ? " parlent" : " parle") : "personne ne parle";
   drawBg(t, Math.min(1, energy / 2));
+  glitchFrame(t, Math.min(1, energy / 2));
+  maskNames(t);
   requestAnimationFrame(frame);
+}
+
+/* ——— Pseudos cachés ———
+   Masqués : remplacés par une barre. Flous : CSS. Glitch : les lettres se mélangent en continu
+   (même longueur que le vrai pseudo), avec un décalage rouge/cyan, comme le titre du site Phantom. */
+const GLYPHS = "▓▒░█#@%&$¥Ø§¤Ξ01<>/\\|=+*";
+const scramble = (s) => [...s].map((c) => (c === " " ? " " : GLYPHS[(Math.random() * GLYPHS.length) | 0])).join("");
+function maskName(n) {
+  if (S.nameMask === "hide") return "•••";
+  if (S.nameMask === "glitch" || S.nameMask === "snow") return scramble(n);
+  return n;
+}
+let lastScramble = 0;
+// Neige télé : le mélange accélère puis ralentit en boucle (de 35 ms à ~450 ms entre deux changements) ;
+// au plus lent, quelques vraies lettres apparaissent, comme un signal qui accroche
+function snowName(name, slow) {
+  return [...name].map((c) => (c === " " ? " " : Math.random() < slow * 0.35 ? c : GLYPHS[(Math.random() * GLYPHS.length) | 0])).join("");
+}
+function maskNames(t) {
+  const glitch = S.nameMask === "glitch", snow = S.nameMask === "snow";
+  if (snow) {
+    for (const tile of tiles.values()) {
+      const span = tile.nameSpan || (tile.nameSpan = tile.el.querySelector(".name span"));
+      const slow = Math.pow(0.5 + 0.5 * Math.sin((t / 2400) * Math.PI * 2 + tile.seed), 2);
+      if (t < (tile.snowNext || 0)) continue;
+      tile.snowNext = t + 35 + 420 * slow;
+      span.textContent = snowName(tile.data.name, slow);
+      tile.scrambled = true;
+    }
+  } else {
+    if (glitch && t - lastScramble < 70) return;
+    lastScramble = t;
+    for (const tile of tiles.values()) {
+      const span = tile.nameSpan || (tile.nameSpan = tile.el.querySelector(".name span"));
+      if (glitch) { span.textContent = Math.random() < 0.15 ? tile.data.name : scramble(tile.data.name); tile.scrambled = true; }
+      else if (tile.scrambled) { span.textContent = tile.data.name; tile.scrambled = false; }
+    }
+  }
+  if (snow && t - lastScramble < 70) return;
+  lastScramble = t;
+  const mixed = glitch || snow;
+  for (const [id, el] of loupes) {
+    const tile = tiles.get(id), span = el.querySelector("span");
+    if (tile && span) span.textContent = mixed ? scramble(tile.data.name) : tile.data.name;
+  }
+}
+
+/* ——— Glitch (onglet Effets) ———
+   Par à-coups : de temps en temps (plus souvent si quelqu'un parle fort), pendant 80 à 300 ms, des bandes
+   du fond sautent de côté, des lignes rouge/cyan apparaissent et un peu de neige. Les avatars, eux, ont
+   chacun leurs propres coupures courtes (classe .glitching). */
+const gl = { until: 0, next: 0, slices: [] };
+// Petite texture de neige (gris aléatoires), partagée par le fond, les avatars et les pseudos « neige télé »
+let noiseCv = null;
+function noiseCanvas() {
+  if (noiseCv) return noiseCv;
+  noiseCv = document.createElement("canvas");
+  noiseCv.width = noiseCv.height = 128;
+  const x = noiseCv.getContext("2d"), img = x.createImageData(128, 128);
+  for (let k = 0; k < img.data.length; k += 4) { const v = Math.random() < 0.5 ? Math.random() * 90 : 160 + Math.random() * 95; img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255; }
+  x.putImageData(img, 0, 0);
+  document.body.style.setProperty("--noise", `url(${noiseCv.toDataURL()})`);
+  return noiseCv;
+}
+noiseCanvas();
+function glitchFrame(t, energy) {
+  const mode = S.glitch || "off";
+  if (mode === "off" || reduced) {
+    if (gl.on) { gl.on = false; $("#bgSnow").style.opacity = "0"; document.body.classList.remove("glitch-burst"); for (const x of tiles.values()) x.el.classList.remove("glitching"); }
+    return;
+  }
+  const amt = S.glitchAmt || 0.5;
+  const loud = S.glitchVoice && energy > 0.55;
+  if (t > gl.next || (loud && t > gl.until + 250 && Math.random() < 0.08 * amt)) {
+    gl.until = t + 80 + Math.random() * 220 * amt;
+    gl.next = t + (700 + Math.random() * 3200) / amt;
+    gl.slices = [];
+  }
+  const burst = t < gl.until;
+  gl.on = true;
+  document.body.classList.toggle("glitch-burst", burst && (mode === "bg" || mode === "both"));
+  $("#bgSnow").style.opacity = burst && S.glitchStyle === "snow" && (mode === "bg" || mode === "both") ? (0.3 + 0.45 * amt).toFixed(2) : "0";
+  if ((mode === "bg" || mode === "both") && burst) {
+    const W = cv.width, H = cv.height;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Bandes décalées : on garde les mêmes pendant un court instant (ça « accroche » au lieu de trembler)
+    if (!gl.slices.length || Math.random() < 0.3) {
+      gl.slices = Array.from({ length: 2 + Math.round(6 * amt) }, () => ({
+        y: Math.random() * H, h: H * (0.008 + Math.random() * 0.07), dx: (Math.random() - 0.5) * W * 0.12 * amt,
+      }));
+    }
+    for (const s of gl.slices) ctx.drawImage(cv, 0, s.y, W, s.h, s.dx, s.y, W, s.h);
+    if (S.glitchStyle === "snow") {
+      // La neige elle-même est sur un calque à part (#bgSnow), au-dessus du flou : elle reste nette
+      ctx.restore();
+    } else {
+    ctx.globalCompositeOperation = "screen";
+    for (const s of gl.slices.slice(0, 3)) {
+      ctx.fillStyle = Math.random() < 0.5 ? "rgba(255,40,110,.28)" : "rgba(40,230,255,.24)";
+      ctx.fillRect(0, s.y + s.h * 0.4, W, Math.max(1, s.h * 0.12));
+    }
+    ctx.globalCompositeOperation = "source-over";
+    // Neige
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    for (let i = 0; i < 160 * amt; i++) ctx.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1);
+    ctx.restore();
+    }
+  }
+  const avOn = mode === "avatars" || mode === "both";
+  for (const x of tiles.values()) {
+    if (!avOn) { x.el.classList.remove("glitching"); continue; }
+    if (!x.gNext) x.gNext = t + Math.random() * 3000 / amt;
+    const kick = loud && x.lvl > 0.5 && Math.random() < 0.04 * amt;
+    if (t > x.gNext || kick) { x.gUntil = t + 120 + Math.random() * 220; x.gNext = t + (900 + Math.random() * 4000) / amt; }
+    x.el.classList.toggle("glitching", t < (x.gUntil || 0));
+  }
 }
 
 /* ——— Mini-fenêtre ——— */

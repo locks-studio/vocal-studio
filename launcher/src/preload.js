@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("launcher", {
   launch: (id) => ipcRenderer.invoke("app:launch", id),
   uninstall: (id) => ipcRenderer.invoke("app:uninstall", id),
   folder: (id) => ipcRenderer.invoke("app:folder", id),
+  usage: (app) => ipcRenderer.invoke("app:usage", { usageDir: app.usageDir }),
   openUrl: (url) => ipcRenderer.invoke("open:url", url),
   onProgress: (fn) => ipcRenderer.on("app:progress", (_e, p) => fn(p)),
   win: {

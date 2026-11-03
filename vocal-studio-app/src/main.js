@@ -197,8 +197,37 @@ function createWindow() {
   win.on("closed", () => { if (mini && !mini.isDestroyed()) mini.close(); });
 }
 
+// ——— Temps d'utilisation ———
+// usage.json (dossier de données de Hush) : lu par le launcher 1999 pour afficher le temps passé sur Hush.
+// Chaque minute en vocal est aussi signalée au serveur du bot, pour le classement des plus gros utilisateurs.
+const usageFile = () => path.join(app.getPath("userData"), "usage.json");
+let usage = { appMinutes: 0, voiceMinutes: 0 };
+function loadUsage() { try { usage = { ...usage, ...JSON.parse(fs.readFileSync(usageFile(), "utf8")) }; } catch {} }
+function reportVoiceMinute() {
+  // Lié au bot : par la connexion en direct. Sinon (connexion directe) : avec le jeton Discord, que le serveur vérifie.
+  if (botLink && botLink.ws && botLink.ws.readyState === 1) return botLink.send({ type: "beat" });
+  const t = store.getToken();
+  if (session === localSession && t && t.access_token) {
+    fetch(`${botStore.getServer().replace(/\/$/, "")}/usage/beat`, { method: "POST", headers: { Authorization: `Bearer ${t.access_token}` }, signal: AbortSignal.timeout(8000) }).catch(() => {});
+  }
+}
+function tickUsage() {
+  usage.appMinutes += 1;
+  const st = session && session.snapshot();
+  if (st && st.status === "ready" && st.channel) { usage.voiceMinutes += 1; reportVoiceMinute(); }
+  usage.updated = Date.now();
+  try { fs.writeFileSync(usageFile(), JSON.stringify(usage)); } catch {}
+}
+ipcMain.handle("usage:me", () => usage);
+ipcMain.handle("usage:top", async () => {
+  try { return await fetch(`${botStore.getServer().replace(/\/$/, "")}/usage/top`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()); }
+  catch { return null; }
+});
+
 app.whenReady().then(() => {
   load();
+  loadUsage();
+  setInterval(tickUsage, 60_000);
   sounds = new SoundLibrary(path.join(app.getPath("userData"), "sounds"));
   sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
@@ -266,7 +295,19 @@ ipcMain.handle("config:logout", () => {
   session.start();
 });
 ipcMain.handle("bot:login", () => botLink.login());
-ipcMain.handle("voice:summon", () => session.summon && session.summon());
+// Faire venir le bot : aussi en connexion directe, par le lien au bot (s'il est relié), qui sait dans quel vocal tu es.
+// Réponse : { ok } ou { ok: false, error } avec la raison exacte.
+ipcMain.handle("voice:summon", async () => {
+  if (!botLink || !botLink.ws || botLink.ws.readyState !== 1) return { ok: false, error: "Ton compte n'est pas lié au bot Hush : Accueil › Connexion › « Lier au bot »." };
+  try { await botLink.summonWait(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
+});
+// Rejoindre un vocal : directement par Discord (connexion directe), sinon on l'ouvre dans Discord
+ipcMain.handle("voice:join", async (_e, c, g) => {
+  if (!/^\d{5,25}$/.test(String(c)) || (g && !/^\d{5,25}$/.test(String(g)))) return false;
+  if (session === localSession && localSession.ipc) { try { await localSession.join(String(c)); return true; } catch {} }
+  shell.openExternal(`discord://-/channels/${g || "@me"}/${c}`);
+  return true;
+});
 
 ipcMain.handle("voice:start", () => { session.stop(); session.start(); });
 ipcMain.handle("voice:stop", () => session.stop());
@@ -282,7 +323,10 @@ ipcMain.handle("voice:user", async (_e, a) => {
   return botLink.userAction(a);
 });
 ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
-ipcMain.handle("bot:info", () => botLink.info());
+ipcMain.handle("bot:info", async () => {
+  const i = await botLink.info();
+  return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1) };
+});
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
 ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));

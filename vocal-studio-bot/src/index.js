@@ -27,6 +27,37 @@ if (missing.length) {
 // ——— Sessions des applis connectées (gardées sur disque pour survivre à un redémarrage) ———
 // DATA_DIR : dossier qui survit aux mises à jour du code (sur le VPS : /var/lib/hush-bot)
 const SESSIONS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "sessions.json");
+// Classement : minutes passées en vocal avec Hush, par personne (une minute comptée au plus toutes les 50 s)
+const USAGE_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "usage.json");
+let usage = {};
+try { usage = JSON.parse(fs.readFileSync(USAGE_FILE, "utf8")); } catch {}
+let usageTimer = null;
+const saveUsage = () => { clearTimeout(usageTimer); usageTimer = setTimeout(() => fs.writeFile(USAGE_FILE + ".tmp", JSON.stringify(usage), (e) => { if (!e) fs.rename(USAGE_FILE + ".tmp", USAGE_FILE, () => {}); }), 2000); };
+function addMinute(id, name, avatar) {
+  if (!/^\d{5,25}$/.test(String(id))) return;
+  const u = usage[id] || (usage[id] = { minutes: 0 });
+  const now = Date.now();
+  if (u.last && now - u.last < 50_000) return;
+  u.last = now;
+  u.minutes += 1;
+  if (name) u.name = String(name).slice(0, 40);
+  if (avatar) u.avatar = avatar;
+  saveUsage();
+}
+// Connexion directe : on vérifie le jeton auprès de Discord (gardé 1 h en mémoire, jamais sur disque)
+const tokenUsers = new Map();
+async function userFromToken(token) {
+  const key = crypto.createHash("sha256").update(token).digest("hex");
+  const hit = tokenUsers.get(key);
+  if (hit && hit.until > Date.now()) return hit.user;
+  const r = await fetch(`${API}/users/@me`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) return null;
+  const u = await r.json();
+  const user = { id: u.id, name: u.global_name || u.username, avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128` : null };
+  tokenUsers.set(key, { user, until: Date.now() + 3600_000 });
+  if (tokenUsers.size > 500) tokenUsers.delete(tokenUsers.keys().next().value);
+  return user;
+}
 let sessions = {};
 try { sessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8")); } catch {}
 // Écriture dans un fichier temporaire puis renommage : un arrêt brutal ne laisse jamais un fichier à moitié écrit
@@ -93,6 +124,17 @@ const server = http.createServer((req, res) => {
       clientId: DISCORD_CLIENT_ID,
       invite: `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`,
     }));
+  } else if (url.pathname === "/usage/top") {
+    // Les 20 plus gros utilisateurs (pseudo, photo, heures) : public, comme un tableau des scores
+    const top = Object.entries(usage).map(([id, u]) => ({ id, name: u.name || "?", avatar: u.avatar || null, hours: Math.round((u.minutes / 60) * 10) / 10 }))
+      .sort((a, b) => b.hours - a.hours).slice(0, 20);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(top));
+  } else if (url.pathname === "/usage/beat" && req.method === "POST") {
+    const m = /^Bearer (\S{10,200})$/.exec(req.headers.authorization || "");
+    req.resume();
+    if (!m) { res.writeHead(401).end(); return; }
+    userFromToken(m[1]).then((u) => { if (u) addMinute(u.id, u.name, u.avatar); res.writeHead(u ? 204 : 401).end(); }).catch(() => res.writeHead(502).end());
   } else if (url.pathname === "/rpc/token" && req.method === "POST") {
     rpcToken(req, res);
   } else if (url.pathname === "/") {
@@ -178,8 +220,13 @@ wss.on("connection", (ws) => {
       return push(c);
     }
     try {
-      if (msg.type === "summon") await bot.summon(c.user.id);
+      if (msg.type === "summon") {
+        // Avec rid : l'appli attend la réponse (pour afficher pourquoi le bot ne vient pas)
+        try { await bot.summon(c.user.id); if (msg.rid) ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true })); }
+        catch (e) { if (!msg.rid) throw e; ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
       else if (msg.type === "dismiss") bot.dismiss(c.user.id);
+      else if (msg.type === "beat") addMinute(c.user.id, c.user.name, c.user.avatar);
       else if (msg.type === "home") {
         // Qui a Hush : toutes les sessions connues ; en ligne : appli ouverte en ce moment
         const hushIds = new Set(Object.values(sessions).map((x) => x.id));

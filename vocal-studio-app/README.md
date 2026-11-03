@@ -57,9 +57,9 @@ En mode **Bande** avec la caméra active, celui qui parle est **toujours au cent
 
 Quand tu modifies un réglage, les paramètres se rangent sur le côté : la scène et le lecteur se décalent pour rester centrés dans la partie encore visible.
 
-Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements de caméra (modes Cinéma 3D et Bande). Coupé, tout le salon reste cadré et seul celui qui parle grossit un peu.
+Le réglage **Caméra qui suit celui qui parle** active ou coupe les mouvements de caméra (modes Cinéma 3D, Dynamique et Bande). Coupé, tout le salon reste cadré et seul celui qui parle grossit un peu.
 
-**Piloter la caméra à la main** (modes Cinéma 3D et Bande) :
+**Piloter la caméra à la main** (modes Cinéma 3D, Dynamique et Bande) :
 
 - **Clic-glisser** sur la scène : déplace la caméra (gauche/droite le long des joueurs, haut/bas).
 - **Molette** : zoom avant ou arrière (de 60 % à 180 %), dans toutes les dispositions. Le zoom agrandit ou réduit les avatars eux-mêmes, donc rien n'est coupé. Il reste tel quel jusqu'à ce que tu le changes ; **Ctrl+0** le remet à 100 %. Aussi réglable dans Paramètres › Vidéo.
@@ -88,7 +88,12 @@ Dans un vocal : quand tu es seul, Hush affiche « Appel en cours… » (appel pr
 - **Couleur de l'anneau** : **vert Discord** (par défaut, pour tous les anneaux), **Ma couleur**, ou **Pochette** (les couleurs de la pochette du morceau en cours).
 - **Aplatissement** (Paramètres › Avatars) : l'avatar de celui qui parle s'écrase et s'étire en rythme, plus fort quand la voix est forte. Désactivable.
 - **Vue stream** : dès qu'une caméra ou un partage d'écran est actif, le flux s'affiche en grand à gauche dans un cadre qui s'allume en vert quand la personne parle, et les autres sont en zigzag sur un panneau sombre à droite. Pour les autres membres, Discord ne donne pas leur vidéo : Hush montre leur avatar flouté avec « à regarder dans Discord ». Désactivable (Paramètres › Affichage).
-- **Disposition Verticale** : une colonne d'avatars avec le pseudo à droite, tout le monde tient en hauteur.
+- **Cinéma 3D** : une caméra qui « réalise » : plan large quand personne ne parle, plan moyen sur celui qui parle, gros plan s'il parle longtemps ou fort, plan à deux quand deux personnes se répondent. Les zooms suivent le débit. L'ancien Cinéma 3D s'appelle maintenant **Dynamique**.
+- **Vertical** (interrupteur sous les dispositions) : Bande, Cinéma 3D, Dynamique, Grille et Discord en hauteur, pour un live ou une vidéo en format portrait. (L'ancienne disposition Verticale devient la Bande en vertical ; la mini-fenêtre garde sa colonne.)
+- **Effets** : glitch sur le fond et/ou les avatars, plus fort quand quelqu'un parle fort. **Animation** : aplatissement en rythme, style des arrivées/départs (rebond, fondu, glitch), vitesse.
+- **Pseudos cachés** (Avatars › Pseudos) : masqués, flous ou en glitch, pour streamer sans montrer les pseudos.
+- **Accueil** : « Personnaliser » ouvre un vocal simulé où tu es seul (invités fictifs en option) pour tout essayer ; « Classement » montre les plus gros utilisateurs de Hush en vocal (compté par le serveur du bot) ; « Ajouter le bot à la voc » dans l'onglet Connexion.
+- **Lecteur réduit** : en dessous de 240 px de large, la carte musique devient un mini-vinyle (pochette, disque, bras, titre).
 - **Disposition Libre** : fais glisser chaque membre où tu veux ; la caméra 3D se rapproche de celui qui parle, comme en Cinéma 3D. « Les replacer en grille » remet tout en place.
 - **Pseudos** (Paramètres › Avatars) : en haut ou en bas de l'avatar, taille réglable ; la police pixel est dans la liste des polices.
 - **Arrivées et départs** : l'avatar de celui qui arrive surgit avec une onde verte, celui qui part se rétracte et s'efface.

@@ -10,6 +10,18 @@
 <body>
 <!-- Déformation « liquide » du verre (utilisée par backdrop-filter) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <!-- Lentille de verre : le fond est réfracté sur les bords, avec une légère dispersion (bords irisés) -->
+  <filter id="lens" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feImage href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='r' x1='0' x2='1' y1='0' y2='0'%3E%3Cstop offset='0' stop-color='%23ff0000'/%3E%3Cstop offset='1' stop-color='%23000000'/%3E%3C/linearGradient%3E%3ClinearGradient id='g' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%2300ff00'/%3E%3Cstop offset='1' stop-color='%23000000'/%3E%3C/linearGradient%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='14'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23r)'/%3E%3Crect width='200' height='200' fill='url(%23g)' style='mix-blend-mode:screen'/%3E%3Crect x='26' y='26' width='148' height='148' rx='34' fill='%23808080' filter='url(%23b)'/%3E%3C/svg%3E" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="62" xChannelSelector="R" yChannelSelector="G" result="dR"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="55" xChannelSelector="R" yChannelSelector="G" result="dG"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="48" xChannelSelector="R" yChannelSelector="G" result="dB"/>
+    <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+    <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+    <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+    <feBlend in="r" in2="g" mode="screen" result="rg"/>
+    <feBlend in="rg" in2="b" mode="screen"/>
+  </filter>
   <filter id="liquid" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
     <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="noise"/>
     <feGaussianBlur in="noise" stdDeviation="3" result="soft"/>
@@ -75,6 +87,8 @@
           <dt>Installée</dt><dd id="infoInstalled">—</dd>
           <dt>Taille</dt><dd id="infoSize">—</dd>
           <dt>Système</dt><dd id="infoPlatform">—</dd>
+          <dt>Temps d'utilisation</dt><dd id="infoUsage">—</dd>
+          <dt>Dont en vocal</dt><dd id="infoVoice">—</dd>
         </dl>
         <p class="desc" id="appDesc"></p>
       </section>

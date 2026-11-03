@@ -59,7 +59,7 @@ class StudioBot extends EventEmitter {
     if (!loc) return { ...base, status: "ready", channel: null, members: [] };
 
     const { guild, channel, vs } = loc;
-    const info = { id: channel.id, name: channel.name, guild: guild.name };
+    const info = { id: channel.id, name: channel.name, guild: guild.name, guildId: guild.id };
     const settings = { mute: !!(vs.selfMute || vs.serverMute), deaf: !!(vs.selfDeaf || vs.serverDeaf) };
     if (this.botChannelId(guild.id) !== channel.id) {
       const perms = channel.permissionsFor(guild.members.me);

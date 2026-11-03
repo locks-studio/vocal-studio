@@ -92,6 +92,10 @@ function render() {
   $("#infoInstalled").textContent = inst ? inst.version : "Non";
   $("#infoSize").textContent = file ? fmtSize(file.size) : "—";
   $("#infoPlatform").textContent = PLATFORM_NAMES[data.platform] || data.platform;
+  // Temps passé sur ce logiciel (compté par le logiciel lui-même)
+  const fmtH = (m) => (m == null ? "—" : m < 60 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, "0")}`);
+  $("#infoUsage").textContent = "—"; $("#infoVoice").textContent = "—";
+  if (a.usageDir) L.usage(a).then((u) => { if (current !== a.id || !u) return; $("#infoUsage").textContent = fmtH(u.appMinutes); $("#infoVoice").textContent = fmtH(u.voiceMinutes); });
   $("#folderBtn").hidden = !inst;
   $("#uninstallBtn").hidden = !inst;
 

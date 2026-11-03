@@ -195,7 +195,7 @@ class VoiceSession {
       const u = users[0];
       if (u) callee = { id: u.id, name: u.global_name || u.username || "?", avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=256` : null };
     }
-    this.channel = { id: ch.id, name: ch.name || (callee ? callee.name : "Appel privé"), guild, call, callee };
+    this.channel = { id: ch.id, name: ch.name || (callee ? callee.name : "Appel privé"), guild, guildId: ch.guild_id || null, call, callee };
     for (const vs of ch.voice_states || []) {
       if (this.isHushBot(vs)) continue;
       const m = toMember(vs);
@@ -253,6 +253,8 @@ class VoiceSession {
   }
   setDeaf(deaf) { return this.ipc.request("SET_VOICE_SETTINGS", { deaf }); }
   leave() { return this.ipc.request("SELECT_VOICE_CHANNEL", { channel_id: null, force: true }); }
+  // Rejoindre un vocal directement depuis Hush (historique, amis)
+  join(channelId) { return this.ipc.request("SELECT_VOICE_CHANNEL", { channel_id: channelId, force: true }); }
 }
 
 module.exports = { VoiceSession };

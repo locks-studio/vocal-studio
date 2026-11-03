@@ -29,7 +29,7 @@ const report = [];
 
 for (const a of cfg.apps) {
   const version = JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
-  const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: a.notes || [], downloads: {} };
+  const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: a.notes || [], usageDir: a.usageDir, downloads: {} };
   if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(a.id, "icon" + path.extname(a.icon)));
   if (a.banner && fs.existsSync(abs(a.banner))) entry.banner = copy(abs(a.banner), path.join(a.id, "banner" + path.extname(a.banner)));
   for (const [plat, art] of Object.entries(a.artifacts)) {

@@ -18,13 +18,18 @@
       "tagline": "Tes vocaux Discord en version cinéma : anneaux animés, caméra qui suit celui qui parle, musique et overlay pour le stream.",
       "description": "Hush affiche ton salon vocal Discord avec des avatars animés, une caméra 3D, la musique en cours et un overlay transparent pour OBS.",
       "accent": "#23a559",
+      "usageDir": ["vocal-studio", "Hush"],
       "package": "../vocal-studio-app/package.json",
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Page d'accueil, vue stream, disposition Libre et Verticale",
-        "Roue de couleurs avec pipette, fond Profil",
-        "Overlay transparent (Ctrl+O), clips (F9), menu clic droit"
+        "Nouveau Cinéma 3D avec caméra qui réalise (plans, zooms selon le débit) ; l'ancien devient Dynamique",
+        "Mode vertical pour Bande, Cinéma 3D, Dynamique, Grille et Discord",
+        "Onglets Effets (glitch) et Animation, pseudos masqués / flous / glitch",
+        "Accueil : Personnaliser (vocal simulé), classement, ajouter le bot à la voc",
+        "Lecteur musique en mini-vinyle quand on le réduit",
+        "Contour des avatars (noir ou couleur de l'avatar), pseudos en neige télé, glitch neige cathodique",
+        "Rejoindre un vocal depuis l'historique ou Mes amis ; croix des paramètres réparée"
       ],
       "artifacts": {
         "win32-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-win-x64.zip", "exec": "Hush.exe" },

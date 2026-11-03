@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("studio", {
     deaf: (v) => ipcRenderer.invoke("voice:deaf", v),
     leave: () => ipcRenderer.invoke("voice:leave"),
     summon: () => ipcRenderer.invoke("voice:summon"),
+    join: (c, g) => ipcRenderer.invoke("voice:join", c, g),
     user: (a) => ipcRenderer.invoke("voice:user", a),
     home: () => ipcRenderer.invoke("voice:home"),
     openChannel: (g, c) => ipcRenderer.invoke("discord:channel", g, c),
@@ -63,6 +64,10 @@ contextBridge.exposeInMainWorld("studio", {
     chunk: (id, buf) => ipcRenderer.invoke("clip:chunk", id, buf),
     end: (id) => ipcRenderer.invoke("clip:end", id),
     show: (file) => ipcRenderer.invoke("clip:show", file),
+  },
+  usage: {
+    me: () => ipcRenderer.invoke("usage:me"),
+    top: () => ipcRenderer.invoke("usage:top"),
   },
   linux: {
     info: () => ipcRenderer.invoke("linux:info"),
