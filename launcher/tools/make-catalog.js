@@ -2,7 +2,8 @@
 //   site/1999/catalog.json            ← la liste des logiciels, versions, liens et empreintes SHA-256
 //   site/1999/<id>/<version>/…zip      ← les fichiers à télécharger
 //   site/1999/<id>/icon.png            ← l'icône affichée dans le launcher
-//   site/1999/launcher/…               ← l'installeur du launcher lui-même, et une petite page de téléchargement
+//   site/1999/launcher/…               ← l'installeur du launcher lui-même
+//   site/1999/index.html, style.css…   ← le site de présentation, copié depuis website/
 // Utilisation : node tools/make-catalog.js   (lit publish.json)
 // Une plateforme dont le fichier n'existe pas encore (ex. Mac pas encore construit) est simplement sautée :
 // le launcher affichera « Bientôt » sur ce système.
@@ -41,10 +42,9 @@ for (const a of cfg.apps) {
   catalog.apps.push(entry);
 }
 
-// Le launcher lui-même : ses installeurs et une page de téléchargement simple
+// Le launcher lui-même : ses installeurs
 if (cfg.launcher) {
   const lv = JSON.parse(fs.readFileSync(abs(cfg.launcher.package), "utf8")).version;
-  const links = [];
   catalog.launcher = { version: lv, page: cfg.launcher.page, downloads: {} };
   for (const [plat, p] of Object.entries(cfg.launcher.artifacts)) {
     // Plusieurs fichiers possibles (installeur, sinon zip) : le premier qui existe
@@ -52,17 +52,17 @@ if (cfg.launcher) {
     if (!fs.existsSync(f)) { report.push(`  Launcher ${plat} : absent (sauté)`); continue; }
     const url = copy(f, path.join("launcher", path.basename(f)));
     catalog.launcher.downloads[plat] = { url, size: fs.statSync(f).size, sha256: sha(f) };
-    links.push([plat, url, path.basename(f)]);
     report.push(`  Launcher ${plat} : ok`);
   }
-  const names = { "win32-x64": "Windows", "darwin-arm64": "Mac (Apple Silicon : M1, M2, M3…)", "darwin-x64": "Mac (Intel)", "linux-x64": "Linux" };
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  fs.writeFileSync(path.join(out, "index.html"), `<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>1999 · Télécharger</title>
-<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#07060b;color:#f4f2fa;font-family:system-ui,sans-serif">
-<main style="width:min(520px,92vw);text-align:center"><h1 style="font-size:64px;margin:0;text-shadow:0 0 24px #ff3caa">1999</h1>
-<p style="color:#9a95ad">Le launcher de Locks : installe et met à jour Hush et les prochains logiciels. Version ${esc(lv)}.</p>
-${links.map(([p, u, n]) => `<p><a href="${esc(u)}" style="display:block;padding:14px;border-radius:12px;background:#ff3caa;color:#fff;text-decoration:none;font-weight:700">Télécharger pour ${esc(names[p] || p)}</a></p>`).join("")}
-<p style="color:#9a95ad;font-size:13px">Windows peut afficher « Windows a protégé votre ordinateur » : clique sur « Informations complémentaires » puis « Exécuter quand même ». Sur Mac : clic droit sur l'app › Ouvrir. Sur Linux : décompresse l'archive, puis double-clic sur <b>launcher-1999</b> (ou <code>./launcher-1999</code> dans un terminal).</p></main></body></html>`);
+}
+
+// Le site de présentation (website/) : copié tel quel à la racine. Il lit ./catalog.json pour ses boutons de téléchargement.
+const site = path.join(root, "website");
+if (fs.existsSync(site)) {
+  fs.cpSync(site, out, { recursive: true, filter: (src) => !/(^|[\\/])\./.test(path.relative(site, src)) });
+  report.push("  Site web : copié depuis website/");
+} else {
+  report.push("  Site web : dossier website/ absent, pas de page d'accueil");
 }
 
 fs.writeFileSync(path.join(out, "catalog.json"), JSON.stringify(catalog, null, 2));

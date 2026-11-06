@@ -65,6 +65,16 @@ contextBridge.exposeInMainWorld("studio", {
     end: (id) => ipcRenderer.invoke("clip:end", id),
     show: (file) => ipcRenderer.invoke("clip:show", file),
   },
+  friends: {
+    op: (op, arg) => ipcRenderer.invoke("friends:op", op, arg),
+    presence: (voice) => ipcRenderer.send("friends:presence", voice),
+    onChanged: (fn) => ipcRenderer.on("friends:changed", () => fn()),
+  },
+  chat: {
+    history: () => ipcRenderer.invoke("chat:history"),
+    send: (text) => ipcRenderer.invoke("chat:send", text),
+    onMessage: (fn) => ipcRenderer.on("chat:message", (_e, m) => fn(m)),
+  },
   usage: {
     me: () => ipcRenderer.invoke("usage:me"),
     top: () => ipcRenderer.invoke("usage:top"),
@@ -77,6 +87,7 @@ contextBridge.exposeInMainWorld("studio", {
     minimize: () => ipcRenderer.invoke("win:minimize"),
     maximize: () => ipcRenderer.invoke("win:maximize"),
     close: () => ipcRenderer.invoke("win:close"),
+    reload: () => ipcRenderer.invoke("win:reload"),
     pin: (on) => ipcRenderer.invoke("win:pin", on),
     fullscreen: () => ipcRenderer.invoke("win:fullscreen"),
     mini: () => ipcRenderer.invoke("win:mini"),

@@ -28,6 +28,8 @@ if (missing.length) {
 // DATA_DIR : dossier qui survit aux mises à jour du code (sur le VPS : /var/lib/hush-bot)
 const SESSIONS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "sessions.json");
 // Classement : minutes passées en vocal avec Hush, par personne (une minute comptée au plus toutes les 50 s)
+const { Friends } = require("./friends");
+const FRIENDS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "friends.json");
 const USAGE_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "usage.json");
 let usage = {};
 try { usage = JSON.parse(fs.readFileSync(USAGE_FILE, "utf8")); } catch {}
@@ -216,6 +218,8 @@ wss.on("connection", (ws) => {
       clearTimeout(authTimer);
       c.user = { id: s.id, name: s.name, avatar: await bot.avatarOf(s.id) };
       clients.add(c);
+      friends.touch(c.user);
+      friends.notifyFriends(c.user.id); // « Hush ouvert »
       ws.send(JSON.stringify({ type: "hello", user: c.user }));
       return push(c);
     }
@@ -227,6 +231,17 @@ wss.on("connection", (ws) => {
       }
       else if (msg.type === "dismiss") bot.dismiss(c.user.id);
       else if (msg.type === "beat") addMinute(c.user.id, c.user.name, c.user.avatar);
+      else if (msg.type === "presence") friends.setPresence(c.user.id, msg.voice);
+      else if (msg.type === "friends") {
+        try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: friends.op(c.user.id, msg.op, msg.arg) })); }
+        catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
+      else if (msg.type === "chat") {
+        try {
+          const data = msg.op === "send" ? await bot.chatSend(c.user.id, msg.text) : await bot.chatHistory(c.user.id);
+          ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data }));
+        } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
       else if (msg.type === "home") {
         // Qui a Hush : toutes les sessions connues ; en ligne : appli ouverte en ce moment
         const hushIds = new Set(Object.values(sessions).map((x) => x.id));
@@ -242,7 +257,26 @@ wss.on("connection", (ws) => {
       ws.send(JSON.stringify({ type: "error", message: e.message }));
     }
   });
-  ws.on("close", () => { clearTimeout(authTimer); clients.delete(c); });
+  ws.on("close", () => {
+    clearTimeout(authTimer);
+    clients.delete(c);
+    if (c.user && ![...clients].some((x) => x.user && x.user.id === c.user.id)) friends.setPresence(c.user.id, null);
+  });
+});
+
+// Amis : le vocal vu par le bot sert de secours quand Hush de l'ami est fermé
+const friends = new Friends(FRIENDS_FILE, {
+  voiceOf: (id) => { const l = bot.findUser(id); return l ? { channelId: l.channel.id, guildId: l.guild.id, name: l.channel.name, guild: l.guild.name } : null; },
+  isOnline: (id) => [...clients].some((x) => x.user && x.user.id === id),
+  notify: (id) => { for (const x of clients) if (x.user && x.user.id === id && x.ws.readyState === 1) x.ws.send(JSON.stringify({ type: "friends-changed" })); },
+});
+
+// Nouveau message dans le tchat d'un salon vocal : envoyé à ceux qui sont dans ce salon
+bot.on("chat", (channelId, message) => {
+  for (const c of clients) {
+    const loc = c.user && bot.findUser(c.user.id);
+    if (loc && loc.channel.id === channelId && c.ws.readyState === 1) c.ws.send(JSON.stringify({ type: "chat", message }));
+  }
 });
 
 // Regroupe les mises à jour (les débuts/fins de parole arrivent en rafale)
@@ -253,8 +287,9 @@ bot.on("change", () => {
   setTimeout(() => { queued = false; for (const c of clients) push(c); }, 40);
 });
 
-// Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles
-const INVITE_PERMS = (1n << 10n) | (1n << 20n) | (1n << 22n) | (1n << 23n) | (1n << 24n) | (1n << 27n) | (1n << 28n);
+// Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles,
+// et pour le tchat : envoyer des messages, voir les anciens messages, gérer les webhooks
+const INVITE_PERMS = (1n << 10n) | (1n << 11n) | (1n << 16n) | (1n << 20n) | (1n << 22n) | (1n << 23n) | (1n << 24n) | (1n << 27n) | (1n << 28n) | (1n << 29n);
 server.listen(PORT, process.env.HOST || undefined, () => {
   console.log(`Serveur Hush sur ${PUBLIC_URL} (port ${PORT})`);
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);

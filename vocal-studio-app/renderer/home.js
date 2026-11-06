@@ -39,6 +39,7 @@ function renderHome() {
 }
 
 async function refreshHome() {
+  friendOp("list");
   // Infos du bot et suggestions : aussi en connexion directe, si ton compte est lié au bot
   if (Date.now() - Home.infoAt > 15_000) { Home.info = await window.studio.bot.info(); Home.infoAt = Date.now(); }
   if (state.me && state.status === "ready") {
@@ -153,12 +154,67 @@ function drawAccount() {
 
 // — Sur Hush : les membres de tes serveurs qui ont Hush (en ligne, en vocal) —
 function drawPeople() {
-  const ppl = $("#homePeople");
+  const ppl = $("#frList");
   ppl.textContent = "";
-  const data = Home.data;
-  if (!data) ppl.append(h("p", "hint", "Lie ton compte au bot Hush (onglet Connexion) pour voir tes amis qui ont Hush."));
-  else if (!data.people.length) ppl.append(h("p", "hint", "Aucun ami sur tes serveurs n'a encore Hush."));
-  for (const p of (data && data.people) || []) {
+  const data = Home.data, fr = Home.friends;
+  $("#frCode").textContent = fr ? fr.code : "…";
+  $("#frHide").checked = !!(fr && fr.hideVoice);
+  if (Home.frError) ppl.append(h("p", "hint", Home.frError));
+  if (fr) {
+    for (const p of fr.incoming) {
+      const row = h("div", "hm-person");
+      const t = h("div", "hm-ptext");
+      t.append(h("b", "", p.name), h("small", "", "veut t'ajouter en ami"));
+      const yes = h("button", "cta small", "Accepter"), no = h("button", "ghost small", "Refuser");
+      yes.onclick = () => friendOp("accept", p.id);
+      no.onclick = () => friendOp("refuse", p.id);
+      row.append(avatarImg(p.avatar), t, yes, no);
+      ppl.append(row);
+    }
+    if (!fr.friends.length && !fr.incoming.length) ppl.append(h("p", "hint", "Donne ton code ami à quelqu'un, ou ajoute une personne de tes serveurs ci-dessous. Une fois la demande acceptée, vous voyez quand l'autre est en vocal."));
+    // Ceux qui sont en vocal d'abord
+    for (const p of [...fr.friends].sort((a, b) => !!b.voice - !!a.voice || !!b.online - !!a.online)) {
+      const row = h("div", "hm-person" + (p.online || p.voice ? " online" : ""));
+      const avw = h("div", "hm-pav");
+      avw.append(avatarImg(p.avatar), h("i", "st"));
+      const t = h("div", "hm-ptext");
+      const v = p.voice;
+      t.append(h("b", "", p.name), h("small", "", v ? (v.call ? "📞 En appel privé" : `🔊 ${v.name}${v.guild ? " · " + v.guild : ""}`) : p.online ? "Hush ouvert" : "Hors ligne"));
+      row.append(avw, t);
+      if (v && v.channelId) {
+        row.classList.add("joinable");
+        row.title = `Rejoindre ${v.name}`;
+        row.append(h("span", "hm-join", "Rejoindre"));
+        row.onclick = () => joinVoice(v.channelId, v.guildId, v.name);
+      }
+      const del = h("button", "wb fr-del", "×");
+      del.title = `Retirer ${p.name} de mes amis`;
+      del.setAttribute("aria-label", del.title);
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (del.dataset.sure) return friendOp("remove", p.id);
+        del.dataset.sure = "1";
+        showToast(`Clique encore sur × pour retirer ${p.name}.`);
+        setTimeout(() => delete del.dataset.sure, 4000);
+      };
+      row.append(del);
+      ppl.append(row);
+    }
+    for (const p of fr.outgoing) {
+      const row = h("div", "hm-person");
+      const t = h("div", "hm-ptext");
+      t.append(h("b", "", p.name), h("small", "", "demande envoyée"));
+      const no = h("button", "ghost small", "Annuler");
+      no.onclick = () => friendOp("cancel", p.id);
+      row.append(avatarImg(p.avatar), t, no);
+      ppl.append(row);
+    }
+  }
+  // Les personnes de tes serveurs qui ont Hush, pas encore ajoutées
+  const known = new Set(fr ? [...fr.friends, ...fr.incoming, ...fr.outgoing].map((p) => p.id) : []);
+  const others = ((data && data.people) || []).filter((p) => !known.has(p.id));
+  if (others.length) ppl.append(h("p", "hint", "Sur tes serveurs"));
+  for (const p of others) {
     const row = h("div", "hm-person" + (p.online ? " online" : ""));
     const avw = h("div", "hm-pav");
     avw.append(avatarImg(p.avatar), h("i", "st"));
@@ -172,8 +228,46 @@ function drawPeople() {
       row.append(h("span", "hm-join", "Rejoindre"));
       row.onclick = () => joinVoice(p.channelId, p.guildId, p.voice);
     }
+    if (fr) {
+      const add = h("button", "ghost small", "Ajouter");
+      add.onclick = (e) => { e.stopPropagation(); friendOp("add", p.id); };
+      row.append(add);
+    }
     ppl.append(row);
   }
+}
+
+// — Amis Hush : une demande acceptée des deux côtés, puis chacun voit quand l'autre est en vocal —
+async function friendOp(op, arg) {
+  const r = await window.studio.friends.op(op, arg);
+  if (r.error) { if (op === "list") { Home.friends = null; Home.frError = r.error; } else showToast(r.error); }
+  else {
+    // Un ami vient d'arriver en vocal : petit message, où qu'on soit dans Hush
+    const before = new Map(((Home.friends && Home.friends.friends) || []).map((p) => [p.id, p.voice]));
+    if (Home.friends) for (const p of r.data.friends) if (p.voice && !p.voice.call && !before.get(p.id) && before.has(p.id)) showToast(`${p.name} est en vocal dans ${p.voice.name}`);
+    Home.friends = r.data; Home.frError = null;
+    if (op === "add") showToast("Demande envoyée.");
+  }
+  if (!$("#home").hidden) drawHome();
+}
+window.studio.friends.onChanged(() => { if (!MINI) friendOp("list"); });
+$("#frAdd").onsubmit = (e) => {
+  e.preventDefault();
+  const v = $("#frInput").value.trim();
+  if (!v) return;
+  $("#frInput").value = "";
+  friendOp("add", v);
+};
+$("#frCopy").onclick = () => { if (Home.friends) { window.studio.voice.copy(Home.friends.code); showToast("Code ami copié."); } };
+$("#frHide").onchange = (e) => friendOp("hide", e.target.checked);
+// Annonce le vocal où tu es à tes amis (aussi en connexion directe). Le nom personnalisé d'un salon reste chez toi.
+let frKey = "";
+function friendsOnState(s) {
+  const c = s.status === "ready" && s.channel ? s.channel : null;
+  const key = c ? c.id : "";
+  if (key === frKey) return;
+  frKey = key;
+  window.studio.friends.presence(c ? (c.call ? { call: true } : { channelId: c.id, guildId: c.guildId || null, name: c.name, guild: c.guild }) : null);
 }
 
 async function joinVoice(c, g, name) {

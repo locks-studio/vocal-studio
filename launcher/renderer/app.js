@@ -46,6 +46,20 @@ async function load() {
   if (!current || !apps.some((a) => a.id === current)) current = apps[0] && apps[0].id;
   renderRail();
   render();
+  autoUpdate();
+}
+
+// Mises à jour automatiques : un logiciel installé dont le catalogue a une version plus récente (une tentative par version)
+const autoTried = new Set();
+function autoUpdate() {
+  if (!prefs.autoUpdate || !data.online) return;
+  for (const a of data.catalog.apps || []) {
+    const inst = data.installed[a.id], key = a.id + "@" + a.version;
+    if (!inst || !fileFor(a) || !newer(a.version, inst.version) || busy.has(a.id) || autoTried.has(key)) continue;
+    autoTried.add(key);
+    toast(`Mise à jour de ${a.name} vers la ${a.version}…`);
+    installApp(a, `${a.name} est à jour (${a.version}).`);
+  }
 }
 
 function renderRail() {
@@ -61,6 +75,7 @@ function renderRail() {
     const img = document.createElement("img");
     img.alt = "";
     img.src = a.icon || "../build/icon.png";
+    img.onerror = () => { img.onerror = null; img.src = "../build/icon.png"; }; // site injoignable : icône du launcher
     b.append(img, Object.assign(document.createElement("i"), { className: "dot" }));
     b.onclick = () => { current = a.id; renderRail(); render(); };
     rail.appendChild(b);
@@ -80,7 +95,7 @@ function render() {
   art.textContent = "";
   art.className = "hero-art" + (a.banner ? "" : " gen");
   art.style.backgroundImage = a.banner ? `url("${a.banner}")` : "";
-  if (!a.banner && a.icon) { const i = document.createElement("img"); i.src = a.icon; i.alt = ""; art.appendChild(i); }
+  if (!a.banner && a.icon) { const i = document.createElement("img"); i.src = a.icon; i.alt = ""; i.onerror = () => i.remove(); art.appendChild(i); }
 
   const inst = data.installed[a.id];
   const file = fileFor(a);
@@ -97,6 +112,7 @@ function render() {
   $("#infoUsage").textContent = "—"; $("#infoVoice").textContent = "—";
   if (a.usageDir) L.usage(a).then((u) => { if (current !== a.id || !u) return; $("#infoUsage").textContent = fmtH(u.appMinutes); $("#infoVoice").textContent = fmtH(u.voiceMinutes); });
   $("#folderBtn").hidden = !inst;
+  $("#repairBtn").hidden = !inst || !file;
   $("#uninstallBtn").hidden = !inst;
 
   // Le gros bouton
@@ -160,12 +176,15 @@ $("#playBtn").onclick = async () => {
     toast(`${a.name} se lance…`);
     return;
   }
+  installApp(a);
+};
+async function installApp(a, done) {
   busy.set(a.id, { phase: "download", done: 0, total: (fileFor(a) || {}).size || 0 });
   render();
   try {
     data.installed = await L.install(a.id);
     busy.delete(a.id);
-    toast(`${a.name} ${a.version} est installé.`);
+    toast(done || `${a.name} ${a.version} est installé.`);
   } catch (e) {
     busy.delete(a.id);
     const msg = String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
@@ -176,7 +195,7 @@ $("#playBtn").onclick = async () => {
   }
   renderRail();
   render();
-};
+}
 $("#folderBtn").onclick = () => L.folder(current);
 $("#uninstallBtn").onclick = async () => {
   const a = data.catalog.apps.find((x) => x.id === current);
@@ -196,12 +215,164 @@ $("#uninstallBtn").onclick = async () => {
   render();
 };
 $("#retryBtn").onclick = load;
+
+/* ——— Verre liquide : le fond d'écran pile derrière la fenêtre ———
+   La fenêtre est transparente ; on y affiche le fond d'écran du bureau à sa vraie place (il ne bouge pas quand on
+   déplace la fenêtre), et c'est lui que la dalle (#slab) et chaque panneau (#lens) réfractent. */
+let prefs = { glass: "acrylic", onLaunch: "stay", autoUpdate: true, startup: false };
+let lastBounds = null, wp = null, placing = 0;
+function placeDesk(b) {
+  if (b) lastBounds = b;
+  if (placing || !lastBounds) return;
+  placing = requestAnimationFrame(() => {
+    placing = 0;
+    const s = $("#deskImg").style, k = lastBounds;
+    s.left = k.dx - k.x + "px"; s.top = k.dy - k.y + "px";
+    s.width = k.dw + "px"; s.height = k.dh + "px";
+    document.body.classList.toggle("maxed", !!k.max);
+  });
+}
+// Le verre : d'abord le rendu WebGL (fluide) ; s'il n'est pas possible, l'ancien rendu (filtres SVG)
+async function loadWallpaper() {
+  let mode = prefs.glass;
+  if (mode === "live" && !/Windows|Macintosh/.test(navigator.userAgent)) mode = "wallpaper";
+  if (mode === "live" && (await Liquid.live())) return setGlassClasses("live");
+  if (mode === "live") mode = "wallpaper"; // capture refusée : le fond d'écran
+  if (mode === "wallpaper") {
+    const w = await L.desk.wallpaper();
+    if (w && (await Liquid.image(w.url, w.style))) return setGlassClasses("wallpaper");
+    if (!w) mode = "scene";
+  }
+  if (mode === "scene" && Liquid.scene()) return setGlassClasses("scene");
+  Liquid.stop();
+  const want = mode === "wallpaper";
+  wp = want ? await L.desk.wallpaper() : null;
+  const img = $("#deskImg");
+  if (wp) {
+    if (img.dataset.url !== wp.url) { img.style.backgroundImage = `url("${wp.url}")`; img.dataset.url = wp.url; }
+    img.dataset.fit = wp.style;
+  }
+  document.body.classList.toggle("glass-wallpaper", !!wp);
+  document.body.classList.toggle("glass-scene", !wp && prefs.glass !== "clear" && prefs.glass !== "acrylic");
+  // Acrylic / Vibrancy : la matière floutée vient du système ; la page ne dessine aucun fond (sinon elle la cache)
+  document.body.classList.toggle("glass-acrylic", prefs.glass === "acrylic" && /Windows|Macintosh/.test(navigator.userAgent));
+  document.body.classList.toggle("glass-clear", prefs.glass === "clear");
+  refreshGlass();
+}
+function setGlassClasses(m) {
+  for (const c of ["glass-wallpaper", "glass-scene", "glass-acrylic", "glass-clear", "glass-live"]) document.body.classList.remove(c);
+  document.body.classList.add("glass-" + m);
+  refreshGlass(); // retire les filtres SVG : le WebGL dessine tout
+}
+/* ——— La lentille : un filtre SVG par verre, à sa taille exacte ———
+   Une carte de déplacement (rouge = décalage horizontal, vert = vertical, gris = aucun) : neutre au centre,
+   elle pousse sur une bande le long des bords, arrondie comme le panneau. Le fond se courbe donc sur les bords
+   comme à travers une goutte de verre, avec une légère dispersion (rouge, vert et bleu décalés un peu
+   différemment : le liseré irisé). Taille en vrais pixels : une carte en pourcentages ne s'applique pas. */
+const SVGNS = "http://www.w3.org/2000/svg";
+const fxRoot = document.querySelector("svg");
+function edgeMap(w, h, band, r) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><defs>` +
+    `<linearGradient id='r' x1='0' x2='1' y1='0' y2='0'><stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#000000'/></linearGradient>` +
+    `<linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0' stop-color='#00ff00'/><stop offset='1' stop-color='#000000'/></linearGradient>` +
+    `<filter id='b' x='-20%' y='-20%' width='140%' height='140%'><feGaussianBlur stdDeviation='${(band / 2.4).toFixed(1)}'/></filter></defs>` +
+    `<rect width='${w}' height='${h}' fill='url(#r)'/><rect width='${w}' height='${h}' fill='url(#g)' style='mix-blend-mode:screen'/>` +
+    `<rect x='${band}' y='${band}' width='${Math.max(1, w - 2 * band)}' height='${Math.max(1, h - 2 * band)}' rx='${r}' fill='#808080' filter='url(#b)'/></svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+function lensFilter(id, w, h, band, r, scale) {
+  let f = document.getElementById(id);
+  if (!f) {
+    f = document.createElementNS(SVGNS, "filter");
+    f.id = id;
+    f.setAttribute("color-interpolation-filters", "sRGB");
+    f.setAttribute("filterUnits", "userSpaceOnUse");
+    f.innerHTML = `<feImage result="map" preserveAspectRatio="none" x="0" y="0"/>` +
+      ["R", "G", "B"].map((c, i) => `<feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" result="d${c}"/>`).join("") +
+      `<feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="cR"/>` +
+      `<feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="cG"/>` +
+      `<feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="cB"/>` +
+      `<feBlend in="cR" in2="cG" mode="screen" result="rg"/><feBlend in="rg" in2="cB" mode="screen"/>`;
+    fxRoot.appendChild(f);
+  }
+  for (const [k, v] of [["x", 0], ["y", 0], ["width", w], ["height", h]]) f.setAttribute(k, v);
+  const img = f.querySelector("feImage");
+  img.setAttribute("width", w); img.setAttribute("height", h);
+  img.setAttribute("href", edgeMap(w, h, band, r));
+  f.querySelectorAll("feDisplacementMap").forEach((d, i) => d.setAttribute("scale", (scale * [1, 0.93, 0.86][i]).toFixed(1)));
+}
+const lensed = new Map(); // élément → id de son filtre
+let lensN = 0;
+function glassFx(el) {
+  const on = !document.body.classList.contains("liquid-on") && (document.body.classList.contains("glass-wallpaper") || document.body.classList.contains("glass-scene"));
+  const isDesk = el.id === "desk";
+  const prop = isDesk ? "filter" : "backdropFilter";
+  if (!on) { el.style[prop] = ""; if (!isDesk) el.style.webkitBackdropFilter = ""; return; }
+  const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
+  if (!w || !h) return;
+  let id = lensed.get(el);
+  if (!id) { id = "lens" + ++lensN; lensed.set(el, id); }
+  const r = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16;
+  // La fenêtre : une plaque épaisse (bande large, forte courbure) ; les panneaux : des gouttes plus fines
+  if (isDesk) lensFilter(id, w, h, 38, r + 10, 90);
+  else lensFilter(id, w, h, Math.min(24, Math.min(w, h) / 4), r, 46);
+  const extra = isDesk ? "saturate(1.25) brightness(1.03)" : "blur(6px) saturate(1.8) brightness(1.08)";
+  el.style[prop] = `url(#${id}) ${extra}`;
+  if (!isDesk) el.style.webkitBackdropFilter = el.style.backdropFilter;
+}
+const glassRO = new ResizeObserver((entries) => entries.forEach((e) => glassFx(e.target)));
+function refreshGlass() {
+  for (const el of [$("#desk"), ...document.querySelectorAll(".glass")]) { glassRO.observe(el); glassFx(el); }
+}
+// Écran changé (fenêtre glissée sur un autre moniteur) : on recapture celui-là
+let lastDid = null;
+L.desk.onBounds((b) => {
+  placeDesk(b);
+  Liquid.setDisplay(b);
+  if (lastDid && b.did !== lastDid && document.body.classList.contains("glass-live")) Liquid.live();
+  lastDid = b.did;
+});
+L.desk.bounds().then((b) => { Liquid.setDisplay(b); lastDid = b.did; });
+L.desk.onFocus(loadWallpaper); // fond d'écran changé pendant que le launcher était ouvert
+L.desk.bounds().then(placeDesk);
+
+/* ——— Réglages ——— */
+const segs = { glass: "#setGlass", onLaunch: "#setLaunch" };
+function drawSettings(s) {
+  for (const [k, sel] of Object.entries(segs)) document.querySelectorAll(sel + " button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === s[k]));
+  $("#setAuto").setAttribute("aria-checked", !!s.autoUpdate);
+  $("#setStartup").setAttribute("aria-checked", !!s.startup);
+  $("#setStartupRow").hidden = !s.canStartup;
+  $("#setDir").textContent = s.appsDir || "";
+}
+async function setPref(patch) {
+  prefs = { ...prefs, ...(await L.settings.set(patch)) };
+  drawSettings({ ...prefs, ...(await L.settings.get()) });
+  if ("glass" in patch) loadWallpaper();
+}
+for (const [k, sel] of Object.entries(segs)) document.querySelectorAll(sel + " button").forEach((b) => (b.onclick = () => setPref({ [k]: b.dataset.v })));
+$("#setAuto").onclick = () => setPref({ autoUpdate: !prefs.autoUpdate });
+$("#setStartup").onclick = () => setPref({ startup: !prefs.startup });
+$("#setDirOpen").onclick = () => L.folder("");
+$("#settingsBtn").onclick = async () => { drawSettings(await L.settings.get()); $("#settings").hidden = false; };
+$("#settingsClose").onclick = () => ($("#settings").hidden = true);
+L.settings.get().then((s) => { prefs = { ...prefs, ...s }; loadWallpaper(); });
+
+/* ——— Réparer : retélécharge la version et la vérifie (fichiers abîmés, logiciel qui ne démarre plus) ——— */
+$("#repairBtn").onclick = () => {
+  const a = data.catalog.apps.find((x) => x.id === current);
+  if (a && !busy.has(a.id)) installApp(a, `${a.name} est réparé.`);
+};
 $("#aboutBtn").onclick = () => ($("#about").hidden = false);
 $("#aboutClose").onclick = () => ($("#about").hidden = true);
 $("#min").onclick = () => L.win.minimize();
 $("#max").onclick = () => L.win.maximize();
 $("#close").onclick = () => L.win.close();
-addEventListener("keydown", (e) => { if (e.key === "Escape") $("#about").hidden = true; });
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { $("#about").hidden = true; $("#settings").hidden = true; }
+  // Entrée : le gros bouton (sauf si une fenêtre est ouverte ou qu'un bouton a le focus)
+  if (e.key === "Enter" && $("#about").hidden && $("#settings").hidden && !(document.activeElement && document.activeElement.closest("button"))) $("#playBtn").click();
+});
 // Le catalogue est relu toutes les 10 minutes (nouvelles versions)
 setInterval(() => { if (!busy.size) load(); }, 10 * 60_000);
 // Reflet du verre : il suit la souris

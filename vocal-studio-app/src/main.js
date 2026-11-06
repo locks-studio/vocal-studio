@@ -18,7 +18,7 @@ let sounds;
 // (réglages, sons importés, connexions), sinon tout serait perdu avec le changement de nom
 try {
   const oldDir = path.join(app.getPath("appData"), "vocal-studio");
-  if (fs.existsSync(oldDir)) app.setPath("userData", oldDir);
+  if (fs.existsSync(oldDir) && !process.argv.some((a) => a.startsWith("--user-data-dir="))) app.setPath("userData", oldDir);
 } catch {}
 
 // ——— Réglages enregistrés (le secret et le jeton sont chiffrés par Windows quand c'est possible) ———
@@ -246,6 +246,8 @@ app.whenReady().then(() => {
   sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
   botLink = new BotLink(botStore, (url) => shell.openExternal(url), (state) => { if (session === botLink) send("voice:state", state); });
+  botLink.onChat = (m) => send("chat:message", m);
+  botLink.onFriends = () => send("friends:changed");
   useMode(data.mode);
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
@@ -336,6 +338,18 @@ ipcMain.handle("voice:user", async (_e, a) => {
   if (session === localSession && (a.action === "volume" || a.action === "localMute")) return localSession.userAction(a);
   return botLink.userAction(a);
 });
+// Tchat du salon vocal : passe par le lien au bot, aussi en connexion directe
+const chatCall = async (op, text) => {
+  if (!botLink || !botLink.ws || botLink.ws.readyState !== 1) return { error: "Lie ton compte au bot Hush pour voir le tchat : Accueil › Connexion › « Lier au bot »." };
+  try { return { data: await botLink.chat(op, text) }; } catch (e) { return { error: e.message }; }
+};
+ipcMain.handle("chat:history", () => chatCall("history"));
+ipcMain.handle("friends:op", async (_e, op, arg) => {
+  if (!botLink || !botLink.ws || botLink.ws.readyState !== 1) return { error: "Lie ton compte au bot Hush : onglet Connexion › « Lier au bot »." };
+  try { return { data: await botLink.friends(String(op), arg) }; } catch (e) { return { error: e.message }; }
+});
+ipcMain.on("friends:presence", (_e, voice) => { if (botLink) botLink.presence(voice); });
+ipcMain.handle("chat:send", (_e, text) => chatCall("send", String(text || "").slice(0, 1900)));
 ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
 ipcMain.handle("bot:info", async () => {
   const i = await botLink.info();
@@ -377,6 +391,7 @@ ipcMain.handle("spotify:logout", () => spotify.logout());
 ipcMain.handle("win:minimize", (e) => winOf(e).minimize());
 ipcMain.handle("win:maximize", (e) => { const w = winOf(e); w.isMaximized() ? w.unmaximize() : w.maximize(); });
 ipcMain.handle("win:close", (e) => winOf(e).close());
+ipcMain.handle("win:reload", (e) => e.sender.reload()); // location.reload est bloqué par la protection will-navigate
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
 ipcMain.handle("win:mini", () => toggleMini());

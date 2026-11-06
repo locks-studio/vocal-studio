@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1999 : télécharger Hush</title>
+<meta name="description" content="1999 est le launcher qui installe et met à jour Hush, l'overlay vocal Discord en version cinéma. Gratuit pour Windows et Linux.">
+<meta name="theme-color" content="#fbd3e7">
+<meta property="og:title" content="1999 : le launcher de Hush">
+<meta property="og:description" content="Tes vocaux Discord en version cinéma. 1999 installe Hush et le garde à jour.">
+<meta property="og:image" content="img/1999.png">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#telecharger">Aller au téléchargement</a>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<header class="top">
+  <a class="brand" href="#" aria-label="1999, accueil"><img src="img/1999.png" alt="" width="34" height="34"><span>1999</span></a>
+  <nav aria-label="Sections">
+    <a href="#hush">Hush</a>
+    <a href="#launcher">Le launcher</a>
+    <a href="#installer">Installer</a>
+    <a class="nav-cta" href="#telecharger">Télécharger</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Accueil : le grand 1999 en plastique rose, et le panneau de téléchargement en verre -->
+  <section class="hero" aria-labelledby="hero-title">
+    <p class="giant" aria-hidden="true"><span>1</span><span>9</span><span>9</span><span>9</span></p>
+    <div class="dots" aria-hidden="true"></div>
+    <div class="hero-copy">
+      <img class="hero-hush" src="img/hush.png" alt="Logo de Hush" width="88" height="88">
+      <h1 id="hero-title">Tes vocaux Discord, en version cinéma.</h1>
+      <p class="lede">1999 installe <strong>Hush</strong> sur ton PC et le garde à jour tout seul. Tu lances, tu choisis ton salon, ça tourne.</p>
+      <div class="hero-actions">
+        <a class="btn btn-main" id="hero-dl" href="#telecharger">
+          <span class="btn-label">Télécharger 1999</span>
+          <span class="btn-meta" id="hero-meta">Gratuit</span>
+        </a>
+        <a class="btn-ghost" href="#hush">Voir Hush en action</a>
+      </div>
+    </div>
+
+    <!-- Aperçu du launcher, fenêtre de verre qui s'incline avec la souris -->
+    <figure class="window glass tilt" aria-label="Aperçu du launcher 1999">
+      <div class="win-bar"><i></i><i></i><i></i><span>1999</span></div>
+      <div class="win-body">
+        <div class="win-app">
+          <img src="img/hush.png" alt="" width="56" height="56">
+          <div>
+            <b>Hush</b>
+            <small>Overlay vocal Discord</small>
+          </div>
+          <span class="pill" id="win-version">v0.2.0</span>
+        </div>
+        <div class="win-progress"><span></span></div>
+        <div class="win-row"><span>Mise à jour installée</span><span class="mono">100 %</span></div>
+        <button class="win-launch" type="button" tabindex="-1" aria-hidden="true">Lancer Hush</button>
+      </div>
+      <figcaption class="sr">Le launcher 1999 avec Hush installé et prêt à lancer.</figcaption>
+    </figure>
+  </section>
+
+  <!-- Hush : la démo jouable -->
+  <section class="hush" id="hush" aria-labelledby="hush-title">
+    <div class="section-head">
+      <h2 id="hush-title">Hush, c'est ton salon vocal filmé comme un plateau.</h2>
+      <p>Chaque personne a son anneau qui s'anime quand elle parle, et la caméra va chercher celui qui a la parole. Essaie les réglages ci-dessous, c'est le même rendu que dans l'appli.</p>
+    </div>
+
+    <div class="demo">
+      <div class="stage-wrap" id="stage-wrap">
+        <div class="stage" id="stage" role="img" aria-label="Démo de Hush : quatre avatars, celui qui parle est entouré d'un anneau animé et la caméra se rapproche de lui.">
+          <div class="cam" id="cam">
+            <div class="av" data-n="0" style="--x:22%;--y:34%;--c1:#ff8cc6;--c2:#f0569f"><span class="ring"></span><span class="face">LO</span><span class="name">Locks</span></div>
+            <div class="av" data-n="1" style="--x:74%;--y:30%;--c1:#ffc3e1;--c2:#c55bd6"><span class="ring"></span><span class="face">MI</span><span class="name">Mira</span></div>
+            <div class="av" data-n="2" style="--x:36%;--y:66%;--c1:#ffd6a8;--c2:#ff6f9c"><span class="ring"></span><span class="face">NA</span><span class="name">Nao</span></div>
+            <div class="av" data-n="3" style="--x:70%;--y:68%;--c1:#c9b6ff;--c2:#f06fb8"><span class="ring"></span><span class="face">TE</span><span class="name">Tess</span></div>
+          </div>
+          <div class="snow" aria-hidden="true"></div>
+          <div class="music glass">
+            <span class="vinyl" aria-hidden="true"></span>
+            <span><b>Nuit rose</b><small>en écoute sur ce PC</small></span>
+          </div>
+          <span class="rec" aria-hidden="true">EN DIRECT</span>
+        </div>
+      </div>
+
+      <fieldset class="controls glass">
+        <legend class="sr">Réglages de la démo</legend>
+        <label class="toggle"><input type="checkbox" id="t-cam" checked><span class="sw"></span><span><b>Cinéma 3D</b><small>La caméra suit qui parle</small></span></label>
+        <label class="toggle"><input type="checkbox" id="t-glitch"><span class="sw"></span><span><b>Glitch et neige</b><small>Pseudos en neige télé</small></span></label>
+        <label class="toggle"><input type="checkbox" id="t-vert"><span class="sw"></span><span><b>Mode vertical</b><small>Pour TikTok et les Shorts</small></span></label>
+        <label class="toggle"><input type="checkbox" id="t-overlay"><span class="sw"></span><span><b>Overlay transparent</b><small>Directement dans OBS</small></span></label>
+      </fieldset>
+    </div>
+
+    <ul class="features">
+      <li><h3>Anneaux animés</h3><p>Ils respirent avec la voix de chacun, en deux couleurs, avec contour noir ou couleur de l'avatar.</p></li>
+      <li><h3>Caméra qui réalise</h3><p>Plans, zooms selon le débit de parole : le Cinéma 3D monte ton vocal en direct.</p></li>
+      <li><h3>La musique en cours</h3><p>Le titre qui passe sur ton PC s'affiche, et le lecteur se réduit en mini-vinyle.</p></li>
+      <li><h3>Prêt pour le stream</h3><p>Un overlay transparent à poser dans OBS, en paysage ou en vertical.</p></li>
+      <li><h3>Personnaliser</h3><p>Règle tout sur un vocal simulé avant de te lancer, sans déranger personne.</p></li>
+      <li><h3>Classement</h3><p>Qui a le plus parlé dans le salon, salons favoris et historique pour rejoindre en un clic.</p></li>
+    </ul>
+  </section>
+
+  <!-- Le launcher -->
+  <section class="launcher" id="launcher" aria-labelledby="launcher-title">
+    <div class="launcher-art" aria-hidden="true"><img src="img/1999.png" alt="" width="256" height="256"></div>
+    <div class="launcher-copy">
+      <h2 id="launcher-title">1999 s'occupe de l'installation à ta place.</h2>
+      <p>Pas de fichiers à dézipper, pas de version à vérifier. Le launcher télécharge Hush, contrôle chaque fichier et l'installe pour toi.</p>
+      <dl class="facts">
+        <div><dt>Installe</dt><dd>Hush en un clic, au bon endroit, avec son raccourci.</dd></div>
+        <div><dt>Met à jour</dt><dd>Dès qu'une version sort, 1999 te la propose et l'applique.</dd></div>
+        <div><dt>Vérifie</dt><dd>Chaque téléchargement est contrôlé avant d'être installé.</dd></div>
+        <div><dt>Brille</dt><dd>Une interface en verre liquide rose qui réagit en direct à ta souris.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Téléchargement -->
+  <section class="download" id="telecharger" aria-labelledby="dl-title">
+    <div class="section-head">
+      <h2 id="dl-title">Télécharger 1999</h2>
+      <p id="dl-status">Version <span class="mono" id="dl-version">…</span> du launcher. Hush s'installe ensuite depuis 1999.</p>
+    </div>
+    <ul class="platforms" id="platforms">
+      <li class="plat glass" data-os="windows">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>
+        <div class="plat-info"><h3>Windows</h3><p class="plat-meta">Windows 10 et 11, 64 bits</p></div>
+        <span class="plat-action">Chargement…</span>
+      </li>
+      <li class="plat glass" data-os="mac">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.5-1-2.5-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>
+        <div class="plat-info"><h3>Mac</h3><p class="plat-meta">Apple Silicon et Intel</p></div>
+        <span class="plat-action">Chargement…</span>
+      </li>
+      <li class="plat glass" data-os="linux">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-2.2 0-3.6 1.9-3.6 4.6 0 1.4.3 2.3-.5 3.6C6.6 12 5 14.3 5 16.7c0 .7.1 1.3.4 1.8-.8.3-1.9.6-1.9 1.4 0 1 1.8 1 3.2 1.4 1.4.4 2 .9 2.8.9.8 0 1.2-.5 1.6-.7h1.8c.4.2.8.7 1.6.7.8 0 1.4-.5 2.8-.9 1.4-.4 3.2-.4 3.2-1.4 0-.8-1.1-1.1-1.9-1.4.3-.5.4-1.1.4-1.8 0-2.4-1.6-4.7-2.9-6.5-.8-1.3-.5-2.2-.5-3.6C15.6 3.9 14.2 2 12 2zm-1.5 4c.4 0 .7.5.7 1.1s-.3 1.1-.7 1.1-.7-.5-.7-1.1.3-1.1.7-1.1zm3 0c.4 0 .7.5.7 1.1s-.3 1.1-.7 1.1-.7-.5-.7-1.1.3-1.1.7-1.1zM12 9c.9 0 2 .6 2 1s-1.1 1.1-2 1.1-2-.7-2-1.1 1.1-1 2-1z"/></svg>
+        <div class="plat-info"><h3>Linux</h3><p class="plat-meta">x64, archive .tar.gz</p></div>
+        <span class="plat-action">Chargement…</span>
+      </li>
+    </ul>
+    <p class="mobile-note" id="mobile-note" hidden>Tu es sur téléphone : Hush et 1999 tournent sur ordinateur. Ouvre cette page sur ton PC pour les installer.</p>
+  </section>
+
+  <!-- Aide à l'installation -->
+  <section class="install" id="installer" aria-labelledby="install-title">
+    <div class="section-head">
+      <h2 id="install-title">Ton système va peut-être tiquer, c'est normal.</h2>
+      <p>1999 n'est pas encore signé par Microsoft ni par Apple. Voici comment passer l'avertissement la première fois.</p>
+    </div>
+    <div class="tabs glass">
+      <div class="tablist" role="tablist" aria-label="Système">
+        <button role="tab" id="tab-windows" aria-controls="pane-windows" aria-selected="true">Windows</button>
+        <button role="tab" id="tab-mac" aria-controls="pane-mac" aria-selected="false" tabindex="-1">Mac</button>
+        <button role="tab" id="tab-linux" aria-controls="pane-linux" aria-selected="false" tabindex="-1">Linux</button>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-windows" aria-labelledby="tab-windows">
+        <ol class="steps">
+          <li>Décompresse le .zip téléchargé (clic droit › Extraire tout), puis double-clique sur <code>1999.exe</code>.</li>
+          <li>Si Windows affiche « Windows a protégé votre ordinateur », clique sur <b>Informations complémentaires</b>.</li>
+          <li>Clique ensuite sur <b>Exécuter quand même</b>. 1999 s'installe et s'ouvre tout seul.</li>
+        </ol>
+        <div class="smartscreen" aria-hidden="true">
+          <b>Windows a protégé votre ordinateur</b>
+          <span>Microsoft Defender SmartScreen a empêché le démarrage d'une application non reconnue.</span>
+          <u>Informations complémentaires</u>
+          <i>Exécuter quand même</i>
+        </div>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-mac" aria-labelledby="tab-mac" hidden>
+        <ol class="steps">
+          <li>Ouvre le .dmg et glisse <b>1999</b> dans le dossier Applications.</li>
+          <li>Dans Applications, fais un <b>clic droit</b> sur 1999 (ou Ctrl + clic), puis <b>Ouvrir</b>.</li>
+          <li>Confirme avec <b>Ouvrir</b> dans la fenêtre qui apparaît. Les fois suivantes, un double-clic suffit.</li>
+        </ol>
+        <p class="pane-note">La version Mac arrive bientôt : le bouton s'activera tout seul dès qu'elle sera en ligne.</p>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-linux" aria-labelledby="tab-linux" hidden>
+        <ol class="steps">
+          <li>Décompresse l'archive téléchargée : elle contient un dossier <code>1999</code>.</li>
+          <li>Dans ce dossier, double-clique sur <b>launcher-1999</b>, ou lance-le depuis un terminal :</li>
+        </ol>
+        <pre class="cmd"><code>tar -xzf 1999-Setup-*-linux-x64.tar.gz
+cd 1999
+./launcher-1999</code></pre>
+        <p class="pane-note">S'il refuse de démarrer, rends-le exécutable avec <code>chmod +x launcher-1999</code>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <img src="img/1999.png" alt="" width="40" height="40">
+  <p>1999 et Hush sont faits par Locks, pour l'Organisation Phantom.<br>Hush n'est pas affilié à Discord.</p>
+  <a href="https://organisationphantom.fr">organisationphantom.fr</a>
+</footer>
+
+<script src="site.js" defer></script>
+</body>
+</html>

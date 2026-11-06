@@ -23,6 +23,9 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
+        "Amis Hush : code ami, demandes à accepter, voir quand tes amis sont en vocal",
+        "Tchat de la voc : lire et écrire depuis Hush",
+        "Rose pâle par défaut, l'interface suit la couleur d'accent, fonds en cercles d'aperçu",
         "Nouveau Cinéma 3D avec caméra qui réalise (plans, zooms selon le débit) ; l'ancien devient Dynamique",
         "Mode vertical pour Bande, Cinéma 3D, Dynamique, Grille et Discord",
         "Onglets Effets (glitch) et Animation, pseudos masqués / flous / glitch",

@@ -1,7 +1,7 @@
 {
   "name": "vocal-studio",
   "productName": "Hush",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Interface d'appel vocal Discord personnalisable",
   "main": "src/main.js",
   "private": true,

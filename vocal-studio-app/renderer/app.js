@@ -6,7 +6,7 @@ const MINI = new URLSearchParams(location.search).has("mini");
 
 /* ——— Préférences visuelles ——— */
 const SKINS = {
-  nuit: { label: "Nuit", a: "#ffffff", b: "#9aa3b8", bg: "#000000" },
+  nuit: { label: "Nuit", a: "#fcbbdd", b: "#ffe3f1", bg: "#000000" },
   aurore: { label: "Aurore", a: "#7c6cff", b: "#ff7ab8", bg: "#0d0b1a" },
   braise: { label: "Braise", a: "#ff6a3d", b: "#ffc14d", bg: "#140b08" },
   glace: { label: "Glace", a: "#4fd6ff", b: "#a6fff0", bg: "#06121a" },
@@ -19,7 +19,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#1a1024", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "cover", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top" };
+  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top" };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -411,7 +411,7 @@ async function renderSetup(card, screen) {
 window.studio.voice.onState(onVoiceState);
 function onVoiceState(s) {
   if (S.demo) return;
-  if (typeof homeOnState === "function" && !MINI) homeOnState(s);
+  if (typeof homeOnState === "function" && !MINI) { homeOnState(s); friendsOnState(s); }
   // En mode Personnaliser, on garde le vrai état de côté pour le retrouver en sortant
   if (sandbox) { sandbox.real = s; return; }
   // Hors vocal : on te montre seul dans la scène (le fond flouté de l'accueil)
@@ -422,6 +422,7 @@ function onVoiceState(s) {
   state = s;
   syncTiles();
   renderChrome();
+  if (window.chatOnState) window.chatOnState();
 }
 
 /* ——— Mode Personnaliser (depuis l'accueil) ———
@@ -551,7 +552,7 @@ document.querySelectorAll("#tabs [data-tab]").forEach((b) => (b.onclick = () => 
 $("#settingsClose").onclick = () => { S.panel = false; apply(); };
 // Dès qu'on touche à un réglage visuel, la fenêtre se range sur le côté pour voir le résultat en direct
 $("#panel").addEventListener("input", dockSettings);
-$("#panel").addEventListener("click", (e) => { if (e.target.closest(".tab-panel .seg button, .tab-panel .switch, .skin, #accentReset")) dockSettings(); });
+$("#panel").addEventListener("click", (e) => { if (e.target.closest(".tab-panel .seg button, .tab-panel .bg-pick button, .tab-panel .switch, .skin, #accentReset")) dockSettings(); });
 function dockSettings() { $("#settingsWrap").classList.add("docked"); syncDock(); }
 $("#settingsCenter").onclick = () => { $("#settingsWrap").classList.remove("docked"); syncDock(); };
 // Paramètres sur le côté : la scène se décale pour rester centrée dans la partie visible
@@ -1062,6 +1063,51 @@ function uiColors() {
   const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
   b.style.setProperty("--ui", hex);
   b.style.setProperty("--on-ui", lum(rgb) > 0.45 ? "#111318" : "#ffffff");
+  // Le verre de l'interface (paramètres, barre d'appel, tchat, fenêtres) prend la couleur d'accent ; rose pâle par défaut.
+  // Accent clair : verre clair et texte foncé de la même teinte. Accent sombre : verre sombre et texte blanc.
+  const base = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  const h = hexHsl(acc), light = lum(base) > 0.3, sat = Math.max(h.s, 12);
+  const white = (k) => base.map((v) => Math.round(v + (255 - v) * k)).join(",");
+  const set = (k, v) => b.style.setProperty(k, v);
+  b.classList.toggle("glass-dark", !light);
+  set("--tint", base.join(","));
+  set("--tint-l", white(light ? 0.55 : 0.14));
+  set("--sh", hslRgb(h.h, Math.min(sat, 60), 25).join(","));
+  set("--rim", hslRgb(h.h, Math.min(sat + 30, 85), 64).join(","));
+  set("--ink", light ? `hsl(${h.h} ${Math.min(sat, 55)}% 15%)` : "#ffffff");
+  set("--ink-soft", light ? `hsl(${h.h} ${Math.min(sat, 30)}% 37%)` : "rgba(255,255,255,.72)");
+  // Boutons sélectionnés posés sur ce verre : une version bien contrastée de l'accent
+  set("--ui-deep", light ? `hsl(${h.h} ${h.s < 8 ? 0 : Math.max(h.s, 65)}% ${h.s < 8 ? 25 : Math.min(h.l, 52)}%)` : `hsl(${h.h} ${h.s}% 80%)`);
+  set("--on-ui-deep", light ? "#ffffff" : "#111318");
+}
+function hslRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l), f = (n) => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return [f(0), f(8), f(4)];
+}
+
+// Aperçu de chaque fond dans son cercle (les fonds animés sont dessinés une fois, à l'identique)
+function drawBgPicks() {
+  document.querySelectorAll("#bgSeg button").forEach((btn) => {
+    const dot = btn.querySelector(".bg-dot"), v = btn.dataset.v, col = S.bgColor || "#fcbbdd";
+    if (v === "pinkspace" || v === "space") {
+      if (dot.firstChild) return;
+      const c = document.createElement("canvas");
+      c.width = c.height = 120;
+      window.Patterns.draw(v, c.getContext("2d"), 120, 120, 0, 0, 0);
+      dot.appendChild(c);
+    } else if (v === "solid") dot.style.background = col;
+    else if (v === "gradient") {
+      const k = hexHsl(col);
+      dot.style.background = `radial-gradient(circle,hsl(${k.h} ${k.s}% ${Math.min(100, k.l + 8)}%),hsl(${k.h} ${k.s}% ${k.l * 0.72}%) 55%,hsl(${k.h} ${k.s}% ${k.l * 0.45}%))`;
+    } else if (v === "profile") {
+      const a = state.me && state.me.avatar;
+      dot.style.background = a ? `center/cover url("${a}")` : "#5865f2";
+    } else if (v === "image") {
+      dot.style.background = S.bgImage && S.bgKind !== "video" ? `center/cover url("${S.bgImage}")` : "";
+      dot.classList.toggle("empty", !S.bgImage || S.bgKind === "video");
+    }
+  });
 }
 
 // Couleur d'origine de tous les anneaux : le vert de Discord quand quelqu'un parle
@@ -1108,6 +1154,7 @@ function apply() {
   b.style.setProperty("--clip", SHAPES[S.shape].c);
   if (S.accent) b.style.setProperty("--accent", S.accent); else b.style.removeProperty("--accent");
   uiColors();
+  drawBgPicks();
   applyRing();
   $("#ringColor").value = S.ringColor || (RING_ORIGIN[S.ring] ? RING_ORIGIN[S.ring][0] : S.accent || SKINS[S.skin].a);
   $("#ringCoverHint").hidden = S.ringFrom !== "cover";
@@ -1165,8 +1212,8 @@ function apply() {
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
-  $("#bgColorRow").hidden = S.bg !== "solid";
-  $("#bgColor").value = S.bgColor || "#1a1024";
+  $("#bgColorRow").hidden = S.bg !== "solid" && S.bg !== "gradient";
+  $("#bgColor").value = S.bgColor || "#fcbbdd";
   $("#freeHint").hidden = S.layout !== "free";
   $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
   loadBgImg();
@@ -1231,7 +1278,7 @@ function bgLost() {
   // Une seule fois par lancement : si la carte graphique perd encore le fond, on ne boucle pas
   try { if (sessionStorage.getItem("hush-bg-reloaded")) return; sessionStorage.setItem("hush-bg-reloaded", "1"); } catch { return; }
   console.warn("Hush : fond perdu par la carte graphique, rechargement de l'affichage");
-  location.reload(); // tout le rendu repart proprement (les réglages sont gardés)
+  window.studio.win.reload(); // tout le rendu repart proprement (les réglages sont gardés)
 }
 function drawBg(t, energy) {
   const w = cv.clientWidth, h = cv.clientHeight;
@@ -1242,18 +1289,18 @@ function drawBg(t, energy) {
   }
   ctx.clearRect(0, 0, w, h);
   if (S.bg === "gradient") {
-    // Dégradé sans motif : clair au centre, sombre sur les bords, dans la couleur d'accent
-    const c = hexHsl(colors.a);
+    // Dégradé sans motif : clair au centre, plus sombre sur les bords, dans la couleur choisie (comme le fond Uni)
+    const c = hexHsl(S.bgColor || "#fcbbdd");
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.55);
     const L = (v) => Math.max(0, Math.min(100, v));
     g.addColorStop(0, `hsl(${c.h} ${c.s}% ${L(c.l + 8 + energy * 4)}%)`);
-    g.addColorStop(0.55, `hsl(${c.h} ${c.s}% ${L(c.l * 0.62)}%)`);
-    g.addColorStop(1, `hsl(${c.h} ${c.s}% ${L(c.l * 0.28)}%)`);
+    g.addColorStop(0.55, `hsl(${c.h} ${c.s}% ${L(c.l * 0.72)}%)`);
+    g.addColorStop(1, `hsl(${c.h} ${c.s}% ${L(c.l * 0.45)}%)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   } else if (S.bg === "solid") {
     // Fond uni, de la couleur choisie
-    ctx.fillStyle = S.bgColor || "#1a1024";
+    ctx.fillStyle = S.bgColor || "#fcbbdd";
     ctx.fillRect(0, 0, w, h);
   } else if (["space", "pinkspace", "stars", "topo", "auto"].includes(S.bg)) {
     window.Patterns.draw(S.bg, ctx, w, h, t, energy, reduced ? 0 : S.speed);
@@ -1770,7 +1817,7 @@ function showToast(msg) {
 }
 
 mainEl.addEventListener("pointerdown", (e) => {
-  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen")) return;
+  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen, .chat")) return;
   const tileEl = e.target.closest(".tile");
   if (e.ctrlKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);

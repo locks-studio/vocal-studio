@@ -28,6 +28,9 @@
     <feDisplacementMap in="SourceGraphic" in2="soft" scale="30" xChannelSelector="R" yChannelSelector="G"/>
   </filter>
 </svg>
+<!-- Le « bureau » derrière la fenêtre (fond d'écran placé pile où il est), vu à travers une dalle de verre -->
+<div class="desk" id="desk" aria-hidden="true"><div class="desk-img" id="deskImg"></div></div>
+<div class="slab" aria-hidden="true"></div>
 <div class="blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <header class="titlebar">
   <div class="brand"><b>1999</b><span>launcher</span></div>
@@ -45,6 +48,7 @@
     <div class="rail-apps" id="rail"></div>
     <div class="rail-soon" title="D'autres logiciels arrivent bientôt"><span>+</span></div>
     <div class="rail-bottom">
+      <button class="rail-btn" id="settingsBtn" title="Réglages" aria-label="Réglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       <button class="rail-btn" id="aboutBtn" title="À propos" aria-label="À propos"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
     </div>
   </nav>
@@ -61,6 +65,7 @@
 
         <div class="actions">
           <button class="play" id="playBtn"><span id="playLabel">Installer</span></button>
+          <button class="icon-btn" id="repairBtn" title="Réparer (retélécharger et vérifier)" aria-label="Réparer"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/></svg></button>
           <button class="icon-btn" id="folderBtn" title="Ouvrir le dossier d'installation" aria-label="Ouvrir le dossier d'installation"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
           <button class="icon-btn danger" id="uninstallBtn" title="Désinstaller" aria-label="Désinstaller"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
         </div>
@@ -111,7 +116,27 @@
     <button class="play small" id="aboutClose">Fermer</button>
   </div>
 </div>
+<div class="dialog" id="settings" hidden>
+  <div class="card glass settings-card">
+    <h2>Réglages</h2>
+    <div class="set-group">
+      <div class="set-label">Fond du launcher</div>
+      <div class="seg wrap" id="setGlass"><button data-v="live" class="no-linux">Verre en direct</button><button data-v="acrylic" class="no-linux">Flou Windows</button><button data-v="wallpaper">Sur mon fond d'écran</button><button data-v="scene">Sur fond rose</button><button data-v="clear">Transparent</button></div>
+      <p class="muted small">Verre en direct : le launcher montre ce qu'il y a juste derrière lui (fenêtres, vidéos, bureau), courbé et irisé sur les bords comme sur iPhone. Il n'apparaît plus sur tes captures d'écran ni dans OBS. Flou Windows : le flou du menu Démarrer. Sur mon fond d'écran : seulement le fond d'écran, pour les PC modestes.</p>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Quand un logiciel se lance</div>
+      <div class="seg" id="setLaunch"><button data-v="stay">Rester ouvert</button><button data-v="minimize">Se réduire</button><button data-v="close">Se fermer</button></div>
+    </div>
+    <label class="set-row"><span>Installer les mises à jour tout seul</span><button class="switch" id="setAuto" role="switch" aria-label="Mises à jour automatiques"></button></label>
+    <label class="set-row" id="setStartupRow"><span>Ouvrir 1999 au démarrage de l'ordinateur</span><button class="switch" id="setStartup" role="switch" aria-label="Ouvrir au démarrage"></button></label>
+    <div class="set-row"><span>Dossier des logiciels<br><small class="muted" id="setDir"></small></span><button class="icon-btn" id="setDirOpen" title="Ouvrir le dossier" aria-label="Ouvrir le dossier"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button></div>
+    <p class="muted small">Entrée : lancer ou installer le logiciel affiché · Échap : fermer cette fenêtre</p>
+    <button class="play small" id="settingsClose">Fermer</button>
+  </div>
+</div>
 <div class="toast glass" id="toast" hidden></div>
+<script src="liquid.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

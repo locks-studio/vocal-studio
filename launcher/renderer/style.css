@@ -42,7 +42,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   border:1px solid rgba(255,255,255,.4);
   box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.95),inset -1px -1px 0 rgba(255,255,255,.45),
     inset 0 10px 22px -14px rgba(255,255,255,.75),inset 0 -14px 26px -16px rgba(255,255,255,.4),0 10px 30px rgba(120,30,80,.10);
-  -webkit-backdrop-filter:url(#lens) blur(1px) saturate(1.8) brightness(1.06) contrast(1.04);backdrop-filter:url(#lens) blur(1px) saturate(1.8) brightness(1.06) contrast(1.04);overflow:hidden;
+  -webkit-backdrop-filter:blur(1px) saturate(1.8) brightness(1.06) contrast(1.04);backdrop-filter:blur(1px) saturate(1.8) brightness(1.06) contrast(1.04);overflow:hidden;
   text-shadow:0 1px 2px rgba(255,255,255,.55)}
 /* Reflet courbe en haut du verre, comme la lumière sur une goutte */
 .glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;
@@ -171,3 +171,78 @@ h1{margin:0;font:800 clamp(48px,9vh,96px)/.92 var(--f-display);letter-spacing:-.
   box-shadow:inset 0 1px 0 #fff,inset 0 -2px 3px rgba(240,86,159,.35),0 2px 6px rgba(190,70,130,.25)}
 ::-webkit-scrollbar-thumb:hover{background-image:linear-gradient(180deg,#fff,rgba(255,140,198,.9))}
 ::-webkit-scrollbar-corner{background:transparent}
+
+
+/* ——————————— Verre liquide façon iPhone, sur le vrai fond d'écran ———————————
+   .desk : le fond d'écran, placé pile où il est sur l'écran (on a l'impression de voir le bureau à travers).
+   Il passe par #slab : une dalle de verre épaisse qui le courbe et l'irise sur les bords, le ravive un peu.
+   .slab : la surface de la dalle (liseré brillant, reflet en haut à gauche, voile très léger).
+   Par-dessus, les panneaux (.glass) réfractent à leur tour, avec un peu de flou pour que le texte reste lisible. */
+.desk{position:fixed;inset:0;z-index:0;overflow:hidden;border-radius:16px;pointer-events:none;display:none}
+.desk-img{position:absolute;background:#111 center/cover no-repeat}
+.desk-img[data-fit="contain"]{background-size:contain}
+.desk-img[data-fit="stretch"]{background-size:100% 100%}
+.desk-img[data-fit="center"]{background-size:auto}
+.slab{position:fixed;inset:0;z-index:0;border-radius:16px;pointer-events:none;display:none;
+  background:radial-gradient(120% 70% at 12% -10%,rgba(255,255,255,.28),transparent 46%),linear-gradient(160deg,rgba(255,236,246,.10),rgba(255,214,234,.06));
+  box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.95),inset -1px -1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(255,255,255,.25),
+    inset 0 18px 40px -26px rgba(255,255,255,.9),inset 0 -24px 50px -30px rgba(255,190,225,.55)}
+body.glass-wallpaper .desk,body.glass-wallpaper .slab{display:block}
+body.glass-wallpaper .desk{filter:saturate(1.25) brightness(1.03)}
+body.glass-wallpaper .blobs{display:none}
+/* Panneaux sur le fond d'écran : lentille + un peu de givre (lisibilité), teinte rose pâle */
+body.glass-wallpaper .glass{background:linear-gradient(135deg,rgba(255,246,251,.40),rgba(255,236,246,.22) 50%,rgba(255,240,248,.30));
+  -webkit-backdrop-filter:blur(7px) saturate(1.8) brightness(1.08);backdrop-filter:blur(7px) saturate(1.8) brightness(1.08)}
+body.glass-wallpaper .titlebar{background:linear-gradient(180deg,rgba(255,246,251,.30),rgba(255,240,248,.10));-webkit-backdrop-filter:blur(10px) saturate(1.6);backdrop-filter:blur(10px) saturate(1.6)}
+/* Fond rose : une scène douce dessinée par la page (sans fond d'écran trouvé, ou au choix) */
+body.glass-scene .desk,body.glass-scene .slab{display:block}
+body.glass-scene .desk{background:radial-gradient(80% 90% at 15% 10%,#ffd3e8,transparent 60%),radial-gradient(70% 80% at 90% 20%,#e9d4ff,transparent 60%),
+  radial-gradient(90% 90% at 60% 100%,#ffc2dc,transparent 60%),linear-gradient(160deg,#fff0f7,#fbdcec)}
+body.glass-scene .blobs{display:block}
+body.glass-scene .blobs i{opacity:.65}
+body.maxed .desk,body.maxed .slab,body.maxed{border-radius:0}
+
+/* ——— Réglages et bouton Réparer ——— */
+.settings-card{width:min(520px,92vw)!important;display:flex;flex-direction:column;gap:14px}
+.settings-card h2{margin:0}
+.set-group{display:flex;flex-direction:column;gap:6px}
+.set-label{font-weight:700;font-size:13px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:14px;background:rgba(255,255,255,.35)}
+.seg button{flex:1;border:0;background:none;border-radius:10px;padding:8px 10px;font-weight:600;font-size:12.5px;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(190,70,130,.18)}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13.5px}
+.set-row[hidden]{display:none}
+.small{font-size:12px;margin:0}
+.switch{flex:none;width:42px;height:24px;border-radius:99px;border:0;background:rgba(125,79,110,.3);position:relative;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--pink-deep)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+.icon-btn[hidden]{display:none}
+
+
+/* ——————————— Verre flouté du système (Acrylic sur Windows 11, Vibrancy sur Mac) ———————————
+   La fenêtre est déjà floutée et teintée par Windows : on n'ajoute qu'un voile rose très léger, et des panneaux
+   un peu plus clairs pour qu'ils se détachent (leur propre backdrop-filter ne voit pas le bureau, il ne servirait à
+   rien : ils restent en simple teinte + liseré lumineux). Les coins sont arrondis par Windows. */
+html:has(body.glass-acrylic),body.glass-acrylic{background:transparent!important}
+body.glass-acrylic{border-radius:0;box-shadow:none;
+  background:linear-gradient(160deg,rgba(255,226,240,.22),rgba(255,214,234,.12) 50%,rgba(255,226,240,.20))!important}
+body.glass-acrylic .desk,body.glass-acrylic .slab,body.glass-acrylic .blobs{display:none!important}
+body.glass-acrylic .glass{background:linear-gradient(135deg,rgba(255,255,255,.34),rgba(255,240,248,.14) 50%,rgba(255,236,246,.24));
+  -webkit-backdrop-filter:none;backdrop-filter:none;border-color:rgba(255,255,255,.6)}
+body.glass-acrylic .titlebar{background:rgba(255,255,255,.12);border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+
+
+/* ——————————— Verre liquide WebGL (en direct, fond d'écran, fond rose) ———————————
+   Le canvas dessine tout le verre (fond, dalle, panneaux) : les éléments HTML ne gardent que leur contenu. */
+canvas.liquid{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
+body.liquid-on canvas.liquid{display:block}
+body.liquid-on .desk,body.liquid-on .slab,body.liquid-on .blobs{display:none!important}
+body.liquid-on .glass{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important}
+body.liquid-on .glass::before,body.liquid-on .glass::after{display:none}
+body.liquid-on .titlebar{background:transparent;border-bottom-color:rgba(255,255,255,.35);-webkit-backdrop-filter:none;backdrop-filter:none}
+body.liquid-on .dialog{background:rgba(255,220,238,.18)}
+body.liquid-on .toast{background:rgba(255,246,251,.85)!important}
+.seg.wrap{flex-wrap:wrap}
+.seg.wrap button{flex:1 1 30%}
+body.os-linux .no-linux{display:none}

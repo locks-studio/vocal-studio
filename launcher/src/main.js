@@ -1,7 +1,9 @@
 // 1999 : le launcher. Lit le catalogue publié sur le site, installe / met à jour / lance les logiciels.
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer } = require("electron");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const { spawnSync } = require("child_process");
 const https = require("https");
 const { Installer, PLATFORM } = require("./installer");
 
@@ -22,6 +24,85 @@ if (process.platform === "linux") {
 }
 
 let win, installer;
+
+// ——— Réglages du launcher (settings.json dans son dossier de données) ———
+const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
+// Fond par défaut : le vrai flou du système (Acrylic sur Windows 11, Vibrancy sur Mac). Linux n'en a pas
+// (c'est le compositeur qui décide, et niri ne floute pas) : le verre sur le fond d'écran à la place.
+// Par défaut : le verre sur l'écran en direct (Windows / Mac). Linux ne sait pas exclure une fenêtre de sa propre
+// capture (elle se verrait elle-même) : le verre sur le fond d'écran.
+const DEFAULT_SETTINGS = { glass: process.platform === "linux" ? "wallpaper" : "live", onLaunch: "stay", autoUpdate: true, startup: false };
+let settings = { ...DEFAULT_SETTINGS };
+function loadSettings() { try { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(settingsFile(), "utf8")) }; } catch {} }
+const CHOICES = { glass: ["live", "acrylic", "wallpaper", "scene", "clear"], onLaunch: ["stay", "minimize", "close"] };
+// En direct : la fenêtre est retirée des captures d'écran (Windows 10 2004+, Mac) ; la page capture alors l'écran
+// et voit exactement ce qu'il y a derrière elle, sans se voir elle-même.
+const applyCapture = () => { if (win && process.platform !== "linux") win.setContentProtection(settings.glass === "live"); };
+
+// ——— Verre liquide : le fond d'écran du bureau ———
+// La page l'affiche exactement là où il est derrière la fenêtre (elle « voit » donc le bureau), puis le verre le
+// réfracte. Windows : la copie que Windows garde du fond. Mac : celui du bureau courant. Linux : swww (niri,
+// Hyprland), GNOME, ou le réglage de Noctalia. Introuvable : la page dessine son propre fond rose.
+function wallpaperPath() {
+  try {
+    if (process.platform === "win32") {
+      const t = path.join(process.env.APPDATA || "", "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
+      return fs.existsSync(t) ? t : null;
+    }
+    if (process.platform === "darwin") {
+      const r = spawnSync("osascript", ["-e", 'tell application "System Events" to get picture of current desktop'], { encoding: "utf8", timeout: 2000 });
+      const p = (r.stdout || "").trim();
+      return p && fs.existsSync(p) ? p : null;
+    }
+    const sw = spawnSync("swww", ["query"], { encoding: "utf8", timeout: 1500 });
+    const m = /image: (.+)$/m.exec(sw.stdout || "");
+    if (m && fs.existsSync(m[1].trim())) return m[1].trim();
+    for (const key of ["picture-uri-dark", "picture-uri"]) {
+      const g = spawnSync("gsettings", ["get", "org.gnome.desktop.background", key], { encoding: "utf8", timeout: 1500 });
+      const u = (g.stdout || "").trim().replace(/^'|'$/g, "");
+      if (u.startsWith("file://")) { const p = decodeURIComponent(u.slice(7)); if (fs.existsSync(p)) return p; }
+    }
+    const home = os.homedir();
+    for (const f of [".config/noctalia/settings.json", ".cache/noctalia/wallpapers.json"]) {
+      try {
+        const s = fs.readFileSync(path.join(home, f), "utf8");
+        for (const mm of s.matchAll(/"((?:~|\/)[^"]+\.(?:jpe?g|png))"/gi)) { const p = mm[1].replace(/^~/, home); if (fs.existsSync(p)) return p; }
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+// Comment Windows place le fond : remplir (cover), ajuster, étirer, centrer, étendre
+function wallpaperStyle() {
+  if (process.platform !== "win32") return "cover";
+  try {
+    const r = spawnSync("reg", ["query", "HKCU\\Control Panel\\Desktop", "/v", "WallpaperStyle"], { encoding: "utf8", timeout: 1500 });
+    const v = Number((/WallpaperStyle\s+REG_SZ\s+(\d+)/.exec(r.stdout || "") || [])[1]);
+    return { 6: "contain", 2: "stretch", 0: "center", 22: "span" }[v] || "cover";
+  } catch { return "cover"; }
+}
+let wpCache = null;
+function wallpaper() {
+  const p = wallpaperPath();
+  if (!p) return null;
+  let mtime = 0;
+  try { mtime = fs.statSync(p).mtimeMs; } catch { return null; }
+  if (wpCache && wpCache.p === p && wpCache.mtime === mtime) return wpCache.out;
+  const img = nativeImage.createFromBuffer(fs.readFileSync(p));
+  if (img.isEmpty()) return null;
+  // Assez grand pour l'écran, pas plus (un fond 6K encodé à chaque fois serait lent)
+  const d = screen.getDisplayMatching(win ? win.getBounds() : { x: 0, y: 0, width: 1, height: 1 });
+  const maxW = Math.round(d.size.width * d.scaleFactor);
+  const small = img.getSize().width > maxW ? img.resize({ width: maxW, quality: "good" }) : img;
+  const out = { url: "data:image/jpeg;base64," + small.toJPEG(88).toString("base64"), style: wallpaperStyle() };
+  wpCache = { p, mtime, out };
+  return out;
+}
+// Où est la fenêtre, et sur quel écran : pour placer le fond pile derrière elle
+function bounds() {
+  const b = win.getBounds(), disp = screen.getDisplayMatching(b), d = disp.bounds;
+  return { x: b.x, y: b.y, w: b.width, h: b.height, dx: d.x, dy: d.y, dw: d.width, dh: d.height, did: String(disp.id), max: win.isMaximized() };
+}
 const cacheFile = () => path.join(app.getPath("userData"), "catalog-cache.json");
 const send = (ch, p) => { if (win && !win.isDestroyed()) win.webContents.send(ch, p); };
 
@@ -59,23 +140,47 @@ async function getCatalog() {
   }
 }
 
-function createWindow() {
-  // Fenêtre transparente : le bureau se voit NET derrière (aucun flou du système), seuls les panneaux de verre
-  // sont dessinés par la page — comme l'overlay transparent de Hush.
-  const glass = { transparent: true, backgroundColor: "#00000000", hasShadow: false };
+// Options de fenêtre selon le fond choisi.
+// Acrylic : c'est Windows (le compositeur DWM) qui floute ce qu'il y a derrière la fenêtre — bureau ET autres
+// fenêtres — en temps réel. Une page web ne peut pas le faire elle-même : backdrop-filter ne floute que le contenu
+// de la page, jamais l'écran derrière. La fenêtre ne doit pas être « transparent » (sinon pas de matière), et la
+// page doit laisser son fond vide pour qu'on voie la matière. Windows arrondit alors les coins tout seul.
+function windowGlass(mode) {
+  if (mode === "acrylic" && process.platform === "win32") return { backgroundMaterial: "acrylic", backgroundColor: "#00000000" };
+  if (mode === "acrylic" && process.platform === "darwin") return { vibrancy: "under-window", visualEffectState: "active", transparent: true, backgroundColor: "#00000000" };
+  return { transparent: true, backgroundColor: "#00000000", hasShadow: false };
+}
+function createWindow(prev) {
   win = new BrowserWindow({
-    width: 1180, height: 720, minWidth: 900, minHeight: 560,
-    frame: false, title: "1999", ...glass,
+    ...(prev ? prev.getBounds() : { width: 1180, height: 720 }), minWidth: 900, minHeight: 560,
+    frame: false, title: "1999", ...windowGlass(settings.glass), show: !prev,
     icon: path.join(__dirname, "..", "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  // Changement de fond (Acrylic ↔ transparent) : Windows ne permet pas de basculer « transparent » sur une fenêtre
+  // ouverte ; on en ouvre une nouvelle au même endroit, puis on ferme l'ancienne quand la nouvelle est prête.
+  if (prev) win.once("ready-to-show", () => { win.show(); if (!prev.isDestroyed()) prev.destroy(); });
+  applyCapture();
+  const sendBounds = () => send("win:bounds", bounds());
+  for (const ev of ["move", "resize", "maximize", "unmaximize"]) win.on(ev, sendBounds);
+  win.on("focus", () => send("win:focus"));
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
 }
 
 app.whenReady().then(() => {
   installer = new Installer(app.getPath("userData"));
+  loadSettings();
+  // La capture demandée par la page : l'écran où se trouve la fenêtre, sans fenêtre de choix
+  session.defaultSession.setDisplayMediaRequestHandler(async (_req, cb) => {
+    try {
+      const d = screen.getDisplayMatching(win.getBounds());
+      const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } });
+      const s = sources.find((x) => String(x.display_id) === String(d.id)) || sources[0];
+      cb(s ? { video: s } : {});
+    } catch { cb({}); }
+  });
   createWindow();
 });
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
@@ -103,7 +208,30 @@ ipcMain.handle("app:usage", (_e, entry) => {
   }
   return null;
 });
-ipcMain.handle("app:launch", (_e, id) => { installer.launch(id); return true; });
+ipcMain.handle("app:launch", (_e, id) => {
+  installer.launch(id);
+  // Réglage « au lancement d'un logiciel » : rester ouvert, se réduire, ou se fermer
+  if (settings.onLaunch === "minimize") setTimeout(() => win && win.minimize(), 600);
+  if (settings.onLaunch === "close") setTimeout(() => app.quit(), 1500);
+  return true;
+});
+ipcMain.handle("desk:wallpaper", () => { try { return wallpaper(); } catch { return null; } });
+ipcMain.handle("win:bounds", () => bounds());
+ipcMain.handle("settings:get", () => ({ ...settings, canStartup: process.platform !== "linux", appsDir: installer.appsDir, version: app.getVersion() }));
+let wasGlass = null;
+ipcMain.handle("settings:set", (_e, patch) => {
+  if (wasGlass === null) wasGlass = settings.glass === "acrylic";
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (CHOICES[k] ? CHOICES[k].includes(v) : k === "autoUpdate" || k === "startup" ? typeof v === "boolean" : false) settings[k] = v;
+  }
+  try { fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2)); } catch {}
+  if ("startup" in (patch || {}) && process.platform !== "linux") app.setLoginItemSettings({ openAtLogin: !!settings.startup });
+  // Passer d'un fond « matière du système » à un fond transparent (ou l'inverse) : nouvelle fenêtre
+  if (patch && "glass" in patch && wasGlass !== (settings.glass === "acrylic")) setTimeout(() => createWindow(win), 50);
+  wasGlass = settings.glass === "acrylic";
+  applyCapture();
+  return settings;
+});
 ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); return installer.state; });
 ipcMain.handle("app:folder", (_e, id) => { const s = installer.installed(id); shell.openPath(s ? s.dir : installer.appsDir); });
 ipcMain.handle("open:url", (_e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(url); });

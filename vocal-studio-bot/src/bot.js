@@ -16,14 +16,33 @@ class StudioBot extends EventEmitter {
     this.levels = new Map(); // userId → volume lissé, de 0 (silence) à 1 (très fort)
     this.levelTimer = null;
     this.emptyTimers = new Map();
-    this.client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+    this.noContent = false; // « Message Content » pas activé sur le portail : on ne lit pas le texte des messages
+    this.webhooks = new Map(); // salon → webhook « Hush » (pour écrire sous le pseudo de la personne)
+    this.lastSend = new Map();
+    this.makeClient(true);
+  }
 
+  makeClient(content) {
+    const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages];
+    if (content) intents.push(GatewayIntentBits.MessageContent);
+    this.client = new Client({ intents });
     this.client.once(Events.ClientReady, (c) => this.onReady(c));
     this.client.on(Events.VoiceStateUpdate, (oldS, newS) => this.onVoiceState(oldS, newS));
     this.client.on(Events.InteractionCreate, (i) => this.onInteraction(i).catch((e) => console.error("Commande :", e)));
+    this.client.on(Events.MessageCreate, (m) => { if (m.channel && m.channel.isVoiceBased && m.channel.isVoiceBased()) this.emit("chat", m.channel.id, this.chatItem(m)); });
   }
 
-  start() { return this.client.login(this.token); }
+  // « Message Content » doit être coché sur le portail Discord : sinon le bot démarre quand même, sans le texte du tchat
+  async start() {
+    try { return await this.client.login(this.token); } catch (e) {
+      if (!/disallowed intent/i.test(String(e && e.message))) throw e;
+      console.warn("Message Content Intent n'est pas activé sur le portail Discord : le tchat ne pourra pas lire le texte des messages.");
+      this.noContent = true;
+      await this.client.destroy();
+      this.makeClient(false);
+      return this.client.login(this.token);
+    }
+  }
 
   async onReady(c) {
     console.log(`Bot connecté : ${c.user.tag} (${c.guilds.cache.size} serveur·s)`);
@@ -164,6 +183,58 @@ class StudioBot extends EventEmitter {
     const loc = this.findUser(userId);
     if (!loc) throw new Error("Tu n'es dans aucun salon vocal d'un serveur où le bot est invité.");
     await this.join(loc.channel);
+  }
+
+  // ——— Tchat du salon vocal : seulement celui où la personne se trouve, avec ses propres droits ———
+  chatItem(m) {
+    return {
+      id: m.id, at: m.createdTimestamp,
+      name: (m.member && m.member.displayName) || m.author.globalName || m.author.username,
+      avatar: m.author.displayAvatarURL({ size: 64, extension: "png", forceStatic: true }),
+      text: m.content || "",
+      images: [...m.attachments.values()].filter((a) => (a.contentType || "").startsWith("image/")).slice(0, 4).map((a) => a.url),
+    };
+  }
+  async chatRoom(userId) {
+    const P = PermissionFlagsBits;
+    const loc = this.findUser(userId);
+    if (!loc) throw new Error("Tu n'es dans aucun salon vocal d'un serveur où le bot est invité.");
+    const { guild, channel } = loc;
+    const mine = channel.permissionsFor(guild.members.me);
+    if (!mine || !mine.has(P.ViewChannel) || !mine.has(P.ReadMessageHistory)) throw new Error("Le bot n'a pas le droit de lire ce tchat : donne-lui « Voir le salon » et « Voir les anciens messages ».");
+    const member = await guild.members.fetch(userId);
+    const you = channel.permissionsFor(member);
+    if (!you || !you.has(P.ViewChannel)) throw new Error("Tu n'as pas accès à ce tchat.");
+    return { guild, channel, member, canSend: you.has(P.SendMessages) };
+  }
+  async chatHistory(userId) {
+    const { channel, canSend } = await this.chatRoom(userId);
+    const list = await channel.messages.fetch({ limit: 50 });
+    return { channel: { id: channel.id, name: channel.name }, canSend, noContent: this.noContent, messages: [...list.values()].reverse().map((m) => this.chatItem(m)) };
+  }
+  // Écrit dans le tchat avec un webhook : le message porte le pseudo et la photo de la personne (avec l'étiquette APP).
+  // Sans le droit « Gérer les webhooks », le bot écrit lui-même « **Pseudo** : message ». Jamais de mention : ni @everyone, ni rôle.
+  async chatSend(userId, text) {
+    const t = String(text || "").trim().slice(0, 1900);
+    if (!t) throw new Error("Message vide.");
+    const now = Date.now();
+    if (now - (this.lastSend.get(userId) || 0) < 700) throw new Error("Doucement : un message à la fois.");
+    this.lastSend.set(userId, now);
+    const { channel, member, canSend } = await this.chatRoom(userId);
+    if (!canSend) throw new Error("Tu n'as pas le droit d'écrire dans ce tchat.");
+    const allowedMentions = { parse: [] };
+    try {
+      let hook = this.webhooks.get(channel.id);
+      if (!hook) {
+        const all = await channel.fetchWebhooks();
+        hook = all.find((w) => w.owner && w.owner.id === this.client.user.id) || (await channel.createWebhook({ name: "Hush" }));
+        this.webhooks.set(channel.id, hook);
+      }
+      await hook.send({ content: t, username: member.displayName.slice(0, 80), avatarURL: member.displayAvatarURL({ size: 128, extension: "png", forceStatic: true }), allowedMentions });
+    } catch {
+      this.webhooks.delete(channel.id);
+      await channel.send({ content: `**${member.displayName}** : ${t}`, allowedMentions });
+    }
   }
 
   dismiss(userId) {

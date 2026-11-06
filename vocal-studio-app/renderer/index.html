@@ -150,7 +150,12 @@
       <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
       <section class="home-panel glass" id="homePanel" hidden>
         <div class="home-pane" data-ht="account" id="homeAccount"></div>
-        <div class="home-pane" data-ht="people" id="homePeople"></div>
+        <div class="home-pane" data-ht="people" id="homePeople">
+          <div class="fr-me"><span>Mon code ami : <b id="frCode">…</b></span><button type="button" class="ghost small" id="frCopy">Copier</button></div>
+          <form class="fr-add" id="frAdd"><input type="text" id="frInput" class="field" maxlength="12" placeholder="Code ami de la personne" aria-label="Code ami" autocomplete="off" spellcheck="false"><button class="cta small">Ajouter</button></form>
+          <label class="fr-hide"><input type="checkbox" id="frHide"> Cacher à mes amis dans quel vocal je suis</label>
+          <div id="frList"></div>
+        </div>
         <div class="home-pane" data-ht="history" id="homeHistory"></div>
         <div class="home-pane" data-ht="top" id="homeTop"></div>
       </section>
@@ -176,6 +181,14 @@
       <div class="card glass" id="screenCard"></div>
     </div>
 
+    <!-- Tchat du salon vocal -->
+    <section class="chat glass" id="chat" aria-label="Tchat du salon" hidden>
+      <header class="chat-head"><b id="chatTitle">Tchat</b><button class="wb" id="chatClose" aria-label="Fermer le tchat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+      <div class="chat-list" id="chatList" role="log" aria-live="polite"></div>
+      <p class="chat-why" id="chatWhy" hidden></p>
+      <form class="chat-form" id="chatForm"><input type="text" id="chatInput" maxlength="1900" placeholder="Écrire un message…" aria-label="Écrire un message" autocomplete="off"><button class="wb" type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button></form>
+    </section>
+
     <nav class="dock glass" id="dock" aria-label="Contrôles d'appel">
       <button class="btn" id="mic" aria-label="Couper le micro" title="Micro"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="slash" d="M4 4l16 16"/></svg></button>
       <button class="btn" id="deaf" aria-label="Mettre en sourdine" title="Sourdine"><svg viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/><path class="slash" d="M4 4l16 16"/></svg></button>
@@ -184,6 +197,7 @@
       <button class="btn" id="shareBtn" aria-label="Partager mon écran dans Hush" title="Partager mon écran (dans Hush)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2.5"/><path d="M8 21h8M12 17v4M12 13V8M9.5 10.5L12 8l2.5 2.5"/></svg></button>
       <button class="btn clip" id="clipBtn" aria-label="Enregistrer un clip (F9)" title="Clip (F9) : enregistre la fenêtre Hush"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle class="dotrec" cx="12" cy="12" r="3.6"/></svg><span class="clip-time" id="clipTime" hidden>0:00</span></button>
       <span class="sep"></span>
+      <button class="btn" id="chatBtn" aria-label="Tchat du salon" title="Tchat du salon"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/></svg><i class="chat-dot" id="chatDot" hidden></i></button>
       <button class="btn leave" id="leave" aria-label="Quitter le salon" title="Quitter le salon"><svg viewBox="0 0 24 24"><path d="M3 14c5-5 13-5 18 0l-2.5 2.5-3.5-2v-2.5a12 12 0 0 0-6 0v2.5l-3.5 2z"/></svg></button>
     </nav>
   </main>
@@ -332,11 +346,11 @@
           <div class="skins" id="skins" hidden></div>
           <div class="group">
             <div class="row"><label class="label" for="accent">Couleur d'accent</label><input type="color" id="accent"></div>
-            <button class="linkbtn" id="accentReset">Revenir à la couleur de l'ambiance</button>
+            <button class="linkbtn" id="accentReset">Revenir au rose pâle</button>
           </div>
           <h4 class="sec">Fond</h4>
           <div class="group">
-            <div class="seg" id="bgSeg"><button data-v="pinkspace">Espace rose</button><button data-v="space">Espace</button><button data-v="solid">Uni</button><button data-v="gradient">Dégradé</button><button data-v="profile">Profil</button><button data-v="image">Image / GIF</button><button data-v="none">Aucun</button></div>
+            <div class="bg-pick" id="bgSeg"><button data-v="pinkspace" title="Espace rose"><span class="bg-dot"></span><small>Espace rose</small></button><button data-v="space" title="Espace"><span class="bg-dot"></span><small>Espace</small></button><button data-v="solid" title="Uni"><span class="bg-dot"></span><small>Uni</small></button><button data-v="gradient" title="Dégradé"><span class="bg-dot"></span><small>Dégradé</small></button><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="image" title="Image / GIF"><span class="bg-dot"></span><small>Image / GIF</small></button><button data-v="none" title="Aucun"><span class="bg-dot"></span><small>Aucun</small></button></div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
             <div class="row" id="bgColorRow" hidden><label for="bgColor">Couleur du fond</label><input type="color" id="bgColor"></div>
             <input type="file" id="bgFile" accept="image/*" hidden>
@@ -461,6 +475,7 @@
 <script src="usermenu.js"></script>
 <script src="capture.js"></script>
 <script src="home.js"></script>
+<script src="chat.js"></script>
 <script src="colorwheel.js"></script>
 </body>
 </html>
