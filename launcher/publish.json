@@ -23,6 +23,7 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
+        "Paramètres en vrai verre liquide, onglets et accueil en ronds de verre, volume et bouton pour cacher la musique",
         "Amis Hush : code ami, demandes à accepter, voir quand tes amis sont en vocal",
         "Tchat de la voc : lire et écrire depuis Hush",
         "Rose pâle par défaut, l'interface suit la couleur d'accent, fonds en cercles d'aperçu",

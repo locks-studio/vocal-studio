@@ -99,6 +99,11 @@ class SpotifySession {
     setTimeout(() => this.poll(), 400);
   }
 
+  // Volume du lecteur Spotify (comptes Premium, et pas sur tous les appareils)
+  async volume(v) {
+    try { await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${Math.round(v * 100)}`, { method: "PUT", headers: { Authorization: `Bearer ${await this.accessToken()}` } }); } catch {}
+  }
+
   async tokenRequest(params) {
     const res = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",

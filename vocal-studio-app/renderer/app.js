@@ -40,6 +40,8 @@ function normS() {
   // L'ancienne disposition « Verticale » devient la Bande en mode vertical (la mini-fenêtre garde sa colonne)
   if (S.layout === "column" && typeof MINI !== "undefined" && !MINI) { S.layout = "strip"; S.vertical = true; }
   if (S.ring === "energy") S.ring = "aura";
+  // Passage au rose pâle : le lecteur prend la couleur d'accent (une seule fois : « Pochette » reste au choix)
+  if (!S.playerPink) { S.playerColor = "accent"; S.playerPink = true; }
   if (S.pixel) { S.font = "Silkscreen"; S.pixel = false; }
   S.cards = false;
   S.skin = "nuit";
@@ -947,7 +949,7 @@ addEventListener("resize", () => placeMusic());
   // Déplacer : glisser la carte (pas ses boutons). Un simple clic reste un clic.
   let move = null;
   card.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest("button")) return;
+    if (e.button !== 0 || e.target.closest("button, input, label")) return;
     move = { x: e.clientX, y: e.clientY, r: mainEl.clientWidth - dockW() - card.offsetLeft - card.offsetWidth, b: mainEl.clientHeight - card.offsetTop - card.offsetHeight, on: false, id: e.pointerId };
   });
   card.addEventListener("pointermove", (e) => {
@@ -961,7 +963,7 @@ addEventListener("resize", () => placeMusic());
   const stop = () => { if (!move) return; if (move.on) { card.classList.remove("moving"); save(); } move = null; };
   card.addEventListener("pointerup", stop);
   card.addEventListener("pointercancel", stop);
-  card.addEventListener("dblclick", (e) => { if (e.target.closest("button")) return; S.playerPos = null; placeMusic(); save(); });
+  card.addEventListener("dblclick", (e) => { if (e.target.closest("button, input, label")) return; S.playerPos = null; placeMusic(); save(); });
 })();
 
 // ——— 4. Interface masquée quand la souris ne bouge plus (désactivable) ———
@@ -998,7 +1000,20 @@ const addSounds = async () => {
 $("#soundsAdd").onclick = addSounds;
 $("#recBtn").onclick = () => toggleRecording();
 $("#musicAdd").onclick = addSounds;
-$("#volume").oninput = (e) => { S.volume = +e.target.value; if (Sounds.audio) Sounds.audio.volume = S.volume; apply(); };
+// Volume de la musique : le lecteur intégré, ou l'appli qui joue (Deezer, Spotify…), sans envoyer chaque cran du curseur
+let volTimer = 0;
+function setVolume(v) {
+  S.volume = v;
+  if (Sounds.audio) Sounds.audio.volume = v;
+  apply();
+  if (S.musicSource === "pc" || S.musicSource === "spotify") {
+    clearTimeout(volTimer);
+    volTimer = setTimeout(() => window.studio.music.volume(S.volume), 120);
+  }
+}
+$("#volume").oninput = (e) => setVolume(+e.target.value);
+$("#mpVol").oninput = (e) => setVolume(+e.target.value);
+$("#mpHide").onclick = () => { S.musicOn = false; apply(); showToast("Musique cachée : remets-la dans Paramètres › Musique"); };
 if (false) $("#presetMontage").onclick = () => {
   Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "space", glow: 85, names: false, cards: false, musicOn: true });
   apply();
@@ -1229,6 +1244,8 @@ function apply() {
     $(id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === S[k])));
   $("#glow").value = S.glow; $("#glowOut").textContent = S.glow + " %";
   $("#volume").value = S.volume; $("#volumeOut").textContent = Math.round(S.volume * 100) + " %";
+  $("#mpVol").value = S.volume;
+  $("#mpVolWrap").hidden = S.musicSource === "manual";
   $("#players").value = S.players; $("#playersOut").textContent = String(S.players);
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
   $("#accent").value = S.accent || SKINS[S.skin].a;
@@ -2207,6 +2224,13 @@ for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`
 })();
 
 /* ——— Démarrage ——— */
+if (!MINI) {
+  Lens.pill($("#tabs"), "aria-selected");
+  Lens.pill(document.querySelector(".hs-tabs"), "aria-pressed");
+  document.querySelectorAll("#homeTabs button").forEach((b) => Lens.apply(b));
+  Lens.apply($("#homeSide"));
+  Lens.apply($("#panel"), 26, 52, "blur(9px) saturate(1.75) brightness(1.05)");
+}
 $("#gfonts").media = "all"; // polices chargées sans bloquer le premier affichage
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage
 loadBgImg();

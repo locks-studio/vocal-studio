@@ -367,6 +367,13 @@ ipcMain.handle("music:control", (_e, cmd) => {
   else if (musicSource === "pc" && unixMedia) return unixMedia.control(cmd);
   else if (musicSource === "spotify") return spotify.control(cmd);
 });
+ipcMain.handle("music:volume", (_e, value) => {
+  const v = Math.max(0, Math.min(1, Number(value)));
+  if (!Number.isFinite(v)) return;
+  if (musicSource === "pc" && mediaProc) mediaProc.stdin.write(`volume ${v.toFixed(2)}\n`);
+  else if (musicSource === "pc" && unixMedia) return unixMedia.volume(v);
+  else if (musicSource === "spotify") return spotify.volume(v);
+});
 ipcMain.handle("sounds:list", () => sounds.list());
 ipcMain.handle("bg:pick", (e) => sounds.pickBackground(winOf(e)));
 ipcMain.handle("sounds:add", () => sounds.add(win));

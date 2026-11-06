@@ -215,7 +215,7 @@ function cardLook(cover) {
     drawMosaic(c);
   };
   if (S.playerColor === "accent") return apply(cssRgb(accent), true);
-  if (!cover) return apply(null);
+  if (!cover) return apply(cssRgb(accent), true); // pas de pochette : la couleur de l'interface
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
@@ -283,7 +283,7 @@ function cssRgb(c) {
 // exact : on garde la couleur telle quelle (choix de l'utilisateur, même très foncée ou très claire).
 // Sinon (couleur moyenne d'une pochette) : on la ravive un peu sans changer sa clarté de plus de raison.
 function vivid(rgb, exact) {
-  if (!rgb) return { h: 122, s: 62, l: 48 }; // vert du modèle
+  if (!rgb) return { h: 329, s: 91, l: 86 }; // sans pochette : rose pâle
   const [r, g, b] = rgb.map((v) => v / 255);
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
   let h = 0;

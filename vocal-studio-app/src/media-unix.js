@@ -85,6 +85,13 @@ class LinuxMedia {
     if (this.tool === "playerctl") await run("playerctl", ["-p", p.name, { toggle: "play-pause", next: "next", prev: "previous" }[cmd]]);
     else await run("gdbus", ["call", "--session", "--dest", p.dest, "--object-path", "/org/mpris/MediaPlayer2", "--method", `org.mpris.MediaPlayer2.Player.${method}`]);
   }
+
+  async volume(v) {
+    const p = this.current;
+    if (!p) return;
+    if (this.tool === "playerctl") await run("playerctl", ["-p", p.name, "volume", String(v)]);
+    else await run("gdbus", ["call", "--session", "--dest", p.dest, "--object-path", "/org/mpris/MediaPlayer2", "--method", "org.freedesktop.DBus.Properties.Set", "org.mpris.MediaPlayer2.Player", "Volume", `<double ${v}>`]);
+  }
 }
 
 // ——— Mac ———
@@ -113,6 +120,9 @@ class MacMedia {
     if (!this.current) return;
     const verb = { toggle: "playpause", next: "next track", prev: "previous track" }[cmd];
     await run("osascript", ["-e", `tell application "${this.current.app}" to ${verb}`]);
+  }
+  async volume(v) {
+    if (this.current) await run("osascript", ["-e", `tell application "${this.current.app}" to set sound volume to ${Math.round(v * 100)}`]);
   }
 }
 
@@ -165,6 +175,7 @@ class UnixMedia {
   }
   stop() { clearInterval(this.timer); this.timer = null; }
   async control(cmd) { await this.reader.control(cmd); this.lastLine = ""; }
+  async volume(v) { await this.reader.volume(v); }
 }
 
 module.exports = { UnixMedia, gv };
