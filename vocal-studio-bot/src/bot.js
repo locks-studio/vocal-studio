@@ -19,6 +19,7 @@ class StudioBot extends EventEmitter {
     this.noContent = false; // « Message Content » pas activé sur le portail : on ne lit pas le texte des messages
     this.webhooks = new Map(); // salon → webhook « Hush » (pour écrire sous le pseudo de la personne)
     this.lastSend = new Map();
+    this.owners = new Set();
     this.makeClient(true);
   }
 
@@ -46,6 +47,11 @@ class StudioBot extends EventEmitter {
 
   async onReady(c) {
     console.log(`Bot connecté : ${c.user.tag} (${c.guilds.cache.size} serveur·s)`);
+    // Propriétaire de l'application Discord : lui seul a la vue administrateur (ADMIN_IDS pour en ajouter d'autres)
+    try {
+      const app = await c.application.fetch();
+      this.owners = new Set(app.owner && app.owner.members ? [...app.owner.members.keys()] : app.owner ? [app.owner.id] : []);
+    } catch (e) { console.warn("Propriétaire de l'application introuvable :", e.message); }
     await c.application.commands.set([
       // Le bot parle sous son propre nom (celui choisi sur le portail Discord, par exemple « 1999 »)
       { name: "hush", description: `Fait venir ${c.user.username} dans ton salon vocal (affichage Hush)` },

@@ -246,3 +246,32 @@ body.liquid-on .toast{background:rgba(255,246,251,.85)!important}
 .seg.wrap{flex-wrap:wrap}
 .seg.wrap button{flex:1 1 30%}
 body.os-linux .no-linux{display:none}
+
+
+/* ——— Connexion à l'arrivée ——— */
+.gate{position:fixed;inset:0;z-index:25;display:grid;place-items:center;padding:24px;-webkit-app-region:no-drag}
+.gate[hidden]{display:none}
+body.gated .shell,body.gated .tb-status{visibility:hidden}
+.gate-card{position:relative;width:min(440px,92vw);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:30px 32px 22px}
+.gate-card img{border-radius:20px}
+.gate-card h1{margin:0;font:800 28px var(--f-display)}
+.gate-card p{margin:0;max-width:38ch}
+.gate-card .play{width:100%;justify-content:center}
+.gate-link{border:0;background:none;color:var(--ink-soft);text-decoration:underline;font-size:13px;padding:2px}
+.gate-link[hidden]{display:none}
+.tb-user{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink);-webkit-app-region:no-drag}
+.tb-user[hidden]{display:none}
+.tb-user img{border-radius:50%}
+.titlebar{z-index:26}
+.gate-card .play{font-size:15px;padding-inline:16px}
+body.liquid-on .dialog .card{background:rgba(255,246,251,.84)!important}
+
+.invite-btn{display:block;margin-top:12px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.45);color:var(--ink);border-radius:14px;padding:9px 16px;font-weight:700;font-size:13.5px}
+.invite-btn:hover{background:rgba(255,255,255,.7)}
+.gate-card .gate-link{display:inline}
+
+.tb-test{font:700 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--pink-deep);border-radius:99px;padding:3px 9px}
+.tb-test[hidden]{display:none}
+.test-form{display:flex;align-items:center;gap:10px}
+.test-form[hidden]{display:none}
+.test-form input{flex:1;min-width:0;border:1px solid rgba(255,255,255,.8);background:rgba(255,255,255,.5);color:var(--ink);border-radius:10px;padding:8px 10px;font:inherit;user-select:text}

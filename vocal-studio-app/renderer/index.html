@@ -154,6 +154,7 @@
         </div>
       </aside>
       <p class="home-why" id="homeWhy" hidden></p>
+      <p class="home-hint" id="homeHint" hidden>Hush marche sur les serveurs où le bot est invité.</p>
       <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
       <section class="home-panel glass" id="homePanel" hidden>
         <div class="home-pane" data-ht="account" id="homeAccount"></div>
@@ -161,16 +162,20 @@
           <div class="fr-me"><span>Mon code ami : <b id="frCode">…</b></span><button type="button" class="ghost small" id="frCopy">Copier</button></div>
           <form class="fr-add" id="frAdd"><input type="text" id="frInput" class="field" maxlength="12" placeholder="Code ami de la personne" aria-label="Code ami" autocomplete="off" spellcheck="false"><button class="cta small">Ajouter</button></form>
           <label class="fr-hide"><input type="checkbox" id="frHide"> Cacher à mes amis dans quel vocal je suis</label>
+          <label class="fr-hide"><input type="checkbox" id="frRank"> Apparaître dans le classement public</label>
           <div id="frList"></div>
         </div>
         <div class="home-pane" data-ht="history" id="homeHistory"></div>
         <div class="home-pane" data-ht="top" id="homeTop"></div>
+        <div class="home-pane" data-ht="admin" id="homeAdmin"></div>
       </section>
       <nav class="home-tabs" id="homeTabs" aria-label="Accueil">
+        <button type="button" id="homeInvite" class="invite" title="Il faut le droit de gérer le serveur pour inviter le bot."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg><span>Inviter le bot</span></button>
         <button type="button" data-ht="account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Connexion</span></button>
         <button type="button" data-ht="people"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg><span>Mes amis</span></button>
         <button type="button" data-ht="history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg><span>Historique</span></button>
         <button type="button" data-ht="top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a4 4 0 0 0 3.5 4M17 6h3v1a4 4 0 0 1-3.5 4M12 14v4M8 21h8M9.5 18h5"/></svg><span>Classement</span></button>
+        <button type="button" data-ht="admin" id="adminTab" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Admin</span></button>
         <button type="button" id="homeStudio" class="studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Personnaliser</span></button>
       </nav>
     </div>
@@ -187,6 +192,9 @@
     <div class="screen" id="screen" hidden>
       <div class="card glass" id="screenCard"></div>
     </div>
+
+    <!-- Parcours d'accueil -->
+    <section class="onboard glass" id="onboard" aria-label="Bienvenue" hidden></section>
 
     <!-- Tchat du salon vocal -->
     <section class="chat glass" id="chat" aria-label="Tchat du salon" hidden>
@@ -451,6 +459,22 @@
 
         <!-- ——— 6. Compte ——— -->
         <div class="tab-panel" data-tab="account" role="tabpanel">
+          <h4 class="sec">Langue</h4>
+          <div class="group">
+            <div class="seg" id="langSeg" style="grid-template-columns:repeat(3,1fr)"><button data-l="auto">Auto</button><button data-l="fr">Français</button><button data-l="en">English</button></div>
+          </div>
+          <h4 class="sec">Vie privée</h4>
+          <div class="group">
+            <div class="row" style="justify-content:flex-start;flex-wrap:wrap"><button class="ghost" id="privacyOpen">Politique de confidentialité</button><button class="ghost" id="deleteData">Supprimer mes données</button></div>
+            <p class="hint">Efface ton compte Hush : classement, amis, demandes et connexion au serveur. Tes réglages restent sur ce PC.</p>
+          </div>
+          <h4 class="sec">Aide</h4>
+          <div class="group">
+            <div class="row" style="justify-content:flex-start;flex-wrap:wrap"><button class="ghost" id="onboardAgain">Revoir le guide</button><button class="ghost" id="diagCopy">Copier le diagnostic</button></div>
+            <div class="row"><span>Envoyer les rapports d'erreur</span><button class="switch" id="reports" role="switch" aria-label="Envoyer les rapports d'erreur"></button></div>
+            <p class="hint">Un plantage peut envoyer un rapport technique (version, système, message d'erreur), sans tes messages ni ta voix. « Copier le diagnostic » te permet de l'envoyer toi-même à quelqu'un qui t'aide.</p>
+            <div class="row" id="viewRow" hidden><span>Vue administrateur</span><button class="switch" id="adminView" role="switch" aria-label="Vue administrateur"></button></div>
+          </div>
           <h4 class="sec">Connexion Discord</h4>
           <div class="group">
             <p class="account-info" id="accountInfo"></p>
@@ -474,6 +498,7 @@
     </section>
   </div>
 </div>
+<script src="i18n.js"></script>
 <script src="patterns.js"></script>
 <script src="rings.js"></script>
 <script src="music.js"></script>
@@ -484,6 +509,7 @@
 <script src="capture.js"></script>
 <script src="home.js"></script>
 <script src="chat.js"></script>
+<script src="onboard.js"></script>
 <script src="colorwheel.js"></script>
 </body>
 </html>

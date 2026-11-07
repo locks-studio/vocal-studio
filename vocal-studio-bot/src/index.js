@@ -29,6 +29,24 @@ if (missing.length) {
 const SESSIONS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "sessions.json");
 // Classement : minutes passées en vocal avec Hush, par personne (une minute comptée au plus toutes les 50 s)
 const { Friends } = require("./friends");
+const { Reports } = require("./reports");
+const reports = new Reports(path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "reports.json"));
+const STARTED = Date.now();
+let reportHits = [];
+const ADMIN_IDS = new Set(String(process.env.ADMIN_IDS || "").split(",").map((x) => x.trim()).filter(Boolean));
+// Toujours décidé ici, d'après le compte vérifié : l'appli ne peut pas se déclarer administrateur
+const isAdmin = (id) => bot.owners.has(id) || ADMIN_IDS.has(id);
+function adminStats() {
+  const seen = new Map();
+  for (const x of clients) if (x.user) seen.set(x.user.id, { id: x.user.id, name: x.user.name, avatar: x.user.avatar, version: x.meta.version || "?", os: x.meta.os || "?", inVoice: !!friends.presence.get(x.user.id) });
+  const hours = Object.values(usage).reduce((a, u) => a + (u.minutes || 0), 0) / 60;
+  return {
+    uptime: Date.now() - STARTED, memMB: Math.round(process.memoryUsage().rss / 1e6), botOnline: bot.client.isReady(),
+    servers: bot.client.isReady() ? [...bot.client.guilds.cache.values()].map((g) => ({ name: g.name, members: g.memberCount })) : [],
+    online: [...seen.values()], accounts: new Set(Object.values(sessions).map((x) => x.id)).size, friendsAccounts: Object.keys(friends.db).length,
+    hours: Math.round(hours), reportCount: reports.list.length,
+  };
+}
 const FRIENDS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "friends.json");
 const USAGE_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "usage.json");
 let usage = {};
@@ -76,9 +94,9 @@ function page(res, title, text) {
 async function handleCallback(url, res) {
   const state = url.searchParams.get("state");
   const p = pending.get(state);
-  if (!p) return page(res, "Lien expiré", "Relance la connexion depuis Hush.");
+  if (!p) return page(res, "Lien expiré · Link expired", "Relance la connexion depuis Hush. · Start the login again from Hush.");
   const code = url.searchParams.get("code");
-  if (!code) { p.error = "Connexion annulée."; return page(res, "Connexion annulée", "Tu peux fermer cet onglet."); }
+  if (!code) { p.error = "Connexion annulée."; return page(res, "Connexion annulée · Login cancelled", "Tu peux fermer cet onglet. · You can close this tab."); }
   try {
     const tok = await fetch(`${API}/oauth2/token`, {
       method: "POST",
@@ -92,10 +110,10 @@ async function handleCallback(url, res) {
     sessions[token] = { id: user.id, name: user.global_name || user.username, at: Date.now() };
     saveSessions();
     p.token = token;
-    page(res, "C'est bon !", "Hush est connecté à ton compte Discord. Tu peux fermer cet onglet.");
+    page(res, "C'est bon ! · All set!", "Hush est connecté à ton compte Discord. Tu peux fermer cet onglet. · Hush is linked to your Discord account. You can close this tab.");
   } catch (e) {
     p.error = `Connexion refusée : ${e.message}`;
-    page(res, "La connexion a échoué", "Reviens dans Hush pour voir l'erreur.");
+    page(res, "La connexion a échoué · Login failed", "Reviens dans Hush pour voir l'erreur. · Go back to Hush to see the error.");
   }
 }
 
@@ -109,6 +127,15 @@ const server = http.createServer((req, res) => {
     res.writeHead(302, { Location: `https://discord.com/oauth2/authorize?${q}` }).end();
   } else if (url.pathname === "/auth/callback") {
     handleCallback(url, res);
+  } else if (url.pathname === "/auth/me") {
+    // Qui est connecté (launcher 1999) : la session est vérifiée, jamais renvoyée
+    const m = /^Bearer (\S{10,200})$/.exec(req.headers.authorization || "");
+    const s = m && sessions[m[1]];
+    if (!s) { res.writeHead(401).end(); return; }
+    bot.avatarOf(s.id).then((avatar) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ id: s.id, name: s.name, avatar }));
+    });
   } else if (url.pathname === "/auth/poll") {
     const p = pending.get(url.searchParams.get("state"));
     res.writeHead(p ? 200 : 404, { "Content-Type": "application/json" });
@@ -128,7 +155,7 @@ const server = http.createServer((req, res) => {
     }));
   } else if (url.pathname === "/usage/top") {
     // Les 20 plus gros utilisateurs (pseudo, photo, heures) : public, comme un tableau des scores
-    const top = Object.entries(usage).map(([id, u]) => ({ id, name: u.name || "?", avatar: u.avatar || null, hours: Math.round((u.minutes / 60) * 10) / 10 }))
+    const top = Object.entries(usage).filter(([id]) => !(friends.db[id] && friends.db[id].hideRank)).map(([id, u]) => ({ id, name: u.name || "?", avatar: u.avatar || null, hours: Math.round((u.minutes / 60) * 10) / 10 }))
       .sort((a, b) => b.hours - a.hours).slice(0, 20);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(top));
@@ -137,6 +164,15 @@ const server = http.createServer((req, res) => {
     req.resume();
     if (!m) { res.writeHead(401).end(); return; }
     userFromToken(m[1]).then((u) => { if (u) addMinute(u.id, u.name, u.avatar); res.writeHead(u ? 204 : 401).end(); }).catch(() => res.writeHead(502).end());
+  } else if (url.pathname === "/report" && req.method === "POST") {
+    // Rapport d'erreur d'une appli non liée au bot : anonyme, taille et débit limités
+    const now = Date.now();
+    reportHits = reportHits.filter((t) => now - t < 60_000);
+    if (reportHits.length >= 30) { req.resume(); return res.writeHead(429).end(); }
+    reportHits.push(now);
+    let raw = "";
+    req.on("data", (d) => { raw += d; if (raw.length > 8192) req.destroy(); });
+    req.on("end", () => { try { reports.add(JSON.parse(raw)); } catch {} res.writeHead(204).end(); });
   } else if (url.pathname === "/rpc/token" && req.method === "POST") {
     rpcToken(req, res);
   } else if (url.pathname === "/") {
@@ -217,10 +253,11 @@ wss.on("connection", (ws) => {
       if (!s) return ws.close(4001, "session inconnue");
       clearTimeout(authTimer);
       c.user = { id: s.id, name: s.name, avatar: await bot.avatarOf(s.id) };
+      c.meta = { version: String((msg.meta && msg.meta.version) || "").slice(0, 20), os: String((msg.meta && msg.meta.os) || "").slice(0, 20) };
       clients.add(c);
       friends.touch(c.user);
       friends.notifyFriends(c.user.id); // « Hush ouvert »
-      ws.send(JSON.stringify({ type: "hello", user: c.user }));
+      ws.send(JSON.stringify({ type: "hello", user: c.user, admin: isAdmin(c.user.id) }));
       return push(c);
     }
     try {
@@ -232,6 +269,25 @@ wss.on("connection", (ws) => {
       else if (msg.type === "dismiss") bot.dismiss(c.user.id);
       else if (msg.type === "beat") addMinute(c.user.id, c.user.name, c.user.avatar);
       else if (msg.type === "presence") friends.setPresence(c.user.id, msg.voice);
+      else if (msg.type === "report") reports.add(msg.report, c.user);
+      else if (msg.type === "admin") {
+        try {
+          if (!isAdmin(c.user.id)) throw new Error("Réservé à l'administrateur.");
+          if (msg.op === "clear") reports.clear();
+          const data = msg.op === "reports" || msg.op === "clear" ? reports.list.slice(0, 50) : adminStats();
+          ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data }));
+        } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
+      else if (msg.type === "friends" && msg.op === "delete") {
+        // « Supprimer mes données » : compte, classement, amis et toutes les sessions de cette personne
+        const id = c.user.id;
+        friends.removeUser(id);
+        delete usage[id];
+        saveUsage();
+        for (const [t, s] of Object.entries(sessions)) if (s.id === id) delete sessions[t];
+        saveSessions();
+        ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: true }));
+      }
       else if (msg.type === "friends") {
         try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: friends.op(c.user.id, msg.op, msg.arg) })); }
         catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }

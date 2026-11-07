@@ -1043,3 +1043,43 @@ body.glass-dark .tab-glass{background:linear-gradient(160deg,rgba(255,255,255,.3
 .home-side:hover .hs-in,.home-side:focus-within .hs-in{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.home-side,.hs-in{transition:none}}
 .home-side:focus,.home-side:focus-visible{outline:none}
+
+/* ——— Accueil guidé ——— */
+.onboard{position:absolute;left:50%;bottom:26px;translate:-50% 0;z-index:60;width:min(500px,calc(100% - 32px));padding:22px 24px 16px;border-radius:26px;display:flex;flex-direction:column;gap:10px;color:var(--ink);--fg:var(--ink);--muted:var(--ink-soft);animation:pop .3s both;-webkit-app-region:no-drag}
+.onboard[hidden]{display:none}
+.onboard h2{margin:0;font:700 22px var(--f-display)}
+.onboard p{margin:0;font-size:14px;line-height:1.45;color:var(--ink-soft)}
+.ob-colors,.ob-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ob-color{width:38px;height:38px;border-radius:50%;border:0;padding:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6),0 2px 6px rgba(var(--sh),.25);transition:transform .15s}
+.ob-color:hover{transform:scale(1.1)}
+.ob-color.on{box-shadow:0 0 0 2px #fff,0 0 0 4.5px var(--ui)}
+.ob-choice{flex:1 1 40%;border:1px solid rgba(255,255,255,.75);background:rgba(255,255,255,.4);color:var(--ink);border-radius:13px;padding:10px;font-weight:600}
+.ob-choice:hover{background:rgba(255,255,255,.65)}
+.ob-choice.on{background:var(--ui);border-color:transparent;color:var(--on-ui)}
+.ob-check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:4px}
+.ob-check input{accent-color:var(--ui);width:17px;height:17px}
+.ob-foot{display:flex;align-items:center;gap:12px;margin-top:8px}
+.ob-foot .cta{width:auto;padding:10px 20px}
+.ob-dots{display:flex;gap:5px;margin-right:auto}
+.ob-dots i{width:7px;height:7px;border-radius:50%;background:rgba(var(--sh),.25)}
+.ob-dots i.on{background:var(--ui)}
+body.onboarding .sandbox-pill,body.onboarding .dock,body.onboarding #music,body.onboarding .mp-grab{display:none!important}
+body.mini .onboard{display:none!important}
+
+/* ——— Vue administrateur ——— */
+.home-panel:has(#homeAdmin:not([hidden])){width:min(760px,100%);max-height:min(66vh,620px)}
+.ad-nums{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.ad-num{background:rgba(255,255,255,.4);border-radius:14px;padding:10px;text-align:center}
+.ad-num b{display:block;font:700 22px var(--f-display)}
+.ad-num small{font-size:11.5px}
+.ad-title{margin:6px 0 0;font:700 13px var(--f-display)}
+.ad-head{display:flex;align-items:center;justify-content:space-between}
+.ad-err{font-size:12.5px;background:rgba(255,255,255,.3);border-radius:10px;padding:7px 10px}
+.ad-err summary{cursor:pointer;overflow-wrap:anywhere}
+.ad-err pre{margin:6px 0 0;font:11px/1.45 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+
+/* ——— Inviter le bot : le rond qui se remarque, et la phrase sous le message d'accueil ——— */
+.home-tabs button.invite{background:linear-gradient(150deg,var(--ui-deep),rgba(var(--rim),.85));color:#fff}
+.home-tabs button.invite:hover{background:linear-gradient(150deg,var(--ui-deep),rgba(var(--rim),.95))}
+.home-hint{grid-row:1;align-self:end;justify-self:center;margin:0 0 24px;color:#fff;font-size:14px;text-shadow:0 1px 3px rgba(var(--sh),.6)}
+.home-hint[hidden]{display:none}

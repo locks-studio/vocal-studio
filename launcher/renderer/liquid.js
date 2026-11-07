@@ -10,7 +10,8 @@
 const Liquid = (() => {
   const MAX = 12;
   let gl, prog, tex, buf, U = {}, raf = 0, src = null, kind = "", fit = "cover", disp = { dx: 0, dy: 0, dw: 1, dh: 1 };
-  let canvas = null, glassEls = [], lastKey = "", stream = null;
+  let canvas = null, lastKey = "", stream = null;
+  const radii = new WeakMap(); // arrondi de chaque panneau : relu une seule fois (getComputedStyle à chaque image coûte)
 
   const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
   const FS = `precision highp float;
@@ -114,8 +115,9 @@ void main(){
     for (const el of document.querySelectorAll(".glass")) {
       if (out.length >= MAX || !el.offsetParent && getComputedStyle(el).position !== "fixed") continue;
       const b = el.getBoundingClientRect();
-      if (b.width < 4 || b.height < 4 || el.closest("[hidden]")) continue;
-      out.push([b.left, b.top, b.width, b.height, parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16]);
+      if (b.width < 4 || b.height < 4 || el.closest("[hidden]") || (el.closest(".shell") && document.body.classList.contains("gated"))) continue;
+      if (!radii.has(el)) radii.set(el, parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16);
+      out.push([b.left, b.top, b.width, b.height, radii.get(el)]);
     }
     return out;
   }
@@ -218,5 +220,9 @@ void main(){
     return true;
   }
 
-  return { live, image, scene, stop, setDisplay: (b) => { if (b) { disp = b; lastKey = ""; } }, isOn: () => !!src };
+  // Fenêtre réduite ou cachée : plus de capture du tout. Fenêtre ouverte sans le focus : moins d'images par seconde.
+  function pause() { cancelAnimationFrame(raf); raf = 0; if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } }
+  function rate(fps) { if (stream) stream.getVideoTracks().forEach((t) => t.applyConstraints({ frameRate: { ideal: fps, max: fps } }).catch(() => {})); }
+
+  return { live, image, scene, stop, pause, rate, setDisplay: (b) => { if (b) { disp = b; lastKey = ""; } }, isOn: () => !!src };
 })();

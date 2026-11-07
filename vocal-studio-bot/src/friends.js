@@ -51,7 +51,7 @@ class Friends {
   list(id) {
     const u = this.db[id];
     return {
-      code: u.code, hideVoice: !!u.hideVoice,
+      code: u.code, hideVoice: !!u.hideVoice, hideRank: !!u.hideRank,
       friends: u.friends.map((x) => this.view(x)),
       incoming: u.incoming.map((x) => this.view(x, false)),
       outgoing: u.outgoing.map((x) => this.view(x, false)),
@@ -69,6 +69,18 @@ class Friends {
     }
     if (v) this.presence.set(id, v); else this.presence.delete(id);
     this.notifyFriends(id);
+  }
+
+  // Suppression du compte : plus aucune trace, y compris dans les listes des autres
+  removeUser(id) {
+    const friends = (this.db[id] && this.db[id].friends) || [];
+    delete this.db[id];
+    this.presence.delete(id);
+    for (const u of Object.values(this.db)) {
+      for (const k of ["friends", "incoming", "outgoing"]) u[k] = u[k].filter((x) => x !== id);
+    }
+    this.save();
+    for (const f of friends) this.notify(f);
   }
 
   notifyFriends(id) { const u = this.db[id]; if (u) for (const f of u.friends) this.notify(f); }
@@ -110,6 +122,8 @@ class Friends {
     } else if (op === "hide") {
       me.hideVoice = !!arg;
       this.notifyFriends(id);
+    } else if (op === "rank") {
+      me.hideRank = !arg;
     } else throw new Error("Action inconnue.");
     this.save();
     return this.list(id);

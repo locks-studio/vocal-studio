@@ -17,7 +17,20 @@ contextBridge.exposeInMainWorld("launcher", {
     wallpaper: () => ipcRenderer.invoke("desk:wallpaper"),
     bounds: () => ipcRenderer.invoke("win:bounds"),
     onBounds: (fn) => ipcRenderer.on("win:bounds", (_e, b) => fn(b)),
-    onFocus: (fn) => ipcRenderer.on("win:focus", () => fn()),
+    onFocus: (fn) => ipcRenderer.on("win:focus", (_e, on) => fn(on)),
+  },
+  invite: () => ipcRenderer.invoke("open:invite"),
+  privacy: () => ipcRenderer.invoke("open:privacy"),
+  reload: () => ipcRenderer.invoke("win:reload"),
+  test: {
+    join: (code) => ipcRenderer.invoke("test:join", code),
+    leave: () => ipcRenderer.invoke("test:leave"),
+  },
+  account: {
+    get: () => ipcRenderer.invoke("account:get"),
+    login: () => ipcRenderer.invoke("account:login"),
+    cancel: () => ipcRenderer.invoke("account:cancel"),
+    logout: () => ipcRenderer.invoke("account:logout"),
   },
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),

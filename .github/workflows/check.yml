@@ -1,0 +1,19 @@
+# À chaque envoi sur GitHub : les mêmes contrôles qu'avant une version.
+name: Contrôles
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Dépendances du launcher (pour tester l'installeur)
+        working-directory: launcher
+        run: npm ci --ignore-scripts
+      - run: node tools/check.js

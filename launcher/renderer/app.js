@@ -31,6 +31,10 @@ async function load() {
   const off = !data.online;
   $("#netStatus").textContent = off ? "Hors ligne : tu peux lancer ce qui est installé" : "";
   $("#netStatus").classList.toggle("off", off);
+  // Canal de test
+  $("#tbTest").hidden = !data.testing;
+  $("#testForm").hidden = !!data.testing;
+  $("#testOn").hidden = !data.testing;
   $("#aboutVer").textContent = `Version ${data.launcherVersion} · ${PLATFORM_NAMES[data.platform] || data.platform}`;
   // Nouvelle version du launcher lui-même : un lien vers la page de téléchargement
   const lv = data.catalog.launcher;
@@ -55,7 +59,7 @@ function autoUpdate() {
   if (!prefs.autoUpdate || !data.online) return;
   for (const a of data.catalog.apps || []) {
     const inst = data.installed[a.id], key = a.id + "@" + a.version;
-    if (!inst || !fileFor(a) || !newer(a.version, inst.version) || busy.has(a.id) || autoTried.has(key)) continue;
+    if (!inst || !fileFor(a) || a.version === inst.version || busy.has(a.id) || autoTried.has(key)) continue;
     autoTried.add(key);
     toast(`Mise à jour de ${a.name} vers la ${a.version}…`);
     installApp(a, `${a.name} est à jour (${a.version}).`);
@@ -69,7 +73,7 @@ function renderRail() {
     const b = document.createElement("button");
     b.className = "rail-app" + (a.id === current ? " active" : "");
     const inst = data.installed[a.id];
-    if (inst && newer(a.version, inst.version)) b.classList.add("update");
+    if (inst && a.version !== inst.version) b.classList.add("update");
     b.title = a.name;
     b.setAttribute("aria-label", a.name);
     const img = document.createElement("img");
@@ -124,7 +128,7 @@ function render() {
     btn.classList.add("busy");
     $("#playLabel").textContent = st.phase === "download" ? "Annuler" : "Patiente…";
     btn.disabled = st.phase !== "download";
-  } else if (inst && !newer(a.version, inst.version)) {
+  } else if (inst && a.version === inst.version) {
     btn.classList.add("launch");
     $("#playLabel").textContent = "Lancer";
     $("#statusLine").textContent = `${a.name} ${inst.version} est prêt.`;
@@ -171,9 +175,9 @@ $("#playBtn").onclick = async () => {
   if (!a) return;
   if (busy.has(a.id)) { L.cancel(a.id); return; }
   const inst = data.installed[a.id];
-  if (inst && !newer(a.version, inst.version)) {
-    await L.launch(a.id);
-    toast(`${a.name} se lance…`);
+  if (inst && a.version === inst.version) {
+    try { await L.launch(a.id); toast(`${a.name} se lance…`); }
+    catch (e) { toast(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")); }
     return;
   }
   installApp(a);
@@ -333,8 +337,74 @@ L.desk.onBounds((b) => {
   lastDid = b.did;
 });
 L.desk.bounds().then((b) => { Liquid.setDisplay(b); lastDid = b.did; });
-L.desk.onFocus(loadWallpaper); // fond d'écran changé pendant que le launcher était ouvert
+L.desk.onFocus((on) => {
+  Liquid.rate(on ? 60 : 20);
+  if (on && prefs.glass !== "live") loadWallpaper(); // fond d'écran changé pendant que le launcher était ouvert
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.body.classList.contains("glass-live")) return;
+  if (document.hidden) Liquid.pause(); else loadWallpaper();
+});
 L.desk.bounds().then(placeDesk);
+
+/* ——— Compte Discord : demandé dès l'arrivée ———
+   Sans compte, l'écran de connexion reste devant le launcher. Seule exception : le serveur de connexion est
+   injoignable. Là on laisse passer, sinon personne ne pourrait plus ni installer ni lancer ses logiciels. */
+function showUser(a) {
+  const u = a && a.user;
+  $("#tbUser").hidden = !a || !a.signedIn;
+  $("#tbName").textContent = u ? u.name : "Connecté";
+  $("#tbAvatar").hidden = !(u && u.avatar);
+  if (u && u.avatar) $("#tbAvatar").src = u.avatar;
+  $("#setAccount").textContent = a && a.signedIn ? (u ? u.name : "Connecté") : "Pas connecté";
+  $("#setLogout").textContent = a && a.signedIn ? "Se déconnecter" : "Se connecter";
+}
+function gateState(busy, error) {
+  $("#gateLogin").disabled = busy;
+  $("#gateLabel").textContent = busy ? "Autorise dans ton navigateur…" : "Se connecter avec Discord";
+  $("#gateCancel").hidden = !busy;
+  $("#gateError").hidden = !error;
+  $("#gateError").textContent = error || "";
+}
+function openGate() { gateState(false); $("#gateSkip").hidden = true; $("#gate").hidden = false; document.body.classList.add("gated"); }
+function closeGate() { $("#gate").hidden = true; document.body.classList.remove("gated"); }
+$("#gateLogin").onclick = async () => {
+  gateState(true);
+  const r = await L.account.login();
+  if (r.ok) { closeGate(); showUser(r); gateState(false); return; }
+  if (r.error === "cancelled") return gateState(false);
+  if (r.error === "offline") { gateState(false, "Le serveur de connexion ne répond pas pour l'instant. Réessaie dans un moment."); $("#gateSkip").hidden = false; return; }
+  gateState(false, r.error);
+};
+$("#gateCancel").onclick = () => L.account.cancel();
+$("#gateSkip").onclick = closeGate;
+$("#setLogout").onclick = async () => {
+  const a = await L.account.get();
+  if (a.signedIn) await L.account.logout();
+  showUser({ signedIn: false });
+  $("#settings").hidden = true;
+  openGate();
+};
+L.account.get().then((a) => { showUser(a); if (!a.signedIn) openGate(); });
+
+// Canal de test : le catalogue change, et le logiciel passe à la version du canal (dans les deux sens)
+$("#testForm").onsubmit = async (e) => {
+  e.preventDefault();
+  $("#testError").hidden = true;
+  const r = await L.test.join($("#testCode").value);
+  if (r.error) { $("#testError").textContent = r.error; $("#testError").hidden = false; return; }
+  $("#testCode").value = "";
+  toast("Tu reçois maintenant les versions de test.");
+  load();
+};
+$("#testLeave").onclick = async () => { await L.test.leave(); toast("Retour à la version normale."); load(); };
+$("#inviteBtn").onclick = () => L.invite();
+$("#gatePrivacy").onclick = () => L.privacy();
+document.querySelectorAll("#setLang button").forEach((b) => {
+  b.setAttribute("aria-pressed", b.dataset.l === I18N.chosen);
+  b.onclick = () => { I18N.set(b.dataset.l); L.reload(); };
+});
+I18N.start();
 
 /* ——— Réglages ——— */
 const segs = { glass: "#setGlass", onLaunch: "#setLaunch" };
@@ -371,7 +441,7 @@ $("#close").onclick = () => L.win.close();
 addEventListener("keydown", (e) => {
   if (e.key === "Escape") { $("#about").hidden = true; $("#settings").hidden = true; }
   // Entrée : le gros bouton (sauf si une fenêtre est ouverte ou qu'un bouton a le focus)
-  if (e.key === "Enter" && $("#about").hidden && $("#settings").hidden && !(document.activeElement && document.activeElement.closest("button"))) $("#playBtn").click();
+  if (e.key === "Enter" && $("#gate").hidden && $("#about").hidden && $("#settings").hidden && !(document.activeElement && document.activeElement.closest("button"))) $("#playBtn").click();
 });
 // Le catalogue est relu toutes les 10 minutes (nouvelles versions)
 setInterval(() => { if (!busy.size) load(); }, 10 * 60_000);

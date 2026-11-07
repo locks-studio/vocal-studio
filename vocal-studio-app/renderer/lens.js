@@ -66,6 +66,8 @@ const Lens = (() => {
     const place = (animate) => {
       const b = nav.querySelector(`button[${attr}="true"]`);
       if (!b || !b.offsetWidth) return;
+      if (b.offsetLeft < nav.scrollLeft) nav.scrollLeft = b.offsetLeft;
+      else if (b.offsetLeft + b.offsetWidth > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = b.offsetLeft + b.offsetWidth - nav.clientWidth;
       const changed = glass.dataset.key !== b.textContent;
       glass.dataset.key = b.textContent;
       glass.style.width = b.offsetWidth + "px";

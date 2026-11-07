@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen } = require("electron");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 const { VoiceSession } = require("./voice");
@@ -237,6 +238,55 @@ app.on("second-instance", () => {
   win.show(); win.focus();
 });
 
+// ——— Erreurs ———
+// Toujours notées dans crash.log (dossier de données). Envoyées au serveur seulement si la personne a accepté.
+// Le chemin du dossier personnel est retiré, pour ne pas envoyer le nom de la session Windows.
+const logPath = () => path.join(app.getPath("userData"), "crash.log");
+const scrub = (s) => String(s == null ? "" : s).split(os.homedir()).join("~").replace(/[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{20,}/g, "[masqué]");
+const seenErr = new Map();
+function report(where, e) {
+  const message = scrub((e && e.message) || e), stack = scrub(e && e.stack);
+  const key = where + message, now = Date.now();
+  if (now - (seenErr.get(key) || 0) < 600_000 || seenErr.size > 50) return;
+  seenErr.set(key, now);
+  try {
+    fs.appendFileSync(logPath(), `${new Date().toISOString()} [${where}] ${message}\n${stack ? stack + "\n" : ""}`);
+    if (fs.statSync(logPath()).size > 200_000) fs.writeFileSync(logPath(), fs.readFileSync(logPath(), "utf8").slice(-100_000));
+  } catch {}
+  if (!data.reports) return;
+  const r = { where, message, stack, version: app.getVersion(), os: `${process.platform} ${os.release()}` };
+  if (botLink && botLink.ws && botLink.ws.readyState === 1) return botLink.send({ type: "report", report: r });
+  if (botStore) fetch(`${botStore.getServer().replace(/\/$/, "")}/report`, { method: "POST", body: JSON.stringify(r), signal: AbortSignal.timeout(8000) }).catch(() => {});
+}
+process.on("uncaughtException", (e) => report("principal", e));
+process.on("unhandledRejection", (e) => report("principal", e));
+app.on("render-process-gone", (_e, _w, d) => report("page", `La page s'est arrêtée : ${d.reason}`));
+app.on("child-process-gone", (_e, d) => { if (d.type === "GPU" && d.reason !== "clean-exit") report("carte graphique", `Processus graphique arrêté : ${d.reason}`); });
+ipcMain.on("report:error", (_e, r) => report("page", r));
+ipcMain.on("report:consent", (_e, on) => { data.reports = !!on; persist(); });
+// Tout ce qu'il faut pour aider quelqu'un à distance, à coller dans un message
+ipcMain.handle("report:copy", async () => {
+  let gpu = "?", log = "";
+  try { gpu = JSON.stringify(app.getGPUFeatureStatus()); } catch {}
+  try { log = fs.readFileSync(logPath(), "utf8").slice(-3000); } catch {}
+  const st = session && session.snapshot();
+  clipboard.writeText(scrub([`Hush ${app.getVersion()} · ${process.platform} ${os.release()} · ${process.arch} · Electron ${process.versions.electron}`,
+    `Bureau : ${process.env.XDG_CURRENT_DESKTOP || "-"} ${process.env.XDG_SESSION_TYPE || ""}`, `Connexion : ${data.mode} · ${st ? st.status : "?"} · ${(st && st.error) || "sans erreur"}`,
+    `Carte graphique : ${gpu}`, "", "Dernières erreurs :", log || "aucune"].join("\n")));
+  return true;
+});
+
+// Lancé par le launcher 1999 : il passe le compte déjà connecté. Hush le reprend et passe par le bot.
+function launcherSession() {
+  const t = process.env.HUSH_SESSION;
+  delete process.env.HUSH_SESSION;
+  if (!t || !/^[\w-]{20,100}$/.test(t)) return;
+  botStore.setToken(t);
+  // Le bot est la connexion par défaut. Une connexion directe qui n'a jamais marché (pas testeur) passe au bot ;
+  // celle de quelqu'un dont elle fonctionne reste en place.
+  if (data.mode === "local" && !store.getToken()) data.mode = "bot";
+}
+
 app.whenReady().then(() => {
   if (!gotLock) return;
   load();
@@ -245,7 +295,9 @@ app.whenReady().then(() => {
   sounds = new SoundLibrary(path.join(app.getPath("userData"), "sounds"));
   sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
+  launcherSession();
   botLink = new BotLink(botStore, (url) => shell.openExternal(url), (state) => { if (session === botLink) send("voice:state", state); });
+  botLink.meta = { version: app.getVersion(), os: process.platform };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
   useMode(data.mode);
@@ -348,12 +400,21 @@ ipcMain.handle("friends:op", async (_e, op, arg) => {
   if (!botLink || !botLink.ws || botLink.ws.readyState !== 1) return { error: "Lie ton compte au bot Hush : onglet Connexion › « Lier au bot »." };
   try { return { data: await botLink.friends(String(op), arg) }; } catch (e) { return { error: e.message }; }
 });
+// Vue administrateur : le serveur revérifie à chaque demande
+ipcMain.handle("admin:op", async (_e, op) => {
+  try { return { data: await botLink.adminOp(String(op)) }; } catch (e) { return { error: e.message }; }
+});
 ipcMain.on("friends:presence", (_e, voice) => { if (botLink) botLink.presence(voice); });
 ipcMain.handle("chat:send", (_e, text) => chatCall("send", String(text || "").slice(0, 1900)));
+ipcMain.handle("account:delete", async () => {
+  try { await botLink.friends("delete"); } catch (e) { return { error: e.message }; }
+  botLink.logout();
+  return { ok: true };
+});
 ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
 ipcMain.handle("bot:info", async () => {
   const i = await botLink.info();
-  return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1) };
+  return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1), admin: !!botLink.admin };
 });
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
@@ -398,6 +459,7 @@ ipcMain.handle("spotify:logout", () => spotify.logout());
 ipcMain.handle("win:minimize", (e) => winOf(e).minimize());
 ipcMain.handle("win:maximize", (e) => { const w = winOf(e); w.isMaximized() ? w.unmaximize() : w.maximize(); });
 ipcMain.handle("win:close", (e) => winOf(e).close());
+ipcMain.handle("open:privacy", () => shell.openExternal("https://1999.organisationphantom.fr/confidentialite.html"));
 ipcMain.handle("win:reload", (e) => e.sender.reload()); // location.reload est bloqué par la protection will-navigate
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });

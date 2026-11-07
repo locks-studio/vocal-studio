@@ -4,10 +4,16 @@
     "package": "package.json",
     "page": "https://1999.organisationphantom.fr/",
     "artifacts": {
-      "win32-x64": ["dist/1999-Setup-{version}-win-x64.exe", "dist/1999-Setup-{version}-win-x64.zip"],
+      "win32-x64": [
+        "dist/1999-Setup-{version}-win-x64.exe",
+        "dist/1999-Setup-{version}-win-x64.zip"
+      ],
       "darwin-arm64": "dist/1999-Setup-{version}-mac-arm64.dmg",
       "darwin-x64": "dist/1999-Setup-{version}-mac-x64.dmg",
-      "linux-x64": ["dist/1999-Setup-{version}-linux-x86_64.AppImage", "dist/1999-Setup-{version}-linux-x64.tar.gz"]
+      "linux-x64": [
+        "dist/1999-Setup-{version}-linux-x86_64.AppImage",
+        "dist/1999-Setup-{version}-linux-x64.tar.gz"
+      ]
     }
   },
   "apps": [
@@ -18,29 +24,39 @@
       "tagline": "Tes vocaux Discord en version cinéma : anneaux animés, caméra qui suit celui qui parle, musique et overlay pour le stream.",
       "description": "Hush affiche ton salon vocal Discord avec des avatars animés, une caméra 3D, la musique en cours et un overlay transparent pour OBS.",
       "accent": "#23a559",
-      "usageDir": ["vocal-studio", "Hush"],
+      "usageDir": [
+        "vocal-studio",
+        "Hush"
+      ],
       "package": "../vocal-studio-app/package.json",
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Paramètres en vrai verre liquide, onglets et accueil en ronds de verre, volume et bouton pour cacher la musique",
-        "Amis Hush : code ami, demandes à accepter, voir quand tes amis sont en vocal",
-        "Tchat de la voc : lire et écrire depuis Hush",
-        "Rose pâle par défaut, l'interface suit la couleur d'accent, fonds en cercles d'aperçu",
-        "Nouveau Cinéma 3D avec caméra qui réalise (plans, zooms selon le débit) ; l'ancien devient Dynamique",
-        "Mode vertical pour Bande, Cinéma 3D, Dynamique, Grille et Discord",
-        "Onglets Effets (glitch) et Animation, pseudos masqués / flous / glitch",
-        "Accueil : Personnaliser (vocal simulé), classement, ajouter le bot à la voc",
-        "Lecteur musique en mini-vinyle quand on le réduit",
-        "Contour des avatars (noir ou couleur de l'avatar), pseudos en neige télé, glitch neige cathodique",
-        "Rejoindre un vocal depuis l'historique ou Mes amis ; croix des paramètres réparée"
+        "Connexion Discord dès le launcher, plus rien à refaire dans Hush",
+        "Tchat de la voc et amis Hush : vois quand tes amis sont en vocal",
+        "Disponible en français et en anglais",
+        "Accueil guidé, Personnaliser, verre liquide et couleurs à ton goût",
+        "Cinéma 3D, mode vertical, effets glitch et lecteur de musique"
       ],
       "artifacts": {
-        "win32-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-win-x64.zip", "exec": "Hush.exe" },
-        "darwin-arm64": { "file": "../vocal-studio-app/dist/Hush-{version}-mac-arm64.zip", "exec": "Hush.app" },
-        "darwin-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-mac-x64.zip", "exec": "Hush.app" },
-        "linux-x64": { "file": "../vocal-studio-app/dist/Hush-{version}-linux-x64.zip", "exec": "hush" }
+        "win32-x64": {
+          "file": "../vocal-studio-app/dist/Hush-{version}-win-x64.zip",
+          "exec": "Hush.exe"
+        },
+        "darwin-arm64": {
+          "file": "../vocal-studio-app/dist/Hush-{version}-mac-arm64.zip",
+          "exec": "Hush.app"
+        },
+        "darwin-x64": {
+          "file": "../vocal-studio-app/dist/Hush-{version}-mac-x64.zip",
+          "exec": "Hush.app"
+        },
+        "linux-x64": {
+          "file": "../vocal-studio-app/dist/Hush-{version}-linux-x64.zip",
+          "exec": "hush"
+        }
       }
     }
-  ]
+  ],
+  "testCode": "zjcxfpe83r"
 }

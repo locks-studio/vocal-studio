@@ -3,6 +3,9 @@ const stage = $("#stage");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Mini-fenêtre : même page, ouverte avec ?mini=1 (seulement les avatars, réglages repris de la grande fenêtre)
 const MINI = new URLSearchParams(location.search).has("mini");
+// Toute erreur de la page va au journal de Hush (et au serveur si la personne a accepté)
+addEventListener("error", (e) => window.studio.report.error({ message: e.message, stack: e.error && e.error.stack }));
+addEventListener("unhandledrejection", (e) => window.studio.report.error({ message: String((e.reason && e.reason.message) || e.reason), stack: e.reason && e.reason.stack }));
 
 /* ——— Préférences visuelles ——— */
 const SKINS = {
@@ -19,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top" };
+  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -365,7 +368,7 @@ async function renderSetup(card, screen) {
     seg.appendChild(b);
   };
   segBtn("bot", "Avec le bot");
-  segBtn("local", "Connexion directe");
+  segBtn("local", "Connexion directe (testeurs)");
 
   // Mode bot : juste l'adresse du serveur Hush
   const botBox = el("div", { class: "setup-box" });
@@ -432,7 +435,7 @@ function onVoiceState(s) {
    toutes les dispositions, anneaux, effets… sans être en vocal. Ta voix est simulée par moments
    (bouton « Je parle »). Rien n'est envoyé à Discord. */
 let sandbox = null;
-function setSandbox(on) {
+function setSandbox(on, quiet) {
   if (sandbox) clearInterval(sandbox.timer);
   if (on && !sandbox) {
     const me = state.me || { id: "me", name: "Toi", avatar: null };
@@ -441,9 +444,7 @@ function setSandbox(on) {
       members: [{ ...me, muted: false, deaf: false, speaking: false }], settings: { mute: false, deaf: false } };
     sandbox.timer = setInterval(sandboxTick, 380);
     Home.forced = false;
-    S.panel = true;
-    apply();
-    dockSettings(); // paramètres sur le côté : on voit le résultat en direct
+    if (!quiet) { S.panel = true; apply(); dockSettings(); } // paramètres sur le côté : on voit le résultat en direct
   } else if (!on && sandbox) {
     const real = sandbox.real;
     sandbox = null;
@@ -1000,6 +1001,8 @@ const addSounds = async () => {
 $("#soundsAdd").onclick = addSounds;
 $("#recBtn").onclick = () => toggleRecording();
 $("#musicAdd").onclick = addSounds;
+let lastConsent = null;
+$("#diagCopy").onclick = async () => { await window.studio.report.copy(); showToast("Diagnostic copié : colle-le dans un message"); };
 // Volume de la musique : le lecteur intégré, ou l'appli qui joue (Deezer, Spotify…), sans envoyer chaque cran du curseur
 let volTimer = 0;
 function setVolume(v) {
@@ -1014,16 +1017,8 @@ function setVolume(v) {
 $("#volume").oninput = (e) => setVolume(+e.target.value);
 $("#mpVol").oninput = (e) => setVolume(+e.target.value);
 $("#mpHide").onclick = () => { S.musicOn = false; apply(); showToast("Musique cachée : remets-la dans Paramètres › Musique"); };
-if (false) $("#presetMontage").onclick = () => {
-  Object.assign(S, { skin: "vert", accent: null, layout: "cinema", shape: "round", ring: "solid", bg: "space", glow: 85, names: false, cards: false, musicOn: true });
-  apply();
-};
 $("#presetBase").onclick = () => {
   Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "pinkspace", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
-  apply();
-};
-if (false) $("#presetBande").onclick = () => {
-  Object.assign(S, { skin: "vert", accent: null, layout: "strip", shape: "round", ring: "solid", bg: "auto", glow: 75, names: true, pixel: true, cards: false, musicOn: false });
   apply();
 };
 $("#glow").oninput = (e) => { S.glow = +e.target.value; apply(); };
@@ -1044,7 +1039,7 @@ $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = 
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "squash", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop"];
+const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "squash", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -1114,6 +1109,7 @@ function drawBgPicks() {
     } else if (v === "solid") dot.style.background = col;
     else if (v === "gradient") {
       const k = hexHsl(col);
+      if (k.l > 70) k.s *= 0.65;
       dot.style.background = `radial-gradient(circle,hsl(${k.h} ${k.s}% ${Math.min(100, k.l + 8)}%),hsl(${k.h} ${k.s}% ${k.l * 0.72}%) 55%,hsl(${k.h} ${k.s}% ${k.l * 0.45}%))`;
     } else if (v === "profile") {
       const a = state.me && state.me.avatar;
@@ -1245,6 +1241,7 @@ function apply() {
   $("#glow").value = S.glow; $("#glowOut").textContent = S.glow + " %";
   $("#volume").value = S.volume; $("#volumeOut").textContent = Math.round(S.volume * 100) + " %";
   $("#mpVol").value = S.volume;
+  if (lastConsent !== !!S.reports) { lastConsent = !!S.reports; window.studio.report.consent(lastConsent); }
   $("#mpVolWrap").hidden = S.musicSource === "manual";
   $("#players").value = S.players; $("#playersOut").textContent = String(S.players);
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
@@ -1308,6 +1305,7 @@ function drawBg(t, energy) {
   if (S.bg === "gradient") {
     // Dégradé sans motif : clair au centre, plus sombre sur les bords, dans la couleur choisie (comme le fond Uni)
     const c = hexHsl(S.bgColor || "#fcbbdd");
+    if (c.l > 70) c.s *= 0.65; // couleur pâle : le dégradé reste doux au lieu de virer au fluo sur les bords
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.55);
     const L = (v) => Math.max(0, Math.min(100, v));
     g.addColorStop(0, `hsl(${c.h} ${c.s}% ${L(c.l + 8 + energy * 4)}%)`);
@@ -2224,6 +2222,25 @@ for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`
 })();
 
 /* ——— Démarrage ——— */
+I18N.start();
+document.querySelectorAll("#langSeg button").forEach((b) => {
+  b.setAttribute("aria-pressed", b.dataset.l === I18N.chosen);
+  b.onclick = () => { I18N.set(b.dataset.l); window.studio.win.reload(); };
+});
+$("#privacyOpen").onclick = () => window.studio.account.privacy();
+// Suppression du compte : deux clics, puis plus rien sur le serveur
+$("#deleteData").onclick = async (e) => {
+  const b = e.currentTarget;
+  if (!b.dataset.sure) {
+    b.dataset.sure = "1";
+    showToast("Clique encore pour tout supprimer. C'est définitif.");
+    setTimeout(() => delete b.dataset.sure, 5000);
+    return;
+  }
+  delete b.dataset.sure;
+  const r = await window.studio.account.remove();
+  showToast(r.error || "Tes données sont supprimées.");
+};
 if (!MINI) {
   Lens.pill($("#tabs"), "aria-selected");
   Lens.pill(document.querySelector(".hs-tabs"), "aria-pressed");

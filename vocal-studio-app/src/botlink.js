@@ -38,7 +38,7 @@ class BotLink {
 
     const ws = new WebSocket(this.server().replace(/^http/, "ws") + "/ws");
     this.ws = ws;
-    ws.on("open", () => ws.send(JSON.stringify({ type: "auth", token: this.store.getToken() })));
+    ws.on("open", () => ws.send(JSON.stringify({ type: "auth", token: this.store.getToken(), meta: this.meta })));
     ws.on("message", (raw) => {
       let msg;
       try { msg = JSON.parse(raw); } catch { return; }
@@ -46,7 +46,7 @@ class BotLink {
       else if (msg.type === "error") this.set({ ...this.state, error: msg.message });
       else if (msg.type === "chat") { if (this.onChat) this.onChat(msg.message); }
       else if (msg.type === "friends-changed") { if (this.onFriends) this.onFriends(); }
-      else if (msg.type === "hello") { if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); if (this.onFriends) this.onFriends(); }
+      else if (msg.type === "hello") { this.admin = !!msg.admin; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); if (this.onFriends) this.onFriends(); }
       else if (msg.type === "mod-result") {
         const p = this.pending.get(msg.rid);
         if (!p) return;
@@ -139,6 +139,7 @@ class BotLink {
   chat(op, text) { return this.ask({ type: "chat", op, text }); }
   // Amis : liste, ajout, acceptation… ; presence : le vocal où tu es, gardé pour le renvoyer après une reconnexion
   friends(op, arg) { return this.ask({ type: "friends", op, arg }); }
+  adminOp(op) { return this.ask({ type: "admin", op }); }
   presence(voice) { this.lastPresence = voice; this.send({ type: "presence", voice }); }
   ask(msg) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Pas connecté au bot."));

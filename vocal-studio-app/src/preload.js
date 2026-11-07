@@ -66,6 +66,16 @@ contextBridge.exposeInMainWorld("studio", {
     end: (id) => ipcRenderer.invoke("clip:end", id),
     show: (file) => ipcRenderer.invoke("clip:show", file),
   },
+  report: {
+    error: (r) => ipcRenderer.send("report:error", r),
+    consent: (on) => ipcRenderer.send("report:consent", on),
+    copy: () => ipcRenderer.invoke("report:copy"),
+  },
+  admin: (op) => ipcRenderer.invoke("admin:op", op),
+  account: {
+    remove: () => ipcRenderer.invoke("account:delete"),
+    privacy: () => ipcRenderer.invoke("open:privacy"),
+  },
   friends: {
     op: (op, arg) => ipcRenderer.invoke("friends:op", op, arg),
     presence: (voice) => ipcRenderer.send("friends:presence", voice),

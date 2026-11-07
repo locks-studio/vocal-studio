@@ -1,7 +1,7 @@
 {
   "name": "launcher-1999",
   "productName": "1999",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Le launcher de Locks : installe, met à jour et lance Hush et les prochains logiciels",
   "main": "src/main.js",
   "private": true,

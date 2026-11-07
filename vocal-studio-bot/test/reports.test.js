@@ -1,0 +1,20 @@
+// Rapports d'erreur : taille limitée, liste bornée, rechargement depuis le disque
+const assert = require("assert");
+const fs = require("fs"), os = require("os"), path = require("path");
+const { Reports } = require("../src/reports.js");
+const file = path.join(os.tmpdir(), `reports-test-${process.pid}.json`);
+const r = new Reports(file);
+assert.equal(r.add({ where: "page" }), false, "sans message : ignoré");
+assert.equal(r.add(null), false);
+assert.equal(r.add({ message: "x".repeat(5000), stack: "y".repeat(9000), where: "page" }, { name: "Ami" }), true);
+assert.equal(r.list[0].message.length, 400);
+assert.equal(r.list[0].stack.length, 2000);
+assert.equal(r.list[0].user, "Ami");
+for (let i = 0; i < 300; i++) r.add({ message: "m" + i });
+assert.equal(r.list.length, 200, "200 au maximum");
+assert.equal(r.list[0].message, "m299", "le plus récent d'abord");
+clearTimeout(r.timer);
+fs.writeFileSync(file, "pas du json");
+assert.deepEqual(new Reports(file).list, [], "fichier abîmé : on repart à vide");
+fs.rmSync(file, { force: true });
+console.log("rapports : tous les tests passent");

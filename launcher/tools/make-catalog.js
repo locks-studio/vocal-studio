@@ -11,14 +11,26 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+// Contrôles d'abord : rien ne part si quelque chose est cassé (--sans-controles pour le test local uniquement)
+if (!process.argv.includes("--sans-controles")) {
+  const r = require("child_process").spawnSync(process.execPath, [path.join(__dirname, "..", "..", "tools", "check.js"), "--smoke"], { stdio: "inherit" });
+  if (r.status !== 0) { console.error("\nSite NON préparé : corrige d'abord les problèmes ci-dessus."); process.exit(1); }
+}
+
 const root = path.join(__dirname, "..");
 const cfg = JSON.parse(fs.readFileSync(path.join(root, "publish.json"), "utf8"));
 // --out=site-test : dossier de sortie (le test local n'écrase jamais le vrai dossier à envoyer)
 const outArg = process.argv.find((x) => x.startsWith("--out="));
-const out = path.join(root, outArg ? outArg.slice(6) : "site", "1999");
+// --canal=test : version réservée à ceux qui ont le code. Elle part dans son propre dossier (test-<code>/) :
+// ni le catalogue normal, ni le site, ni les installeurs du launcher ne sont touchés.
+const testChannel = process.argv.includes("--canal=test");
+const versionArg = process.argv.find((x) => x.startsWith("--version="));
+const testNotes = process.argv.filter((x) => x.startsWith("--note=")).map((x) => x.slice(7));
+if (testChannel && !cfg.testCode) { console.error("testCode manque dans publish.json."); process.exit(1); }
+const out = testChannel ? path.join(root, "site", "1999-test", `test-${cfg.testCode}`) : path.join(root, outArg ? outArg.slice(6) : "site", "1999");
 // --base=… remplace l'adresse du site (ex. file:///C:/…/site/1999 pour tester sans rien mettre en ligne)
 const baseArg = process.argv.find((x) => x.startsWith("--base="));
-const base = (baseArg ? baseArg.slice(7) : cfg.baseUrl).replace(/\/$/, "");
+const base = (baseArg ? baseArg.slice(7) : cfg.baseUrl + (testChannel ? `/test-${cfg.testCode}` : "")).replace(/\/$/, "");
 const abs = (p) => path.resolve(root, p);
 const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 const copy = (src, rel) => { const d = path.join(out, rel); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(src, d); return `${base}/${rel.split(path.sep).join("/")}`; };
@@ -29,8 +41,8 @@ const catalog = { generatedAt: new Date().toISOString(), apps: [] };
 const report = [];
 
 for (const a of cfg.apps) {
-  const version = JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
-  const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: a.notes || [], usageDir: a.usageDir, downloads: {} };
+  const version = versionArg ? versionArg.slice(10) : JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
+  const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: testNotes.length ? testNotes : a.notes || [], usageDir: a.usageDir, downloads: {} };
   if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(a.id, "icon" + path.extname(a.icon)));
   if (a.banner && fs.existsSync(abs(a.banner))) entry.banner = copy(abs(a.banner), path.join(a.id, "banner" + path.extname(a.banner)));
   for (const [plat, art] of Object.entries(a.artifacts)) {
@@ -43,7 +55,7 @@ for (const a of cfg.apps) {
 }
 
 // Le launcher lui-même : ses installeurs
-if (cfg.launcher) {
+if (cfg.launcher && !testChannel) {
   const lv = JSON.parse(fs.readFileSync(abs(cfg.launcher.package), "utf8")).version;
   catalog.launcher = { version: lv, page: cfg.launcher.page, downloads: {} };
   for (const [plat, p] of Object.entries(cfg.launcher.artifacts)) {
@@ -57,15 +69,21 @@ if (cfg.launcher) {
 }
 
 // Le site de présentation (website/) : copié tel quel à la racine. Il lit ./catalog.json pour ses boutons de téléchargement.
+if (!testChannel) {
 const site = path.join(root, "website");
 if (fs.existsSync(site)) {
-  fs.cpSync(site, out, { recursive: true, filter: (src) => !/(^|[\\/])\./.test(path.relative(site, src)) });
+  fs.cpSync(site, out, { recursive: true }); // .htaccess compris : Hostinger en a besoin
   report.push("  Site web : copié depuis website/");
 } else {
   report.push("  Site web : dossier website/ absent, pas de page d'accueil");
+}
 }
 
 fs.writeFileSync(path.join(out, "catalog.json"), JSON.stringify(catalog, null, 2));
 console.log(`Dossier prêt : ${path.relative(process.cwd(), out)}`);
 console.log(report.join("\n"));
+if (catalog.launcher && !Object.keys(catalog.launcher.downloads).length) {
+  console.log(`\nATTENTION : aucun installeur du launcher ${catalog.launcher.version} dans dist/. Le site afficherait « Bientôt » partout.`);
+  console.log("Compile d'abord le launcher à cette version, puis relance cette commande. N'envoie pas ce dossier sur Hostinger.");
+}
 console.log(`\nEnvoie le CONTENU de ce dossier dans le dossier du sous-domaine sur Hostinger (adresse finale : ${base}/catalog.json).`);

@@ -77,6 +77,15 @@ function showIncoming(r, who) {
   Home.incomingT = setTimeout(() => (el.hidden = true), 15_000);
 }
 
+// Les erreurs techniques en phrases utiles
+function plainError(msg) {
+  const m = String(msg);
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|ne répond plus/i.test(m)) return "Le serveur du bot ne répond pas : il est peut-être éteint. Réessaie dans un moment.";
+  if (/invalid_grant/i.test(m)) return "La liaison à Discord a expiré. Clique à nouveau sur Lier, puis Autoriser dans Discord.";
+  if (/oauth2|invalid_client|invalid_scope|not authori[sz]ed|tester/i.test(m)) return "Discord refuse la connexion directe : ton compte doit être ajouté aux testeurs de l'appli. Passe plutôt par le bot (Modifier la connexion).";
+  return m;
+}
+
 // Accueil sobre : un centre vide, avec une seule phrase selon la situation
 function homeMessage() {
   const isBot = state.mode === "bot";
@@ -91,12 +100,13 @@ function homeMessage() {
 function drawHome() {
   if ($("#home").hidden) return;
   const m = homeMessage(), b = $("#homeMsg");
-  if (b.textContent !== m.text) { b.textContent = m.text; b.classList.remove("in"); void b.offsetWidth; b.classList.add("in"); }
+  if (b.dataset.msg !== m.text) { b.dataset.msg = m.text; b.textContent = m.text; b.classList.remove("in"); void b.offsetWidth; b.classList.add("in"); }
+  $("#homeHint").hidden = !(state.mode === "bot" && state.status === "ready" && !state.channel);
   b.classList.toggle("act", !!m.act);
   b.disabled = !m.act;
   b.onclick = m.act || null;
   // La raison exacte quand ça ne marche pas (message de Discord ou du serveur), en petit sous la phrase
-  const why = ["disconnected", "error", "needs-login"].includes(state.status) && state.error ? state.error : "";
+  const why = ["disconnected", "error", "needs-login"].includes(state.status) && state.error ? plainError(state.error) : "";
   $("#homeWhy").hidden = !why;
   $("#homeWhy").textContent = why;
   // Onglets : seul celui qui est ouvert est dessiné
@@ -107,6 +117,12 @@ function drawHome() {
   if (Home.tab === "people") drawPeople();
   if (Home.tab === "history") drawHistory();
   if (Home.tab === "top") drawTop();
+  if (Home.tab === "admin") drawAdmin();
+  // Vue administrateur : réservée au compte reconnu par le serveur, et masquée en vue utilisateur
+  const admin = !!(Home.info && Home.info.admin);
+  $("#viewRow").hidden = !admin;
+  $("#adminTab").hidden = !(admin && S.adminView);
+  if (Home.tab === "admin" && $("#adminTab").hidden) Home.tab = null;
   drawSide();
 }
 $("#homeStudio").onclick = () => setSandbox(true);
@@ -159,6 +175,7 @@ function drawPeople() {
   const data = Home.data, fr = Home.friends;
   $("#frCode").textContent = fr ? fr.code : "…";
   $("#frHide").checked = !!(fr && fr.hideVoice);
+  $("#frRank").checked = !(fr && fr.hideRank);
   if (Home.frError) ppl.append(h("p", "hint", Home.frError));
   if (fr) {
     for (const p of fr.incoming) {
@@ -260,6 +277,10 @@ $("#frAdd").onsubmit = (e) => {
 };
 $("#frCopy").onclick = () => { if (Home.friends) { window.studio.voice.copy(Home.friends.code); showToast("Code ami copié."); } };
 $("#frHide").onchange = (e) => friendOp("hide", e.target.checked);
+$("#frRank").onchange = (e) => friendOp("rank", e.target.checked);
+// Inviter le bot : le geste qui ouvre Hush à tout un serveur
+const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1566055526444568669&scope=bot%20applications.commands&permissions=970001408";
+$("#homeInvite").onclick = () => window.open((Home.info && Home.info.invite) || INVITE_URL);
 // Annonce le vocal où tu es à tes amis (aussi en connexion directe). Le nom personnalisé d'un salon reste chez toi.
 let frKey = "";
 function friendsOnState(s) {
@@ -339,6 +360,62 @@ function drawSide() {
   });
 }
 document.querySelectorAll("#homeSide [data-hs]").forEach((b) => (b.onclick = () => { S.homeSide = b.dataset.hs; save(); drawSide(); }));
+
+// — Vue administrateur : l'état du service, les personnes connectées, les erreurs reçues —
+const Admin = { stats: null, reports: [], at: 0, error: null };
+const hm = (ms) => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`; };
+async function drawAdmin(force) {
+  if (force || Date.now() - Admin.at > 10_000) {
+    Admin.at = Date.now();
+    const [a, b] = await Promise.all([window.studio.admin("stats"), window.studio.admin("reports")]);
+    Admin.error = a.error || b.error || null;
+    Admin.stats = a.data || null; Admin.reports = b.data || [];
+  }
+  if (Home.tab !== "admin") return;
+  const box = $("#homeAdmin");
+  box.textContent = "";
+  if (Admin.error) return box.append(h("p", "hint", Admin.error));
+  const s = Admin.stats;
+  if (!s) return box.append(h("p", "hint", "Chargement…"));
+  const nums = h("div", "ad-nums");
+  for (const [n, l] of [[s.online.length, "en ligne"], [s.accounts, "comptes"], [s.servers.length, "serveurs"], [s.hours + " h", "de vocal"], [s.reportCount, "erreurs"]]) {
+    const c = h("div", "ad-num");
+    c.append(h("b", "", String(n)), h("small", "", l));
+    nums.append(c);
+  }
+  box.append(nums, h("p", "hint", `${s.botOnline ? "Bot en ligne" : "Bot hors ligne"} · serveur allumé depuis ${hm(s.uptime)} · ${s.memMB} Mo de mémoire`));
+  box.append(h("h3", "ad-title", "Connectés maintenant"));
+  if (!s.online.length) box.append(h("p", "hint", "Personne."));
+  for (const p of s.online) {
+    const row = h("div", "hm-person");
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", p.name), h("small", "", `Hush ${p.version} · ${p.os}${p.inVoice ? " · en vocal" : ""}`));
+    row.append(avatarImg(p.avatar), t);
+    box.append(row);
+  }
+  box.append(h("h3", "ad-title", "Serveurs"), h("p", "hint", s.servers.map((g) => `${g.name} (${g.members})`).join(" · ") || "Aucun."));
+  const head = h("div", "ad-head");
+  head.append(h("h3", "ad-title", "Erreurs reçues"));
+  if (Admin.reports.length) {
+    const clear = h("button", "ghost small", "Tout effacer");
+    clear.onclick = async () => {
+      if (!clear.dataset.sure) { clear.dataset.sure = "1"; clear.textContent = "Confirmer"; return; }
+      await window.studio.admin("clear");
+      drawAdmin(true);
+    };
+    head.append(clear);
+  }
+  box.append(head);
+  if (!Admin.reports.length) box.append(h("p", "hint", "Aucune. Seules les personnes qui ont accepté en envoient."));
+  for (const r of Admin.reports.slice(0, 30)) {
+    const d = document.createElement("details");
+    d.className = "ad-err";
+    const sum = document.createElement("summary");
+    sum.textContent = `${ago(r.at)} · ${r.where} · ${r.message}`;
+    d.append(sum, h("pre", "", `${r.user || "Anonyme"} · Hush ${r.version} · ${r.os}\n${r.stack || ""}`));
+    box.append(d);
+  }
+}
 
 // — Classement : les plus gros utilisateurs de Hush en vocal (heures comptées par le serveur du bot) —
 const Top = { list: null, at: 0, me: null };

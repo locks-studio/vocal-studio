@@ -1,11 +1,12 @@
 // 1999 : le launcher. Lit le catalogue publié sur le site, installe / met à jour / lance les logiciels.
-const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer, safeStorage } = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const https = require("https");
 const { Installer, PLATFORM } = require("./installer");
+const { Account } = require("./account");
 
 const CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.json"), "utf8"));
 // Pour tester sans le site : --catalog=file:///C:/chemin/catalog.json (ou la variable CATALOG_1999)
@@ -23,7 +24,25 @@ if (process.platform === "linux") {
   app.commandLine.appendSwitch("enable-transparent-visuals");
 }
 
-let win, installer;
+let win, installer, account;
+// Plantages : gardés dans launcher.log (dossier de données), le launcher reste ouvert
+const logFile = () => path.join(app.getPath("userData"), "launcher.log");
+function logError(where, e) {
+  try {
+    const line = `${new Date().toISOString()} ${where} v${app.getVersion()} ${process.platform} : ${(e && e.stack) || e}\n`;
+    fs.appendFileSync(logFile(), line);
+    if (fs.statSync(logFile()).size > 200_000) fs.writeFileSync(logFile(), fs.readFileSync(logFile(), "utf8").slice(-100_000));
+  } catch {}
+}
+process.on("uncaughtException", (e) => logError("principal", e));
+process.on("unhandledRejection", (e) => logError("principal", e));
+// Agrandir à la main : Windows ne sait pas agrandir proprement une fenêtre transparente
+let restoreBounds = null;
+function toggleMax() {
+  if (restoreBounds) { win.setBounds(restoreBounds); restoreBounds = null; }
+  else { restoreBounds = win.getBounds(); win.setBounds(screen.getDisplayMatching(restoreBounds).workArea); }
+  send("win:bounds", bounds());
+}
 
 // ——— Réglages du launcher (settings.json dans son dossier de données) ———
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
@@ -101,9 +120,13 @@ function wallpaper() {
 // Où est la fenêtre, et sur quel écran : pour placer le fond pile derrière elle
 function bounds() {
   const b = win.getBounds(), disp = screen.getDisplayMatching(b), d = disp.bounds;
-  return { x: b.x, y: b.y, w: b.width, h: b.height, dx: d.x, dy: d.y, dw: d.width, dh: d.height, did: String(disp.id), max: win.isMaximized() };
+  return { x: b.x, y: b.y, w: b.width, h: b.height, dx: d.x, dy: d.y, dw: d.width, dh: d.height, did: String(disp.id), max: !!restoreBounds };
 }
-const cacheFile = () => path.join(app.getPath("userData"), "catalog-cache.json");
+const cacheFile = () => path.join(app.getPath("userData"), settings.testCode ? "catalog-cache-test.json" : "catalog-cache.json");
+// Canal de test : même site, dans un dossier dont le nom contient le code. Sans code, on reste sur la version normale.
+const testUrl = (code) => CATALOG_URL.replace(/catalog\.json$/, `test-${code}/catalog.json`);
+const catalogUrl = () => (settings.testCode ? testUrl(settings.testCode) : CATALOG_URL);
+const saveSettings = () => { try { fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2)); } catch {} };
 const send = (ch, p) => { if (win && !win.isDestroyed()) win.webContents.send(ch, p); };
 
 function fetchText(url, hops = 0) {
@@ -130,7 +153,7 @@ function fetchText(url, hops = 0) {
 // Catalogue : en ligne si possible, sinon la dernière copie connue (le launcher marche hors ligne pour lancer)
 async function getCatalog() {
   try {
-    const cat = JSON.parse(await fetchText(CATALOG_URL));
+    const cat = JSON.parse(await fetchText(catalogUrl()));
     if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue invalide");
     fs.writeFileSync(cacheFile(), JSON.stringify(cat));
     return { catalog: cat, online: true };
@@ -164,7 +187,9 @@ function createWindow(prev) {
   applyCapture();
   const sendBounds = () => send("win:bounds", bounds());
   for (const ev of ["move", "resize", "maximize", "unmaximize"]) win.on(ev, sendBounds);
-  win.on("focus", () => send("win:focus"));
+  win.on("focus", () => send("win:focus", true));
+  win.on("blur", () => send("win:focus", false));
+  win.webContents.on("render-process-gone", (_e, d) => { logError("page", d.reason); if (d.reason !== "clean-exit" && !win.isDestroyed()) win.webContents.reload(); });
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
 }
@@ -172,6 +197,12 @@ function createWindow(prev) {
 app.whenReady().then(() => {
   installer = new Installer(app.getPath("userData"));
   loadSettings();
+  account = new Account({
+    file: path.join(app.getPath("userData"), "account.json"), server: CONFIG.authServer,
+    openUrl: (u) => shell.openExternal(u),
+    seal: (t) => (safeStorage.isEncryptionAvailable() ? "e:" + safeStorage.encryptString(t).toString("base64") : "p:" + t),
+    unseal: (b) => (b.startsWith("e:") ? safeStorage.decryptString(Buffer.from(b.slice(2), "base64")) : b.slice(2)),
+  });
   // La capture demandée par la page : l'écran où se trouve la fenêtre, sans fenêtre de choix
   session.defaultSession.setDisplayMediaRequestHandler(async (_req, cb) => {
     try {
@@ -189,7 +220,7 @@ app.on("window-all-closed", () => app.quit());
 // ——— Échanges avec l'interface ———
 ipcMain.handle("catalog:get", async () => {
   const r = await getCatalog();
-  return { ...r, platform: PLATFORM, launcherVersion: app.getVersion(), installed: installer.state };
+  return { ...r, platform: PLATFORM, launcherVersion: app.getVersion(), installed: installer.state, testing: !!settings.testCode };
 });
 ipcMain.handle("app:install", async (_e, entry) => {
   // On ne fait confiance qu'au catalogue officiel : on retrouve l'entrée par son id
@@ -208,8 +239,29 @@ ipcMain.handle("app:usage", (_e, entry) => {
   }
   return null;
 });
+// Rejoindre le canal de test : le code n'est gardé que si son catalogue existe vraiment
+ipcMain.handle("test:join", async (_e, raw) => {
+  const code = String(raw || "").trim().toLowerCase();
+  if (!/^[a-z0-9]{4,40}$/.test(code)) return { error: "Ce code n'est pas valide." };
+  try {
+    const cat = JSON.parse(await fetchText(testUrl(code)));
+    if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue");
+  } catch { return { error: "Ce code n'est pas valide." }; }
+  settings.testCode = code;
+  saveSettings();
+  return { ok: true };
+});
+ipcMain.handle("test:leave", () => { delete settings.testCode; saveSettings(); return { ok: true }; });
+ipcMain.handle("account:get", () => account.refresh());
+ipcMain.handle("open:invite", () => shell.openExternal(CONFIG.inviteUrl));
+ipcMain.handle("open:privacy", () => shell.openExternal(CONFIG.privacyUrl));
+ipcMain.handle("win:reload", () => win.webContents.reload());
+ipcMain.handle("account:login", () => account.login());
+ipcMain.handle("account:cancel", () => account.cancel());
+ipcMain.handle("account:logout", () => account.logout());
 ipcMain.handle("app:launch", (_e, id) => {
-  installer.launch(id);
+  // Hush reprend le compte du launcher : pas de deuxième connexion
+  installer.launch(id, id === "hush" ? account.token() : null);
   // Réglage « au lancement d'un logiciel » : rester ouvert, se réduire, ou se fermer
   if (settings.onLaunch === "minimize") setTimeout(() => win && win.minimize(), 600);
   if (settings.onLaunch === "close") setTimeout(() => app.quit(), 1500);
@@ -236,5 +288,5 @@ ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); return in
 ipcMain.handle("app:folder", (_e, id) => { const s = installer.installed(id); shell.openPath(s ? s.dir : installer.appsDir); });
 ipcMain.handle("open:url", (_e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(url); });
 ipcMain.handle("win:minimize", () => win.minimize());
-ipcMain.handle("win:maximize", () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
+ipcMain.handle("win:maximize", () => toggleMax());
 ipcMain.handle("win:close", () => win.close());
