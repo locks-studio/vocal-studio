@@ -41,7 +41,8 @@ const fail = (m) => { console.log(`  ÉCHEC : ${m}`); failed = true; };
     const arch = /arm64/.test(zip) ? [] : ["-x86_64"];
     const runnable = arch.length === 0 || spawnSync("arch", ["-x86_64", "/usr/bin/true"]).status === 0;
     if (!runnable) { console.log("  lancement sauté : Rosetta absent sur ce Mac"); continue; }
-    const child = spawn("arch", [...arch, bin], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1" } });
+    const child = arch.length ? spawn("arch", [...arch, bin], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1" } })
+      : spawn(bin, [], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1" } });
     let log = "";
     child.stdout.on("data", (d) => (log += d));
     child.stderr.on("data", (d) => (log += d));

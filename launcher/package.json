@@ -39,7 +39,7 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.utilities",
-      "identity": "-",
+      "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false
     },
@@ -47,7 +47,8 @@
       "icon": "build/icon.png",
       "category": "Utility",
       "executableName": "launcher-1999"
-    }
+    },
+    "afterPack": "../tools/mac-adhoc-sign.js"
   },
   "dependencies": {
     "extract-zip": "^2.0.1"

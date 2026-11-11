@@ -43,7 +43,7 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.social-networking",
-      "identity": "-",
+      "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "extendInfo": {
@@ -59,6 +59,7 @@
     },
     "asarUnpack": [
       "src/media.ps1"
-    ]
+    ],
+    "afterPack": "../tools/mac-adhoc-sign.js"
   }
 }
