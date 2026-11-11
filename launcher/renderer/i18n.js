@@ -6,7 +6,17 @@
 const I18N = (() => {
   const EN = {
     // ——— Général ———
-    "Hors ligne": "Offline", "personne ne parle": "nobody's talking", "Écran": "Screen", "Rejoindre": "Join", "Top salons": "Top channels", "Favoris": "Favorites",
+    "Basique": "Basic", "Overlay": "Overlay", "Overlay en jeu": "In-game overlay", "Emplacement": "Position", "Coin de l'écran": "Screen corner",
+    "Écart avec le bord (côté)": "Distance from the side edge", "Écart avec le bord (haut ou bas)": "Distance from the top or bottom edge", "Largeur": "Width", "Hauteur": "Height",
+    "Colonne": "Column", "Comme Hush": "Same as Hush", "Animation selon la voix": "Voice-driven animation", "Seulement ceux qui parlent": "Only people talking",
+    "Cacher les membres muets": "Hide muted members", "Opacité": "Opacity", "L'avatar bouge": "Avatar movement", "Selon le volume": "With the volume", "En rythme": "In rhythm", "Immobile": "Still",
+    "En haut à gauche": "Top left", "En haut au centre": "Top center", "En haut à droite": "Top right", "Au milieu à gauche": "Middle left", "Au centre": "Center", "Au milieu à droite": "Middle right",
+    "En bas à gauche": "Bottom left", "En bas au centre": "Bottom center", "En bas à droite": "Bottom right",
+    "L'overlay (mini-fenêtre) se règle dans l'onglet Overlay.": "The overlay (mini window) is set up in the Overlay tab.",
+    "Toujours au premier plan, et la souris passe à travers : il ne gêne jamais quand tu joues. Ctrl+Maj+H l'affiche ou le cache, même en jeu. Un jeu en plein écran exclusif le recouvre : mets le jeu en « fenêtré sans bordure ».": "Always on top, and the mouse goes through it: it never gets in the way while you play. Ctrl+Shift+H shows or hides it, even in game. An exclusive fullscreen game covers it: set the game to borderless windowed.",
+    "Pendant que tu règles, le cadre de l'overlay s'affiche en pointillés pour voir où il est.": "While you adjust it, the overlay's frame shows as a dotted outline so you can see where it is.",
+    "Selon le volume : plus la voix est forte, plus l'avatar grossit et saute, à chaque syllabe. Avec le bot, c'est le vrai volume mesuré en dB.": "With the volume: the louder the voice, the more the avatar grows and bounces, on every syllable. With the bot, it's the real volume measured in dB.",
+    "Hors ligne": "Offline", "personne ne parle": "nobody's talking", "Écran": "Screen", "Top salons": "Top channels", "Favoris": "Favorites",
     "Copier": "Copy", "Ajouter": "Add", "Connexion": "Connection", "Mes amis": "My friends", "Historique": "History", "Classement": "Leaderboard", "Personnaliser": "Customize",
     "Personnalisation": "Customization", "Quitter": "Leave", "Tchat": "Chat", "Paramètres": "Settings", "Affichage": "Display", "Avatars": "Avatars", "Effets": "Effects", "Animation": "Animation",
     "Fond": "Background", "Musique": "Music", "Vidéo": "Video", "Compte": "Account", "Enregistrer": "Save", "Annuler": "Cancel", "Fermer": "Close", "Ouvrir": "Open", "Supprimer": "Delete",

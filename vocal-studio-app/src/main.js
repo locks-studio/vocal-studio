@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen, globalShortcut, Menu } = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -147,17 +147,50 @@ function send(channel, payload) {
   for (const w of [win, mini]) if (w && !w.isDestroyed()) w.webContents.send(channel, payload);
 }
 
-// ——— Mini-fenêtre : coins arrondis, toujours au premier plan, se déplace en la faisant glisser.
-// Créée transparente pour le mode « avatars seuls » (Windows ne permet pas de changer ça après coup).
+// ——— Overlay (mini-fenêtre) : comme celui de Discord, au premier plan mais la souris passe à travers.
+// Il ne prend jamais le clavier ni la souris au jeu ; sa place se règle dans Paramètres › Overlay.
+// Créé transparent pour le mode « avatars seuls » (Windows ne permet pas de changer ça après coup).
+let ovCfg = { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0 };
+function ovBounds() {
+  const all = screen.getAllDisplays();
+  const d = all[ovCfg.screen] || screen.getPrimaryDisplay();
+  const a = d.bounds; // tout l'écran : un jeu en plein écran recouvre aussi la barre des tâches
+  const w = Math.round(Math.min(a.width, Math.max(120, ovCfg.w))), h = Math.round(Math.min(a.height, Math.max(80, ovCfg.h)));
+  const [row, col] = [ovCfg.pos[0], ovCfg.pos[1]];
+  const fit = (v, lo, hi) => Math.round(Math.max(lo, Math.min(hi, v)));
+  const x = col === "l" ? a.x + ovCfg.x : col === "r" ? a.x + a.width - w - ovCfg.x : a.x + (a.width - w) / 2;
+  const y = row === "t" ? a.y + ovCfg.y : row === "b" ? a.y + a.height - h - ovCfg.y : a.y + (a.height - h) / 2;
+  return { x: fit(x, a.x, a.x + a.width - w), y: fit(y, a.y, a.y + a.height - h), width: w, height: h };
+}
+const placeMini = () => { if (mini && !mini.isDestroyed()) mini.setBounds(ovBounds()); };
+ipcMain.handle("overlay:set", (_e, c) => {
+  if (!c || typeof c !== "object") return;
+  const n = (v, d) => (Number.isFinite(+v) ? Math.max(0, Math.min(4000, Math.round(+v))) : d);
+  ovCfg = {
+    pos: /^[tmb][lcr]$/.test(c.pos) ? c.pos : "tl",
+    x: n(c.x, 24), y: n(c.y, 24), w: n(c.w, 280), h: n(c.h, 420), screen: n(c.screen, 0),
+  };
+  placeMini();
+});
+ipcMain.handle("overlay:screens", () => {
+  const prim = screen.getPrimaryDisplay().id;
+  return screen.getAllDisplays().map((d, i) => ({ i, label: `Écran ${i + 1}${d.id === prim ? " (principal)" : ""} · ${d.size.width}×${d.size.height}` }));
+});
 function toggleMini() {
   if (mini && !mini.isDestroyed()) { mini.close(); return false; }
   mini = new BrowserWindow({
-    width: 300, height: 420, minWidth: 160, minHeight: 90,
+    ...ovBounds(), show: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
     alwaysOnTop: true, title: "Hush · mini", icon: ICON,
+    // Mac : une fenêtre « panneau » flotte aussi au-dessus des jeux et des applis en plein écran
+    ...(process.platform === "darwin" ? { type: "panel", fullscreenable: false } : {}),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  mini.setAlwaysOnTop(true, "floating");
+  // Au-dessus des jeux en « fenêtré sans bordure », et la souris passe à travers
+  mini.setAlwaysOnTop(true, "screen-saver");
+  mini.setIgnoreMouseEvents(true);
+  // skipTransformProcessType : sans lui, l'icône de Hush disparaîtrait du Dock sur Mac
+  if (process.platform !== "win32") mini.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   // Titre fixe « Hush · mini » : sous Linux, les règles des gestionnaires de fenêtres (niri, Hyprland, Sway) le ciblent
   mini.on("page-title-updated", (e) => e.preventDefault());
   mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
@@ -167,6 +200,8 @@ function toggleMini() {
     if (!mini) return;
     mini.setBackgroundColor("#00000000");
     if (process.platform === "win32" && mini.setBackgroundMaterial) mini.setBackgroundMaterial("none"); // jamais d'Acrylic derrière
+    mini.showInactive(); // s'affiche sans voler le clavier au jeu
+    placeMini();
   });
   mini.on("closed", () => { mini = null; send("win:mini", false); });
   return true;
@@ -289,6 +324,16 @@ function launcherSession() {
 
 app.whenReady().then(() => {
   if (!gotLock) return;
+  // Mac : la barre de menus en haut de l'écran. Sans menu « Édition », Cmd+C / Cmd+V ne marcheraient pas dans
+  // les champs ; pas de « Présentation » pour que Cmd+R ou Cmd+0 ne rechargent ni ne dézooment Hush par erreur.
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]));
+  }
+  // Ctrl+Maj+H : afficher ou cacher l'overlay, même en pleine partie
+  try { globalShortcut.register("CommandOrControl+Shift+H", () => { const open = toggleMini(); if (open) send("win:mini", true); }); } catch {}
+  screen.on("display-metrics-changed", placeMini);
+  screen.on("display-removed", placeMini);
+  app.on("will-quit", () => globalShortcut.unregisterAll());
   load();
   loadUsage();
   setInterval(tickUsage, 60_000);

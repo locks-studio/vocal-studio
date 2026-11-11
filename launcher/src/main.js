@@ -1,5 +1,5 @@
 // 1999 : le launcher. Lit le catalogue publié sur le site, installe / met à jour / lance les logiciels.
-const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer, safeStorage } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer, safeStorage, Menu } = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -55,7 +55,9 @@ const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 // (c'est le compositeur qui décide, et niri ne floute pas) : le verre sur le fond d'écran à la place.
 // Par défaut : le verre sur l'écran en direct (Windows / Mac). Linux ne sait pas exclure une fenêtre de sa propre
 // capture (elle se verrait elle-même) : le verre sur le fond d'écran.
-const DEFAULT_SETTINGS = { glass: process.platform === "linux" ? "wallpaper" : "live", onLaunch: "stay", autoUpdate: true, startup: false };
+// Mac : le verre natif (vibrancy) d'office ; le verre « en direct » filme l'écran, et macOS demanderait
+// l'autorisation d'enregistrer l'écran dès le premier lancement
+const DEFAULT_SETTINGS = { glass: process.platform === "linux" ? "wallpaper" : process.platform === "darwin" ? "acrylic" : "live", onLaunch: "stay", autoUpdate: true, startup: false };
 let settings = { ...DEFAULT_SETTINGS };
 function loadSettings() { try { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(settingsFile(), "utf8")) }; } catch {} }
 const CHOICES = { glass: ["live", "acrylic", "wallpaper", "scene", "clear"], onLaunch: ["stay", "minimize", "close"] };
@@ -200,6 +202,8 @@ function createWindow(prev) {
 }
 
 app.whenReady().then(() => {
+  // Mac : barre de menus minimale (Cmd+C / Cmd+V dans les champs, Cmd+Q pour quitter)
+  if (process.platform === "darwin") Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]));
   installer = new Installer(app.getPath("userData"));
   loadSettings();
   account = new Account({

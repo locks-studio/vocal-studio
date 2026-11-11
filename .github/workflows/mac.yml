@@ -1,0 +1,54 @@
+# Fabrique les versions Mac de Hush et du launcher 1999 (Apple Silicon et Intel), puis les teste sur ce Mac.
+# Un Mac est obligatoire pour ça : GitHub en prête un le temps de la construction.
+# Lancement : onglet « Actions » › « Version Mac » › « Run workflow » (ou : gh workflow run mac.yml --ref <branche>).
+# Résultat dans « Artifacts » : mac-builds (les zips et le .dmg à mettre dans dist/) et mac-test (captures d'écran).
+# Signature « ad hoc » : pas de compte développeur Apple, macOS demandera une fois « Ouvrir quand même » pour 1999.
+name: Version Mac
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Rosetta : pour lancer aussi la version Intel sur ce Mac Apple Silicon pendant le test
+      - name: Rosetta
+        run: softwareupdate --install-rosetta --agree-to-license || true
+
+      - name: Hush
+        working-directory: vocal-studio-app
+        run: |
+          npm ci
+          npx electron-builder --mac zip --x64 --arm64 --publish never
+
+      - name: Launcher 1999
+        working-directory: launcher
+        run: |
+          npm ci
+          npx electron-builder --mac dmg zip --x64 --arm64 --publish never
+
+      - name: Test (décompression comme le launcher, signature, lancement)
+        run: node tools/mac-test.js vocal-studio-app/dist/Hush-*-mac-*.zip launcher/dist/1999-Setup-*-mac-*.zip
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-test
+          path: mac-test/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          if-no-files-found: error
+          path: |
+            vocal-studio-app/dist/Hush-*-mac-*.zip
+            launcher/dist/1999-Setup-*-mac-*.dmg
+            launcher/dist/1999-Setup-*-mac-*.zip

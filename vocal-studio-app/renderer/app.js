@@ -21,8 +21,12 @@ const SHAPES = {
   round: { r: "50%", c: "none" },
   squircle: { r: "30%", c: "none" },
 };
-const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 70, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 7,
-  ring: "aura", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "mosaic", zoom: 1, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: true, ringColor: null, ringFrom: "origin", voiceMin: 0.15, avShadow: true, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true };
+const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true, avAnim: "db",
+  // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
+  ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
+// Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
+const OLD_DEFAULTS = { players: 7, zoom: 1, ring: "aura", glow: 70, voiceMin: 0.15, avShadow: true, showMe: true, playerBg: "mosaic" };
 let S = { ...DEFAULTS };
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
@@ -36,7 +40,12 @@ function normS() {
   S.hiddenUsers = [...(S.hiddenUsers || [])];
   S.userPresets = [...(S.userPresets || [])];
   S.history = [...(S.history || [])];
-  if (!["general", "avatars", "effets", "anim", "fond", "sound", "video", "account"].includes(S.tab)) S.tab = "general";
+  S.ov = { ...DEFAULTS.ov, ...(S.ov || {}) };
+  if (!S.defaults2) { for (const k in OLD_DEFAULTS) if (S[k] === OLD_DEFAULTS[k]) S[k] = DEFAULTS[k]; S.defaults2 = true; }
+  // L'ancien interrupteur « s'aplatit en rythme » devient le choix d'animation
+  if (!S.avAnimMig) { if (S.squash === false) S.avAnim = "off"; S.avAnimMig = true; }
+  if (!["db", "rhythm", "off"].includes(S.avAnim)) S.avAnim = "db";
+  if (!["general", "avatars", "effets", "anim", "fond", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
   // Réglages retirés : on bascule sur ce qui les remplace
   if (S.layout === "lyrics") S.layout = "strip";
   if (S.joinAnim === "glitch") S.joinAnim = "pop"; // arrivée « glitch » retirée
@@ -176,7 +185,9 @@ function syncTiles() {
   // Les plus forts (en dB) d'abord parmi ceux qui viennent de parler, puis les autres
   const loudFirst = ordered.filter(recent).sort((a, b) => (b.id === meId) - (a.id === meId) || (peak.get(b.id) || 0) - (peak.get(a.id) || 0));
   const keep = new Set([...loudFirst, ...ordered.filter((m) => !recent(m))].slice(0, S.players).map((m) => m.id));
-  const list = ordered.filter((m) => keep.has(m.id));
+  let list = ordered.filter((m) => keep.has(m.id));
+  // Overlay « seulement ceux qui parlent » : chacun reste 3 s après sa dernière phrase
+  if (MINI && S.ov.onlyTalk) list = list.filter((m) => now - (lastSpoke.get(m.id) || 0) < 3000);
   const ids = new Set(list.map((m) => m.id));
   for (const [id, t] of tiles) {
     if (ids.has(id)) continue;
@@ -743,7 +754,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -1039,7 +1050,7 @@ $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = 
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "squash", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView"];
+const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -1247,6 +1258,7 @@ function apply() {
   $("#speed").value = S.speed; $("#speedOut").textContent = S.speed.toFixed(1).replace(".0", "") + "×";
   $("#accent").value = S.accent || SKINS[S.skin].a;
   SWITCHES.forEach((k) => $("#" + k).setAttribute("aria-checked", S[k]));
+  ovUi();
   // Pseudos : en haut ou en bas de l'avatar, et leur taille
   b.classList.toggle("name-top", S.namePos !== "bottom");
   b.classList.toggle("name-bottom", S.namePos === "bottom");
@@ -1483,7 +1495,7 @@ function free(t) {
 }
 // Glisser un membre pour le placer
 stage.addEventListener("pointerdown", (e) => {
-  if (L !== "free" || e.button !== 0 || e.ctrlKey) return;
+  if (L !== "free" || e.button !== 0 || e.ctrlKey || e.metaKey) return;
   const el = e.target.closest(".tile");
   const tile = el && [...tiles.values()].find((x) => x.el === el);
   if (!tile) return;
@@ -1834,7 +1846,7 @@ function showToast(msg) {
 mainEl.addEventListener("pointerdown", (e) => {
   if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen, .chat")) return;
   const tileEl = e.target.closest(".tile");
-  if (e.ctrlKey) {
+  if (e.ctrlKey || e.metaKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
     if (t && view.lock !== t.data.id) {
       view.lock = t.data.id;
@@ -1877,7 +1889,7 @@ mainEl.addEventListener("wheel", (e) => {
   e.preventDefault();
   setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
-addEventListener("keydown", (e) => { if (e.ctrlKey && (e.key === "0" || e.code === "Numpad0")) { e.preventDefault(); setZoom(1); } });
+addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === "0" || e.code === "Numpad0")) { e.preventDefault(); setZoom(1); } });
 
 // Couleur d'accent (#rrggbb) en teinte/saturation/luminosité, avec une saturation minimale pour le dégradé
 function hexHsl(hex) {
@@ -1909,7 +1921,14 @@ function frame(t) {
     tile.lvl += (target - tile.lvl) * (reduced ? 1 : 0.2);
     tile.el.style.setProperty("--lvl", tile.lvl.toFixed(3));
     const wrap = tile.wrap || (tile.wrap = tile.el.querySelector(".av-wrap"));
-    if (S.squash && !reduced && tile.lvl > 0.02) {
+    // Selon le volume : l'avatar grossit avec la voix et s'étire sur chaque attaque (syllabe, cri, rire)
+    tile.fast = (tile.fast || 0) + (target - (tile.fast || 0)) * (target > (tile.fast || 0) ? 0.55 : 0.16);
+    if (S.avAnim === "db" && !reduced && tile.fast > 0.01) {
+      const punch = Math.max(-0.05, Math.min(0.09, (tile.fast - tile.lvl) * 0.6));
+      const s = 1 + tile.fast * 0.12;
+      wrap.style.transform = `translateY(${(-tile.fast * 5).toFixed(2)}px) scale(${(s - punch * 0.6).toFixed(4)}, ${(s + punch).toFixed(4)})`;
+      tile.squashed = true;
+    } else if (S.avAnim === "rhythm" && !reduced && tile.lvl > 0.02) {
       const k = tile.lvl * 0.075 * (Math.sin(t * 0.026 * S.speed + tile.seed) * 0.7 + Math.sin(t * 0.061 * S.speed + tile.seed * 3) * 0.3);
       wrap.style.transform = `scale(${(1 + k).toFixed(4)}, ${(1 - k).toFixed(4)})`;
       tile.squashed = true;
@@ -2093,11 +2112,15 @@ const miniGet = (k) => { try { return localStorage.getItem(k); } catch { return 
 const miniSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 function miniLook() {
   // L'overlay montre TOUT le salon, sans caméra qui file : personne ne sort de la fenêtre.
-  // Disposition : verticale (par défaut) ou en bande, au choix avec le bouton ↕
-  const vertical = miniGet("hush-mini-layout") !== "strip";
+  // Son apparence se règle dans Paramètres › Overlay (la souris passe à travers : il ne se touche pas)
+  const o = S.ov, vertical = o.layout !== "strip";
   S.layout = vertical ? "column" : "strip";
   S.players = 99; S.camera = false; S.zoom = 1;
   S.panel = false; S.musicOn = false;
+  if (o.ring !== "same") S.ring = o.ring;
+  S.names = !!o.names; S.hideMuted = !!o.hideMuted;
+  if (!o.anim) S.avAnim = "off";
+  document.body.style.opacity = Math.max(0.2, Math.min(1, +o.opacity || 1));
   const clear = true; // l'overlay est toujours entièrement transparent : seuls les avatars et les pseudos
   document.body.classList.toggle("mini-clear", clear);
   $("#miniClear").classList.toggle("on", clear);
@@ -2112,18 +2135,30 @@ function toggleMiniClear() {
   showToast(miniGet("hush-mini-clear") === "1" ? "Overlay transparent (Ctrl+O)" : "Overlay avec fond (Ctrl+O)");
 }
 addEventListener("keydown", (e) => {
-  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") { e.preventDefault(); toggleMiniClear(); }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") { e.preventDefault(); toggleMiniClear(); }
 });
+let ovPreviewT = 0;
 function setupMini() {
   document.body.classList.add("mini");
   miniLook();
   apply();
+  // Seulement ceux qui parlent : on retire ceux qui se sont tus depuis 3 s
+  setInterval(() => { if (S.ov.onlyTalk) syncTiles(); }, 1000);
+  let lastOv = JSON.stringify(S.ov);
   // La grande fenêtre change un réglage : on le reprend ici
   addEventListener("storage", (e) => {
     if (e.key === "hush-mini-clear" || e.key === "hush-mini-layout") { miniLook(); apply(); syncTiles(); return; }
     if (e.key !== "vocal-studio") return;
     try { S = { ...DEFAULTS, ...JSON.parse(e.newValue || "{}") }; } catch { return; }
     normS();
+    // On règle l'overlay : son cadre s'affiche quelques secondes pour voir où il est
+    const ov = JSON.stringify(S.ov);
+    if (ov !== lastOv) {
+      lastOv = ov;
+      document.body.classList.add("ov-preview");
+      clearTimeout(ovPreviewT);
+      ovPreviewT = setTimeout(() => document.body.classList.remove("ov-preview"), 2500);
+    }
     miniLook();
     apply();
     loadBgImg();
@@ -2160,6 +2195,40 @@ $("#miniBtn").onclick = openMini;
 $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
+
+/* ——— Panneau Overlay : emplacement et affichage ——— */
+const OV_SWITCHES = { ovNames: "names", ovAnim: "anim", ovOnlyTalk: "onlyTalk", ovHideMuted: "hideMuted" };
+const OV_SEGS = { ovPos: "pos", ovLayout: "layout", ovRing: "ring" };
+const OV_RANGES = { ovX: ["x", (v) => v + " px"], ovY: ["y", (v) => v + " px"], ovW: ["w", (v) => v + " px"], ovH: ["h", (v) => v + " px"], ovOpacity: ["opacity", (v) => Math.round(v * 100) + " %"] };
+const setOv = (k, v) => { S.ov = { ...S.ov, [k]: v }; apply(); };
+let ovSent = "";
+function ovUi() {
+  if (MINI) return;
+  const o = S.ov;
+  for (const [id, k] of Object.entries(OV_SWITCHES)) $("#" + id).setAttribute("aria-checked", !!o[k]);
+  for (const [id, k] of Object.entries(OV_SEGS)) $("#" + id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === o[k]));
+  for (const [id, [k, fmt]] of Object.entries(OV_RANGES)) { $("#" + id).value = o[k]; $("#" + id + "Out").textContent = fmt(+o[k]); }
+  // Au centre, le décalage n'a pas de sens dans ce sens-là
+  $("#ovXRow").hidden = o.pos[1] === "c"; $("#ovYRow").hidden = o.pos[0] === "m";
+  if ($("#ovScreen").value !== String(o.screen)) $("#ovScreen").value = String(o.screen);
+  const sent = JSON.stringify([o.pos, o.x, o.y, o.w, o.h, o.screen]);
+  if (sent !== ovSent) { ovSent = sent; window.studio.win.overlay({ pos: o.pos, x: o.x, y: o.y, w: o.w, h: o.h, screen: o.screen }); }
+}
+if (!MINI) {
+  for (const [id, k] of Object.entries(OV_SWITCHES)) $("#" + id).onclick = () => setOv(k, !S.ov[k]);
+  for (const [id, k] of Object.entries(OV_SEGS)) $("#" + id).querySelectorAll("button").forEach((b) => (b.onclick = () => setOv(k, b.dataset.v)));
+  for (const [id, [k]] of Object.entries(OV_RANGES)) $("#" + id).oninput = (e) => setOv(k, +e.target.value);
+  $("#ovScreen").onchange = (e) => setOv("screen", +e.target.value);
+  // Liste des écrans branchés (le principal en premier si un seul)
+  window.studio.win.screens().then((list) => {
+    const sel = $("#ovScreen");
+    sel.textContent = "";
+    (list || []).forEach((d) => { const op = document.createElement("option"); op.value = String(d.i); op.textContent = d.label; sel.appendChild(op); });
+    $("#ovScreenRow").hidden = (list || []).length < 2;
+    if (S.ov.screen >= (list || []).length) S.ov = { ...S.ov, screen: 0 };
+    ovSent = ""; ovUi();
+  });
+}
 
 
 /* ——— Linux : mode d'affichage et règle de fenêtre pour l'overlay ———
@@ -2223,6 +2292,20 @@ for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`
 
 /* ——— Démarrage ——— */
 I18N.start();
+// Mac : les raccourcis se font avec Cmd (Ctrl+clic y ouvre le menu du clic droit). Les textes suivent,
+// après la traduction (sinon l'anglais ne retrouverait plus ses phrases).
+if (/Mac/.test(navigator.platform || navigator.userAgent)) {
+  const cmd = (n) => {
+    if (n.nodeType === 3) { if (/\bCtrl\+/.test(n.nodeValue)) n.nodeValue = n.nodeValue.replace(/\bCtrl\+/g, "Cmd+"); }
+    else if (n.nodeType === 1 && !/^(SCRIPT|STYLE)$/.test(n.tagName)) {
+      for (const a of ["title", "aria-label"]) { const v = n.getAttribute(a); if (v && /\bCtrl\+/.test(v)) n.setAttribute(a, v.replace(/\bCtrl\+/g, "Cmd+")); }
+      n.childNodes.forEach(cmd);
+    }
+  };
+  cmd(document.body);
+  new MutationObserver((list) => { for (const m of list) m.type === "childList" ? m.addedNodes.forEach(cmd) : cmd(m.target); })
+    .observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["title", "aria-label"] });
+}
 document.querySelectorAll("#langSeg button").forEach((b) => {
   b.setAttribute("aria-pressed", b.dataset.l === I18N.chosen);
   b.onclick = () => { I18N.set(b.dataset.l); window.studio.win.reload(); };

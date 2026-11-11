@@ -105,5 +105,7 @@ contextBridge.exposeInMainWorld("studio", {
     drag: (phase, mode) => ipcRenderer.send("win:drag", phase, mode),
     focusMain: () => ipcRenderer.invoke("win:main"),
     onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
+    overlay: (cfg) => ipcRenderer.invoke("overlay:set", cfg),
+    screens: () => ipcRenderer.invoke("overlay:screens"),
   },
 });

@@ -1,7 +1,7 @@
 {
   "name": "vocal-studio",
   "productName": "Hush",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Interface d'appel vocal Discord personnalisable",
   "main": "src/main.js",
   "private": true,
@@ -43,7 +43,14 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.social-networking",
-      "identity": "-"
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Hush utilise le micro seulement quand tu enregistres un son.",
+        "NSCameraUsageDescription": "Hush affiche ta caméra seulement si tu l'allumes dans Hush.",
+        "NSAppleEventsUsageDescription": "Hush lit le titre en cours dans Spotify ou Musique pour l'afficher (source « Ce PC »)."
+      }
     },
     "linux": {
       "icon": "build/icon.png",

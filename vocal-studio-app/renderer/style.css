@@ -1083,3 +1083,13 @@ body.mini .onboard{display:none!important}
 .home-tabs button.invite:hover{background:linear-gradient(150deg,var(--ui-deep),rgba(var(--rim),.95))}
 .home-hint{grid-row:1;align-self:end;justify-self:center;margin:0 0 24px;color:#fff;font-size:14px;text-shadow:0 1px 3px rgba(var(--sh),.6)}
 .home-hint[hidden]{display:none}
+
+/* ——— Overlay en jeu : la souris passe à travers, donc ni barre ni poignée ——— */
+body.mini .mini-bar,body.mini .mini-grip{display:none!important}
+body.mini .app{cursor:default}
+body.mini.ov-preview .app{outline:2px dashed rgba(255,255,255,.85);outline-offset:-2px;border-radius:14px;background:rgba(0,0,0,.25)!important}
+/* Choix du coin : une petite grille de 3 × 3 */
+.ov-pos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:180px;aspect-ratio:16/10;padding:6px;border-radius:12px;background:rgba(0,0,0,.18);margin:4px 0 10px}
+.ov-pos button{border:0;border-radius:7px;background:rgba(255,255,255,.28);cursor:pointer;transition:background .15s,transform .15s}
+.ov-pos button:hover{background:rgba(255,255,255,.5)}
+.ov-pos button[aria-pressed="true"]{background:var(--ui-deep,var(--ui));transform:scale(1.04)}

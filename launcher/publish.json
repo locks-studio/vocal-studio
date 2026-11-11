@@ -32,11 +32,12 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Connexion Discord dès le launcher, plus rien à refaire dans Hush",
-        "Tchat de la voc et amis Hush : vois quand tes amis sont en vocal",
-        "Disponible en français et en anglais",
-        "Accueil guidé, Personnaliser, verre liquide et couleurs à ton goût",
-        "Cinéma 3D, mode vertical, effets glitch et lecteur de musique"
+        "Hush arrive sur Mac (Apple Silicon et Intel)",
+        "Overlay en jeu comme Discord : toujours au premier plan, la souris passe à travers",
+        "Nouvel onglet Overlay : coin de l'écran, taille, anneau, pseudos, seulement ceux qui parlent",
+        "Ctrl+Maj+H (Cmd+Maj+H sur Mac) affiche ou cache l'overlay, même en pleine partie",
+        "Les avatars bougent selon le volume de la voix",
+        "Nouveaux réglages de base : bande, anneau plein Basique, halo doux"
       ],
       "artifacts": {
         "win32-x64": {

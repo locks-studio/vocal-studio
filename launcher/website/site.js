@@ -102,7 +102,7 @@
       $(".btn-label", hero).textContent = `Bientôt sur ${osName[os]}`;
       $("#hero-meta").textContent = "Voir les autres systèmes";
     } else {
-      $("#hero-meta").textContent = launcher && launcher.version ? `Version ${launcher.version}` : "Windows et Linux";
+      $("#hero-meta").textContent = launcher && launcher.version ? `Version ${launcher.version}` : "Windows, Mac et Linux";
     }
   }
 
@@ -135,7 +135,7 @@
           });
           a.append(p, b);
         }
-        $("#hero-meta").textContent = "Windows et Linux";
+        $("#hero-meta").textContent = "Windows, Mac et Linux";
       });
   }
   loadCatalog();

@@ -230,6 +230,7 @@
           <button role="tab" data-tab="fond">Fond</button>
           <button role="tab" data-tab="sound">Musique</button>
           <button role="tab" data-tab="video">Vidéo</button>
+          <button role="tab" data-tab="overlay">Overlay</button>
           <button role="tab" data-tab="account">Compte</button>
         </nav>
         <button class="wb settings-center" id="settingsCenter" title="Remettre au centre" aria-label="Remettre les paramètres au centre"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="3"/><rect x="8" y="9" width="8" height="6" rx="1.5"/></svg></button>
@@ -287,7 +288,7 @@
           <div class="group"><div class="label">Anneau</div>
             <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
             <div class="label">Couleur de l'anneau</div>
-            <div class="seg" id="ringFromSeg"><button data-v="origin">Vert Discord</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button><button data-v="duo">Dégradé 2 couleurs</button></div>
+            <div class="seg" id="ringFromSeg"><button data-v="origin">Basique</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button><button data-v="duo">Dégradé 2 couleurs</button></div>
             <div class="row" id="ringColorRow"><label for="ringColor" id="ringColorLabel">Ma couleur</label><input type="color" id="ringColor"></div>
             <div class="row" id="ringColor2Row" hidden><label for="ringColor2">Couleur 2</label><input type="color" id="ringColor2"></div>
             <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de la pochette du morceau en cours.</p>
@@ -342,7 +343,9 @@
         <div class="tab-panel" data-tab="anim" role="tabpanel">
           <h4 class="sec">Quand quelqu'un parle</h4>
           <div class="group">
-            <div class="row"><span>L'avatar s'aplatit et s'étire en rythme</span><button class="switch" id="squash" role="switch" aria-label="Animation d'aplatissement quand on parle"></button></div>
+            <div class="label">L'avatar bouge</div>
+            <div class="seg" id="avAnimSeg" style="grid-template-columns:repeat(3,1fr)"><button data-v="db">Selon le volume</button><button data-v="rhythm">En rythme</button><button data-v="off">Immobile</button></div>
+            <p class="hint">Selon le volume : plus la voix est forte, plus l'avatar grossit et saute, à chaque syllabe. Avec le bot, c'est le vrai volume mesuré en dB.</p>
           </div>
           <h4 class="sec">Arrivées et départs</h4>
           <div class="group">
@@ -433,8 +436,7 @@
           </div>
           <h4 class="sec">Overlay et fenêtre</h4>
           <div class="group">
-            <div class="row"><span>Overlay (mini-fenêtre)</span><button class="ghost" id="setMini">Ouvrir</button></div>
-            <p class="hint">Toujours au-dessus des jeux et du stream, on le déplace en le faisant glisser (même en partie hors de l'écran). Tout le salon y est affiché, en colonne ou en bande (bouton ↕). Ctrl+O : transparent, il ne reste que les avatars.</p>
+            <p class="hint">L'overlay (mini-fenêtre) se règle dans l'onglet Overlay.</p>
             <div class="row"><span>Toujours au premier plan</span><button class="switch" id="setPin" role="switch" aria-label="Toujours au premier plan"></button></div>
             <div class="row"><span>Plein écran (F11)</span><button class="ghost" id="setFull">Basculer</button></div>
             <div class="row"><span>Cacher l'interface quand la souris ne bouge plus</span><button class="switch" id="autoHide" role="switch" aria-label="Cacher l'interface quand la souris ne bouge plus"></button></div>
@@ -454,6 +456,47 @@
             <pre class="linux-rule" id="linuxRule"></pre>
             <div class="row" style="justify-content:flex-start;gap:8px"><button class="ghost" id="linuxCopy">Copier la règle</button></div>
             <p class="hint" id="linuxRuleHint"></p>
+          </div>
+        </div>
+
+        <!-- ——— Overlay en jeu : toujours au premier plan, la souris passe à travers ——— -->
+        <div class="tab-panel" data-tab="overlay" role="tabpanel">
+          <h4 class="sec">Overlay en jeu</h4>
+          <div class="group">
+            <div class="row"><span>Overlay</span><button class="ghost" id="setMini">Ouvrir</button></div>
+            <p class="hint">Toujours au premier plan, et la souris passe à travers : il ne gêne jamais quand tu joues. Ctrl+Maj+H l'affiche ou le cache, même en jeu. Un jeu en plein écran exclusif le recouvre : mets le jeu en « fenêtré sans bordure ».</p>
+          </div>
+          <h4 class="sec">Emplacement</h4>
+          <div class="group">
+            <div class="row" id="ovScreenRow" hidden><label for="ovScreen">Écran</label><select id="ovScreen" class="field"></select></div>
+            <div class="label">Coin de l'écran</div>
+            <div class="ov-pos" id="ovPos" role="group" aria-label="Coin de l'écran">
+              <button data-v="tl" title="En haut à gauche" aria-label="En haut à gauche"></button><button data-v="tc" title="En haut au centre" aria-label="En haut au centre"></button><button data-v="tr" title="En haut à droite" aria-label="En haut à droite"></button>
+              <button data-v="ml" title="Au milieu à gauche" aria-label="Au milieu à gauche"></button><button data-v="mc" title="Au centre" aria-label="Au centre"></button><button data-v="mr" title="Au milieu à droite" aria-label="Au milieu à droite"></button>
+              <button data-v="bl" title="En bas à gauche" aria-label="En bas à gauche"></button><button data-v="bc" title="En bas au centre" aria-label="En bas au centre"></button><button data-v="br" title="En bas à droite" aria-label="En bas à droite"></button>
+            </div>
+            <div id="ovXRow"><div class="label"><label for="ovX">Écart avec le bord (côté)</label><output id="ovXOut"></output></div>
+            <input type="range" id="ovX" min="0" max="800" step="2"></div>
+            <div id="ovYRow"><div class="label"><label for="ovY">Écart avec le bord (haut ou bas)</label><output id="ovYOut"></output></div>
+            <input type="range" id="ovY" min="0" max="800" step="2"></div>
+            <div class="label"><label for="ovW">Largeur</label><output id="ovWOut"></output></div>
+            <input type="range" id="ovW" min="120" max="1200" step="10">
+            <div class="label"><label for="ovH">Hauteur</label><output id="ovHOut"></output></div>
+            <input type="range" id="ovH" min="80" max="1400" step="10">
+            <p class="hint">Pendant que tu règles, le cadre de l'overlay s'affiche en pointillés pour voir où il est.</p>
+          </div>
+          <h4 class="sec">Affichage</h4>
+          <div class="group">
+            <div class="label">Disposition</div>
+            <div class="seg two" id="ovLayout"><button data-v="column">Colonne</button><button data-v="strip">Bande</button></div>
+            <div class="label">Anneau</div>
+            <div class="seg" id="ovRing"><button data-v="same">Comme Hush</button><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
+            <div class="row"><span>Pseudos</span><button class="switch" id="ovNames" role="switch" aria-label="Pseudos dans l'overlay"></button></div>
+            <div class="row"><span>Animation selon la voix</span><button class="switch" id="ovAnim" role="switch" aria-label="Animation des avatars dans l'overlay"></button></div>
+            <div class="row"><span>Seulement ceux qui parlent</span><button class="switch" id="ovOnlyTalk" role="switch" aria-label="Seulement ceux qui parlent"></button></div>
+            <div class="row"><span>Cacher les membres muets</span><button class="switch" id="ovHideMuted" role="switch" aria-label="Cacher les membres muets dans l'overlay"></button></div>
+            <div class="label"><label for="ovOpacity">Opacité</label><output id="ovOpacityOut"></output></div>
+            <input type="range" id="ovOpacity" min="0.2" max="1" step="0.05">
           </div>
         </div>
 

@@ -39,7 +39,9 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.utilities",
-      "identity": "-"
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "linux": {
       "icon": "build/icon.png",

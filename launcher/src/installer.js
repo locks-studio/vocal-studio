@@ -154,6 +154,8 @@ class Installer {
           if (fs.statSync(p).isFile() && (p === exec || !path.extname(f) || f.endsWith(".so") || /\.so\./.test(f))) fs.chmodSync(p, 0o755);
         }
       }
+      // Mac : rien ne doit rester marqué « téléchargé d'internet », sinon macOS bloquerait l'ouverture
+      if (process.platform === "darwin") await new Promise((r) => { const c = spawn("xattr", ["-dr", "com.apple.quarantine", target], { stdio: "ignore" }); c.on("exit", r); c.on("error", r); });
       // 4. On garde seulement la nouvelle version
       const old = this.state[app.id];
       this.state[app.id] = { version: app.version, dir: target, exec, installedAt: Date.now() };
@@ -192,13 +194,32 @@ class Installer {
     let child;
     // La session passe par l'environnement du programme : invisible dans la liste des processus, contrairement aux arguments
     const env = session ? { ...process.env, HUSH_SESSION: session } : process.env;
-    if (process.platform === "darwin" && s.exec.endsWith(".app")) child = spawn("open", ["-n", s.exec], { detached: true, stdio: "ignore", env });
+    // Mac : on lance le programme qui est dans l'appli (Hush.app/Contents/MacOS/Hush). « open » ne transmettrait pas
+    // la session, et il faudrait se reconnecter à chaque lancement.
+    if (process.platform === "darwin" && s.exec.endsWith(".app")) {
+      const bin = macBinary(s.exec);
+      if (!bin) throw new Error("Des fichiers manquent : clique sur Réparer.");
+      child = spawn(bin, [], { detached: true, stdio: "ignore", env });
+    }
     // Linux : Ubuntu 24.04+ bloque le bac à sable de Chromium pour les applis non installées par le système,
     // les applis Electron plantent au démarrage sans --no-sandbox
     else child = spawn(s.exec, process.platform === "linux" ? linuxArgs() : [], { detached: true, stdio: "ignore", cwd: path.dirname(s.exec), env });
     child.on("error", () => {});
     child.unref();
   }
+}
+
+// Le programme d'une appli Mac : son nom est écrit dans Contents/Info.plist (CFBundleExecutable)
+function macBinary(appPath) {
+  const dir = path.join(appPath, "Contents", "MacOS");
+  try {
+    const plist = fs.readFileSync(path.join(appPath, "Contents", "Info.plist"), "utf8");
+    const name = (/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/.exec(plist) || [])[1];
+    if (name && fs.existsSync(path.join(dir, name))) return path.join(dir, name);
+  } catch {}
+  const guess = path.join(dir, path.basename(appPath, ".app"));
+  if (fs.existsSync(guess)) return guess;
+  try { const f = fs.readdirSync(dir)[0]; return f ? path.join(dir, f) : null; } catch { return null; }
 }
 
 // Linux : mêmes options que lancer-hush.sh (affichage choisi dans Hush, Wayland si le bureau l'est, carte graphique)
