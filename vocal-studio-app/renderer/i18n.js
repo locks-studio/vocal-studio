@@ -139,6 +139,7 @@ const I18N = (() => {
 
   // Textes dont une partie change (noms, nombres)
   const RX = [
+    [/^Mise à jour impossible pour l'instant : tu gardes la (.+)\.$/, "Update not possible right now: you keep version $1."],
     [/^Afficher le joueur masqué$/, "Show the hidden player"], [/^Afficher les (\d+) joueurs masqués$/, "Show the $1 hidden players"], [/^Ambiance (.+)$/, "$1 theme"],
     [/^(.+) · (.+) · connecté en tant que (.+)$/, (m, a, b, c) => `${tr(a)} · ${tr(b)} · logged in as ${c}`], [/^(Connexion directe \(RPC\)|Avec le bot Hush|Mode démo \(joueurs fictifs\)) · (.+)$/, (m, a, b) => `${tr(a)} · ${tr(b)}`],
     [/^Connexion directe \(RPC\)$/, "Direct connection (RPC)"],

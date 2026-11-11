@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, deskto
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const https = require("https");
 const { Installer, PLATFORM } = require("./installer");
 const { Account } = require("./account");
@@ -13,12 +13,17 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.jso
 const arg = process.argv.find((a) => a.startsWith("--catalog="));
 const CATALOG_URL = (arg && arg.slice(10)) || process.env.CATALOG_1999 || CONFIG.catalogUrl;
 
+// Linux : --no-sandbox doit être sur la ligne de commande dès le départ. Ajouté ici, il arrive trop tard : Chromium a déjà
+// démarré sa base sandboxée, et les pages plantent sur /dev/shm (« No such process »). On relance donc une fois, avec l'option.
+if (process.platform === "linux" && !process.argv.includes("--no-sandbox")) {
+  spawn(process.execPath, [...process.argv.slice(1), "--no-sandbox"], { detached: true, stdio: "inherit" }).unref();
+  process.exit(0);
+}
+
 // Une seule fenêtre de launcher à la fois
 if (!app.requestSingleInstanceLock()) app.quit();
 if (process.platform === "win32") app.setAppUserModelId("fr.locks.launcher1999");
-// Linux : même chose pour le launcher lui-même (sinon il ne s'ouvre pas sur Ubuntu 24.04+)
 if (process.platform === "linux") {
-  app.commandLine.appendSwitch("no-sandbox");
   // Transparence de la fenêtre : Wayland natif si dispo, et les « visuels transparents » sous X11 / XWayland
   app.commandLine.appendSwitch("ozone-platform-hint", "auto");
   app.commandLine.appendSwitch("enable-transparent-visuals");
@@ -277,7 +282,8 @@ ipcMain.handle("settings:set", (_e, patch) => {
     if (CHOICES[k] ? CHOICES[k].includes(v) : k === "autoUpdate" || k === "startup" ? typeof v === "boolean" : false) settings[k] = v;
   }
   try { fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2)); } catch {}
-  if ("startup" in (patch || {}) && process.platform !== "linux") app.setLoginItemSettings({ openAtLogin: !!settings.startup });
+  // Version de développement : Windows lancerait electron.exe seul (une fenêtre vide au démarrage du PC)
+  if ("startup" in (patch || {}) && process.platform !== "linux" && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!settings.startup });
   // Passer d'un fond « matière du système » à un fond transparent (ou l'inverse) : nouvelle fenêtre
   if (patch && "glass" in patch && wasGlass !== (settings.glass === "acrylic")) setTimeout(() => createWindow(win), 50);
   wasGlass = settings.glass === "acrylic";

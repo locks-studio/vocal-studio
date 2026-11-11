@@ -351,6 +351,7 @@ server.listen(PORT, process.env.HOST || undefined, () => {
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);
   const invite = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&scope=bot%20applications.commands&permissions=${INVITE_PERMS}`;
   console.log(`Lien d'invitation du bot : ${invite}`);
+  require("./awake").keepAwake();
 });
 bot.start().catch((e) => {
   console.error("Connexion du bot impossible :", e.message);

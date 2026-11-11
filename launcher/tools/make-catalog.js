@@ -1,7 +1,7 @@
 // Prépare le dossier à envoyer sur le site (Hostinger) :
 //   site/1999/catalog.json            ← la liste des logiciels, versions, liens et empreintes SHA-256
 //   site/1999/<id>/<version>/…zip      ← les fichiers à télécharger
-//   site/1999/<id>/icon.png            ← l'icône affichée dans le launcher
+//   site/1999/<id>/icon-<empreinte>.png ← l'icône affichée dans le launcher
 //   site/1999/launcher/…               ← l'installeur du launcher lui-même
 //   site/1999/index.html, style.css…   ← le site de présentation, copié depuis website/
 // Utilisation : node tools/make-catalog.js   (lit publish.json)
@@ -32,7 +32,15 @@ const out = testChannel ? path.join(root, "site", "1999-test", `test-${cfg.testC
 const baseArg = process.argv.find((x) => x.startsWith("--base="));
 const base = (baseArg ? baseArg.slice(7) : cfg.baseUrl + (testChannel ? `/test-${cfg.testCode}` : "")).replace(/\/$/, "");
 const abs = (p) => path.resolve(root, p);
-const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
+const sha = (f) => {
+  const data = fs.readFileSync(f);
+  // Un zip se termine par son sommaire : sans lui, le fichier est coupé et l'installation échouerait chez tout le monde
+  if (f.endsWith(".zip") && data.lastIndexOf(Buffer.from("PK\x05\x06")) < Math.max(0, data.length - 70000)) {
+    console.error(`Archive abîmée, rien n'est publié : ${f}`);
+    process.exit(1);
+  }
+  return crypto.createHash("sha256").update(data).digest("hex");
+};
 const copy = (src, rel) => { const d = path.join(out, rel); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(src, d); return `${base}/${rel.split(path.sep).join("/")}`; };
 
 fs.rmSync(out, { recursive: true, force: true });
@@ -43,7 +51,7 @@ const report = [];
 for (const a of cfg.apps) {
   const version = versionArg ? versionArg.slice(10) : JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
   const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: testNotes.length ? testNotes : a.notes || [], usageDir: a.usageDir, downloads: {} };
-  if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(a.id, "icon" + path.extname(a.icon)));
+  if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(a.id, `icon-${sha(abs(a.icon)).slice(0, 8)}${path.extname(a.icon)}`)); // nom lié au contenu : le cache du CDN ne peut pas servir une ancienne icône
   if (a.banner && fs.existsSync(abs(a.banner))) entry.banner = copy(abs(a.banner), path.join(a.id, "banner" + path.extname(a.banner)));
   for (const [plat, art] of Object.entries(a.artifacts)) {
     const f = abs(art.file.replace("{version}", version));
@@ -73,6 +81,16 @@ if (!testChannel) {
 const site = path.join(root, "website");
 if (fs.existsSync(site)) {
   fs.cpSync(site, out, { recursive: true }); // .htaccess compris : Hostinger en a besoin
+  // Le CDN de Hostinger garde style.css et site.js en cache : chaque lien porte l'empreinte du fichier (?v=…),
+  // pour qu'une nouvelle page ne puisse jamais s'afficher avec d'anciens styles.
+  for (const f of fs.readdirSync(out).filter((x) => x.endsWith(".html"))) {
+    const page = path.join(out, f);
+    const html = fs.readFileSync(page, "utf8").replace(/(["'])(\/?)(style\.css|site\.js|img\/[^"'?]+)\1/g, (m, q, slash, file) => {
+      const target = path.join(out, file);
+      return fs.existsSync(target) ? `${q}${slash}${file}?v=${sha(target).slice(0, 10)}${q}` : m;
+    });
+    fs.writeFileSync(page, html);
+  }
   report.push("  Site web : copié depuis website/");
 } else {
   report.push("  Site web : dossier website/ absent, pas de page d'accueil");

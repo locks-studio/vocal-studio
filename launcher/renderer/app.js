@@ -54,7 +54,7 @@ async function load() {
 }
 
 // Mises à jour automatiques : un logiciel installé dont le catalogue a une version plus récente (une tentative par version)
-const autoTried = new Set();
+const autoTried = new Set(), updateFailed = new Set();
 function autoUpdate() {
   if (!prefs.autoUpdate || !data.online) return;
   for (const a of data.catalog.apps || []) {
@@ -128,10 +128,11 @@ function render() {
     btn.classList.add("busy");
     $("#playLabel").textContent = st.phase === "download" ? "Annuler" : "Patiente…";
     btn.disabled = st.phase !== "download";
-  } else if (inst && a.version === inst.version) {
+  } else if (inst && (a.version === inst.version || updateFailed.has(a.id + "@" + a.version))) {
+    // Une mise à jour ratée ne bloque jamais le logiciel : la version installée reste lançable
     btn.classList.add("launch");
     $("#playLabel").textContent = "Lancer";
-    $("#statusLine").textContent = `${a.name} ${inst.version} est prêt.`;
+    $("#statusLine").textContent = a.version === inst.version ? `${a.name} ${inst.version} est prêt.` : `Mise à jour impossible pour l'instant : tu gardes la ${inst.version}.`;
   } else if (inst) {
     $("#playLabel").textContent = "Mettre à jour";
     $("#statusLine").textContent = `Nouvelle version ${a.version} (tu as la ${inst.version}).`;
@@ -175,7 +176,7 @@ $("#playBtn").onclick = async () => {
   if (!a) return;
   if (busy.has(a.id)) { L.cancel(a.id); return; }
   const inst = data.installed[a.id];
-  if (inst && a.version === inst.version) {
+  if (inst && (a.version === inst.version || updateFailed.has(a.id + "@" + a.version))) {
     try { await L.launch(a.id); toast(`${a.name} se lance…`); }
     catch (e) { toast(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")); }
     return;
@@ -188,10 +189,12 @@ async function installApp(a, done) {
   try {
     data.installed = await L.install(a.id);
     busy.delete(a.id);
+    updateFailed.delete(a.id + "@" + a.version);
     toast(done || `${a.name} ${a.version} est installé.`);
   } catch (e) {
     busy.delete(a.id);
     const msg = String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+    if (msg !== "Annulé" && data.installed[a.id]) { updateFailed.add(a.id + "@" + a.version); render(); toast(msg); return; }
     render();
     $("#statusLine").textContent = msg === "Annulé" ? "Téléchargement annulé." : msg;
     $("#statusLine").classList.toggle("err", msg !== "Annulé");

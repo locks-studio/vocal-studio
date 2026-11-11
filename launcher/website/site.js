@@ -185,6 +185,20 @@
     });
   }
 
+  // ---------- Noms en métal fondu : la vidéo arrive après la page et ne tourne que si elle est visible ----------
+  // Safari lit mal la transparence de ces vidéos : il garde l'image fixe, comme ceux qui veulent moins de mouvement.
+  const safari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+  if (!reduced && !safari) {
+    const watch = new IntersectionObserver((list) => {
+      for (const e of list) {
+        const v = e.target;
+        if (e.isIntersecting) { if (!v.src) v.src = v.dataset.src; v.play().catch(() => {}); }
+        else v.pause();
+      }
+    }, { rootMargin: "120px" });
+    addEventListener("load", () => $$("video.metal").forEach((v) => watch.observe(v)));
+  }
+
   // ---------- Démo Hush : quelqu'un parle, la caméra va le chercher ----------
   const demo = $(".demo"), cam = $("#cam"), avs = $$(".av", cam);
   const tCam = $("#t-cam");
