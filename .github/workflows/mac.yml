@@ -9,10 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       runner:
-        description: "Mac de GitHub (macos-13 = Intel, si les Mac Apple Silicon sont tous occupés)"
+        description: "Mac de GitHub : macos-latest, macos-15, macos-14 (Apple Silicon) ou macos-15-intel (Intel), si l'un est saturé"
         default: macos-latest
-        type: choice
-        options: [macos-latest, macos-15, macos-14, macos-13]
+        type: string
 
 jobs:
   mac:
