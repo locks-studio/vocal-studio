@@ -38,7 +38,9 @@ const fail = (m) => { console.log(`  ÉCHEC : ${m}`); failed = true; };
     }
     // L'architecture du programme : une version Intel sur ce Mac Apple Silicon passe par Rosetta
     console.log("  " + spawnSync("file", [bin], { encoding: "utf8" }).stdout.trim().split(": ").pop());
-    const arch = /arm64/.test(zip) ? [] : ["-x86_64"];
+    // Une version Apple Silicon ne peut pas tourner sur un Mac Intel : signature vérifiée, lancement sauté
+    if (/arm64/.test(zip) && process.arch !== "arm64") { console.log("  lancement sauté : ce Mac de test est un Intel"); continue; }
+    const arch = /arm64/.test(zip) || process.arch === "x64" ? [] : ["-x86_64"];
     const runnable = arch.length === 0 || spawnSync("arch", ["-x86_64", "/usr/bin/true"]).status === 0;
     if (!runnable) { console.log("  lancement sauté : Rosetta absent sur ce Mac"); continue; }
     const child = arch.length ? spawn("arch", [...arch, bin], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1" } })

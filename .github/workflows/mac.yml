@@ -7,10 +7,16 @@ name: Version Mac
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "Mac de GitHub (macos-13 = Intel, si les Mac Apple Silicon sont tous occupés)"
+        default: macos-latest
+        type: choice
+        options: [macos-latest, macos-15, macos-14, macos-13]
 
 jobs:
   mac:
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
