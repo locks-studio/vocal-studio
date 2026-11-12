@@ -1,0 +1,37 @@
+﻿1999 et Hush — Conditions d'utilisation et confidentialité
+(Dernière mise à jour : 7 novembre 2026. Version complète : https://1999.organisationphantom.fr/confidentialite.html)
+
+1999 est le launcher qui installe, met à jour et lance Hush. Ils sont créés par Locks, gratuits, et fournis tels quels, sans garantie.
+
+CE QUI EST GARDÉ
+- Ton compte Discord : identifiant, pseudo et photo de profil, pour te reconnaître. Hush ne voit jamais ton mot de passe.
+- Tes heures de vocal avec Hush : pour le classement. Tu peux en sortir à tout moment.
+- Tes amis Hush : ton code ami, tes amis et tes demandes.
+- Les rapports d'erreur : seulement si tu as accepté (version, système et message d'erreur).
+
+CE QUI N'EST PAS GARDÉ
+- Ta voix : le bot mesure seulement un niveau de volume pour animer les anneaux. Le son n'est ni enregistré, ni conservé, ni envoyé ailleurs.
+- Tes messages : le tchat de la voc passe par le bot pour s'afficher, sans être conservé.
+- Le salon où tu es : il reste en mémoire pendant ton vocal, jamais sur le disque.
+
+QUI PEUT VOIR QUOI
+- Tout le monde : ton pseudo, ta photo et tes heures dans le classement, si tu y apparais.
+- Tes amis acceptés : si Hush est ouvert et dans quel vocal tu es. Tu peux le cacher.
+- L'administrateur de Hush : la liste des personnes connectées (pseudo, version, système, en vocal ou non) et les rapports d'erreur.
+Rien n'est vendu ni utilisé pour de la publicité.
+
+TES CHOIX
+- Sortir du classement ou cacher ton vocal : Hush › Accueil › Mes amis.
+- Arrêter les rapports d'erreur : Hush › Paramètres › Compte.
+- Tout supprimer : Hush › Paramètres › Compte › Supprimer mes données. La suppression est immédiate et définitive.
+
+SUR TON PC
+Tes réglages, tes sons et ton historique restent sur ton ordinateur. 1999 vérifie les nouvelles versions sur 1999.organisationphantom.fr et se met à jour tout seul.
+
+DISCORD
+Hush n'est ni créé ni approuvé par Discord. Ton utilisation de Discord reste soumise à ses propres règles.
+
+CONTACT
+Le serveur Discord de l'Organisation Phantom.
+
+En cliquant sur « J'accepte », tu acceptes ces conditions.

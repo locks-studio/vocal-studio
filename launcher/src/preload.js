@@ -12,6 +12,12 @@ contextBridge.exposeInMainWorld("launcher", {
   folder: (id) => ipcRenderer.invoke("app:folder", id),
   usage: (app) => ipcRenderer.invoke("app:usage", { usageDir: app.usageDir }),
   openUrl: (url) => ipcRenderer.invoke("open:url", url),
+  // Mise à jour du launcher lui-même
+  selfUpdate: {
+    state: () => ipcRenderer.invoke("launcher:update"),
+    apply: () => ipcRenderer.invoke("launcher:apply"),
+    on: (fn) => ipcRenderer.on("launcher:update", (_e, s) => fn(s)),
+  },
   onProgress: (fn) => ipcRenderer.on("app:progress", (_e, p) => fn(p)),
   desk: {
     wallpaper: () => ipcRenderer.invoke("desk:wallpaper"),

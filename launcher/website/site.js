@@ -88,7 +88,6 @@
         action.append(hashBox(dl[k], found.length > 1 ? label : ""));
       }
       // Le type de fichier réel : si un vrai installeur .exe remplace le .zip, l'aide s'adapte
-      if (id === "windows" && /\.exe$/i.test(dl["win32-x64"].url)) $("#win-step1").textContent = "Ouvre le fichier téléchargé.";
     }
     // Bouton principal de l'accueil : celui du système du visiteur s'il est dispo
     const mine = os && keys[os].find(([k]) => dl[k] && dl[k].url);

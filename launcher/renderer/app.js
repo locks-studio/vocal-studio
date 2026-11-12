@@ -36,13 +36,9 @@ async function load() {
   $("#testForm").hidden = !!data.testing;
   $("#testOn").hidden = !data.testing;
   $("#aboutVer").textContent = `Version ${data.launcherVersion} · ${PLATFORM_NAMES[data.platform] || data.platform}`;
-  // Nouvelle version du launcher lui-même : un lien vers la page de téléchargement
+  // Nouvelle version du launcher lui-même : elle se télécharge toute seule (voir selfUpdateUi)
   const lv = data.catalog.launcher;
-  if (lv && lv.version && newer(lv.version, data.launcherVersion)) {
-    $("#netStatus").textContent = `Nouvelle version du launcher (${lv.version}) : clique pour la télécharger`;
-    $("#netStatus").classList.add("link");
-    $("#netStatus").onclick = () => lv.page && L.openUrl(lv.page);
-  }
+  if (lv && lv.version && newer(lv.version, data.launcherVersion)) selfUpdateUi(lastSelfUpdate.status === "idle" ? { status: "downloading", version: lv.version } : lastSelfUpdate);
   const apps = data.catalog.apps || [];
   $("#empty").hidden = apps.length > 0;
   $("#page").hidden = !apps.length;
@@ -51,6 +47,33 @@ async function load() {
   renderRail();
   render();
   autoUpdate();
+}
+
+// Mise à jour du launcher : téléchargement en arrière-plan, puis « clique pour redémarrer ».
+// Si elle ne peut pas se faire toute seule (ancienne version installée en zip, dossier protégé), lien vers le site.
+let lastSelfUpdate = { status: "idle" };
+function selfUpdateUi(s) {
+  lastSelfUpdate = s;
+  const el = $("#netStatus");
+  const lv = data.catalog && data.catalog.launcher;
+  el.onclick = null;
+  el.classList.remove("link");
+  if (s.status === "downloading") {
+    const pct = s.total ? ` ${Math.round((s.done / s.total) * 100)} %` : "";
+    el.textContent = `Mise à jour du launcher (${s.version}) en cours…${pct}`;
+  } else if (s.status === "ready") {
+    el.textContent = `Launcher ${s.version} prêt : clique pour redémarrer`;
+    el.classList.add("link");
+    el.onclick = () => { el.textContent = "Redémarrage…"; L.selfUpdate.apply(); };
+  } else if (s.status === "manual") {
+    el.textContent = `Nouvelle version du launcher (${s.version}) : clique pour la télécharger`;
+    el.classList.add("link");
+    el.onclick = () => lv && lv.page && L.openUrl(lv.page);
+  }
+}
+if (L.selfUpdate) {
+  L.selfUpdate.on(selfUpdateUi);
+  L.selfUpdate.state().then((s) => s && s.status !== "idle" && selfUpdateUi(s)).catch(() => {});
 }
 
 // Mises à jour automatiques : un logiciel installé dont le catalogue a une version plus récente (une tentative par version)

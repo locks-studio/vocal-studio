@@ -4,16 +4,16 @@
     "package": "package.json",
     "page": "https://1999.organisationphantom.fr/",
     "artifacts": {
-      "win32-x64": [
-        "dist/1999-Setup-{version}-win-x64.exe",
-        "dist/1999-Setup-{version}-win-x64.zip"
-      ],
+      "win32-x64": "dist/1999-Setup-{version}-win-x64.exe",
       "darwin-arm64": "dist/1999-Setup-{version}-mac-arm64.dmg",
       "darwin-x64": "dist/1999-Setup-{version}-mac-x64.dmg",
-      "linux-x64": [
-        "dist/1999-Setup-{version}-linux-x86_64.AppImage",
-        "dist/1999-Setup-{version}-linux-x64.tar.gz"
-      ]
+      "linux-x64": "dist/1999-Setup-{version}-linux-x64.tar.gz"
+    },
+    "updates": {
+      "win32-x64": "dist/1999-Setup-{version}-win-x64.exe",
+      "darwin-arm64": "dist/1999-Setup-{version}-mac-arm64.zip",
+      "darwin-x64": "dist/1999-Setup-{version}-mac-x64.zip",
+      "linux-x64": "dist/1999-Setup-{version}-linux-x64.tar.gz"
     }
   },
   "apps": [

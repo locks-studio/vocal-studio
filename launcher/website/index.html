@@ -192,9 +192,9 @@
       </div>
       <div class="pane" role="tabpanel" id="pane-windows" aria-labelledby="tab-windows">
         <ol class="steps">
-          <li id="win-step1">Décompresse le .zip téléchargé (clic droit › Extraire tout), puis double-clique sur <code>1999.exe</code> dans le dossier obtenu.</li>
-          <li>Si Windows affiche « Windows a protégé votre ordinateur », clique sur <b>Informations complémentaires</b>.</li>
-          <li>Clique ensuite sur <b>Exécuter quand même</b>. 1999 s'ouvre, et il ne te le redemandera plus.</li>
+          <li id="win-step1">Ouvre le fichier téléchargé <code>1999-Setup….exe</code>.</li>
+          <li>Si Windows affiche « Windows a protégé votre ordinateur », clique sur <b>Informations complémentaires</b>, puis sur <b>Exécuter quand même</b>.</li>
+          <li>Accepte les conditions, choisis le dossier si tu veux, puis <b>Installer</b>. 1999 se lance tout seul, avec un raccourci sur le bureau. Ensuite, il se met à jour tout seul.</li>
         </ol>
         <div class="smartscreen" aria-hidden="true">
           <b>Windows a protégé votre ordinateur</b>
@@ -209,7 +209,7 @@
           <li>Double-clique sur 1999. macOS refuse la première fois : clique sur <b>OK</b> (ou <b>Terminé</b>).</li>
           <li>Va dans Réglages Système › Confidentialité et sécurité, descends en bas et clique sur <b>Ouvrir quand même</b>, puis confirme. Les fois suivantes, un double-clic suffit.</li>
         </ol>
-        <p class="pane-note">Sur macOS 14 ou plus ancien, tu peux aussi faire un clic droit sur 1999 › <b>Ouvrir</b>. Hush, installé ensuite par 1999, s'ouvre directement. Si Hush demande l'accès à Spotify ou Musique, accepte : c'est pour afficher la musique en cours.</p>
+        <p class="pane-note">Sur macOS 14 ou plus ancien, tu peux aussi faire un clic droit sur 1999 › <b>Ouvrir</b>. Hush, installé ensuite par 1999, s'ouvre directement, et 1999 se met ensuite à jour tout seul. Si Hush demande l'accès à Spotify ou Musique, accepte : c'est pour afficher la musique en cours.</p>
       </div>
       <div class="pane" role="tabpanel" id="pane-linux" aria-labelledby="tab-linux" hidden>
         <ol class="steps">
@@ -219,7 +219,7 @@
         <pre class="cmd" tabindex="0" aria-label="Commandes à lancer dans un terminal"><code>tar -xzf 1999-Setup-*-linux-x64.tar.gz
 cd 1999
 ./launcher-1999</code></pre>
-        <p class="pane-note">S'il refuse de démarrer, rends-le exécutable avec <code>chmod +x launcher-1999</code>.</p>
+        <p class="pane-note">Range le dossier <code>1999</code> où tu veux dans ton dossier personnel : 1999 s'y mettra à jour tout seul. S'il refuse de démarrer, rends-le exécutable avec <code>chmod +x launcher-1999</code>.</p>
       </div>
     </div>
   </section>

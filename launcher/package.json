@@ -1,7 +1,7 @@
 {
   "name": "launcher-1999",
   "productName": "1999",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Le launcher de Locks : installe, met à jour et lance Hush et les prochains logiciels",
   "main": "src/main.js",
   "private": true,
@@ -9,8 +9,8 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --x64",
-    "dist:linux": "electron-builder --linux AppImage --x64",
-    "dist:mac": "electron-builder --mac dmg --x64 --arm64"
+    "dist:linux": "electron-builder --linux dir --x64 && python tools/pack-linux.py",
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64"
   },
   "build": {
     "appId": "fr.locks.launcher1999",
@@ -31,10 +31,23 @@
       "icon": "build/icon.png"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "build/conditions.txt",
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "language": "1036",
       "createDesktopShortcut": true,
-      "shortcutName": "1999"
+      "createStartMenuShortcut": true,
+      "shortcutName": "1999",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "uninstallDisplayName": "1999",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "mac": {
       "icon": "build/icon.png",

@@ -7,6 +7,7 @@ const { spawn, spawnSync } = require("child_process");
 const https = require("https");
 const { Installer, PLATFORM } = require("./installer");
 const { Account } = require("./account");
+const { SelfUpdate } = require("./selfupdate");
 
 const CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.json"), "utf8"));
 // Pour tester sans le site : --catalog=file:///C:/chemin/catalog.json (ou la variable CATALOG_1999)
@@ -29,7 +30,7 @@ if (process.platform === "linux") {
   app.commandLine.appendSwitch("enable-transparent-visuals");
 }
 
-let win, installer, account;
+let win, installer, account, selfUpdate;
 // Plantages : gardés dans launcher.log (dossier de données), le launcher reste ouvert
 const logFile = () => path.join(app.getPath("userData"), "launcher.log");
 function logError(where, e) {
@@ -163,6 +164,7 @@ async function getCatalog() {
     const cat = JSON.parse(await fetchText(catalogUrl()));
     if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue invalide");
     fs.writeFileSync(cacheFile(), JSON.stringify(cat));
+    if (selfUpdate && !settings.testCode) selfUpdate.check(cat.launcher); // nouvelle version du launcher : téléchargée en arrière-plan
     return { catalog: cat, online: true };
   } catch (e) {
     try { return { catalog: JSON.parse(fs.readFileSync(cacheFile(), "utf8")), online: false, error: e.message }; }
@@ -205,6 +207,7 @@ app.whenReady().then(() => {
   // Mac : barre de menus minimale (Cmd+C / Cmd+V dans les champs, Cmd+Q pour quitter)
   if (process.platform === "darwin") Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]));
   installer = new Installer(app.getPath("userData"));
+  selfUpdate = new SelfUpdate({ app, installer, platform: PLATFORM, send: (s) => send("launcher:update", s), log: logError });
   loadSettings();
   account = new Account({
     file: path.join(app.getPath("userData"), "account.json"), server: CONFIG.authServer,
@@ -225,6 +228,10 @@ app.whenReady().then(() => {
 });
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on("window-all-closed", () => app.quit());
+// Une mise à jour du launcher est prête : elle s'installe à la fermeture, sans le relancer
+app.on("before-quit", () => { if (selfUpdate && selfUpdate.ready) selfUpdate.apply(false); });
+ipcMain.handle("launcher:update", () => (selfUpdate ? selfUpdate.state : { status: "idle" }));
+ipcMain.handle("launcher:apply", () => selfUpdate && selfUpdate.apply(true));
 
 // ——— Échanges avec l'interface ———
 ipcMain.handle("catalog:get", async () => {

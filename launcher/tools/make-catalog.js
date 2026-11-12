@@ -74,6 +74,14 @@ if (cfg.launcher && !testChannel) {
     catalog.launcher.downloads[plat] = { url, size: fs.statSync(f).size, sha256: sha(f) };
     report.push(`  Launcher ${plat} : ok`);
   }
+  // Mise à jour automatique du launcher : le fichier que chaque système télécharge tout seul
+  catalog.launcher.updates = {};
+  for (const [plat, p] of Object.entries(cfg.launcher.updates || {})) {
+    const f = abs(p.replace("{version}", lv));
+    if (!fs.existsSync(f)) { report.push(`  Mise à jour auto du launcher ${plat} : absente (lien vers le site à la place)`); continue; }
+    const url = copy(f, path.join("launcher", path.basename(f)));
+    catalog.launcher.updates[plat] = { url, size: fs.statSync(f).size, sha256: sha(f) };
+  }
 }
 
 // Le site de présentation (website/) : copié tel quel à la racine. Il lit ./catalog.json pour ses boutons de téléchargement.
