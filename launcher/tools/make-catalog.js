@@ -85,7 +85,7 @@ if (fs.existsSync(site)) {
   // pour qu'une nouvelle page ne puisse jamais s'afficher avec d'anciens styles.
   for (const f of fs.readdirSync(out).filter((x) => x.endsWith(".html"))) {
     const page = path.join(out, f);
-    const html = fs.readFileSync(page, "utf8").replace(/(["'])(\/?)(style\.css|site\.js|img\/[^"'?]+)\1/g, (m, q, slash, file) => {
+    const html = fs.readFileSync(page, "utf8").replace(/(["'])(\/?)(style\.css|site\.js|hush-fond\.js|img\/[^"'?]+)\1/g, (m, q, slash, file) => {
       const target = path.join(out, file);
       return fs.existsSync(target) ? `${q}${slash}${file}?v=${sha(target).slice(0, 10)}${q}` : m;
     });

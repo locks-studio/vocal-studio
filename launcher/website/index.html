@@ -80,32 +80,36 @@
     <video class="metal metal-hush" data-src="img/hush-metal.webm" poster="img/hush-metal.webp" width="1200" height="675" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
     <div class="section-head">
       <h2 id="hush-title">Hush, c'est ton salon vocal filmé comme un plateau.</h2>
-      <p>Chaque personne a son anneau qui s'anime quand elle parle, et la caméra va chercher qui a la parole. Joue avec les réglages : cette démo est une reproduction simplifiée, Hush va beaucoup plus loin.</p>
+      <p>Chaque personne a son anneau qui s'anime quand elle parle, et la caméra va chercher qui a la parole. Joue avec les réglages : c'est le rendu de Hush, en version allégée pour le site.</p>
     </div>
 
-    <div class="demo">
+    <div class="demo" id="demo">
       <div class="stage-wrap">
-        <div class="stage" id="stage" role="img" aria-label="Démo de Hush : quatre avatars, celui qui parle est entouré d'un anneau animé et la caméra se rapproche de lui.">
-          <div class="cam" id="cam">
-            <div class="av" data-n="0" style="--x:22%;--y:34%;--c1:#e0348c;--c2:#b81a6c"><span class="ring"></span><span class="face">LO</span><span class="name">Locks</span></div>
-            <div class="av" data-n="1" style="--x:74%;--y:30%;--c1:#b04fc4;--c2:#8a2aa3"><span class="ring"></span><span class="face">MI</span><span class="name">Mira</span></div>
-            <div class="av" data-n="2" style="--x:36%;--y:66%;--c1:#d9486a;--c2:#b8344f"><span class="ring"></span><span class="face">NA</span><span class="name">Nao</span></div>
-            <div class="av" data-n="3" style="--x:70%;--y:68%;--c1:#7a5be0;--c2:#a33a8e"><span class="ring"></span><span class="face">TE</span><span class="name">Tess</span></div>
-          </div>
+        <div class="stage" id="stage" role="img" aria-label="Démo de Hush : un salon vocal Discord avec Locks, Imo, KCM et leurs amis. Celui qui parle s'entoure d'un anneau vert et grossit avec sa voix.">
+          <canvas class="stage-sky" id="sky" aria-hidden="true"></canvas>
+          <div class="cam" id="cam" aria-hidden="true"></div>
           <div class="snow" aria-hidden="true"></div>
-          <div class="music">
-            <span class="vinyl" aria-hidden="true"></span>
-            <span><b>Nuit rose</b><small>En écoute sur ce PC</small></span>
+          <div class="music" aria-hidden="true">
+            <span class="vinyl"></span>
+            <span><b>MADARA-OST</b><small>En écoute sur ce PC</small></span>
           </div>
         </div>
       </div>
 
       <fieldset class="controls glass">
         <legend class="sr">Réglages de la démo</legend>
-        <label class="toggle"><input type="checkbox" id="t-cam" checked><span class="sw"></span><span><b>Cinéma 3D</b><small>La caméra suit qui parle</small></span></label>
-        <label class="toggle"><input type="checkbox" id="t-glitch"><span class="sw"></span><span><b>Glitch et neige</b><small>Pseudos en neige télé</small></span></label>
+        <div class="ctl-group">
+          <span class="ctl-title" id="lay-title">Mise en scène</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lay-title">
+            <button type="button" role="radio" data-lay="strip" aria-checked="true">Bande</button>
+            <button type="button" role="radio" data-lay="film" aria-checked="false">Cinéma 3D</button>
+            <button type="button" role="radio" data-lay="grid" aria-checked="false">Grille</button>
+          </div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-cam" checked><span class="sw"></span><span><b>Caméra qui suit</b><small>Elle va chercher qui parle</small></span></label>
         <label class="toggle"><input type="checkbox" id="t-vert"><span class="sw"></span><span><b>Mode vertical</b><small>Pour les formats courts</small></span></label>
         <label class="toggle"><input type="checkbox" id="t-overlay"><span class="sw"></span><span><b>Overlay transparent</b><small>À poser dans OBS</small></span></label>
+        <label class="toggle"><input type="checkbox" id="t-glitch"><span class="sw"></span><span><b>Glitch</b><small>Pseudos en neige télé</small></span></label>
       </fieldset>
     </div>
 
@@ -255,6 +259,7 @@ cd 1999
   <a href="https://organisationphantom.fr">organisationphantom.fr</a>
 </footer>
 
+<script src="hush-fond.js" defer></script>
 <script src="site.js" defer></script>
 </body>
 </html>

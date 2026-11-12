@@ -199,38 +199,132 @@
     addEventListener("load", () => $$("video.metal").forEach((v) => watch.observe(v)));
   }
 
-  // ---------- Démo Hush : quelqu'un parle, la caméra va le chercher ----------
-  const demo = $(".demo"), cam = $("#cam"), avs = $$(".av", cam);
-  const tCam = $("#t-cam");
-  if (reduced) tCam.checked = false; // pas de zoom automatique si on a demandé moins de mouvement
-  let speaker = -1, timer = 0, visible = false;
-  // L'ordre de parole : pas deux fois le même d'affilée
-  function nextSpeaker() {
-    let n; do n = Math.floor(Math.random() * avs.length); while (n === speaker);
-    speaker = n;
-    avs.forEach((a, i) => a.classList.toggle("speaking", i === n));
-    frame();
-  }
-  function frame() {
-    const a = avs[speaker];
-    if (!a || !tCam.checked) { cam.style.setProperty("--z", 1); cam.style.setProperty("--tx", "0%"); cam.style.setProperty("--ty", "0%"); return; }
-    // offsetLeft/Top = centre de l'avatar (il est recentré par translate, qui n'y compte pas).
-    // On grossit puis on glisse le plan pour ramener celui qui parle vers le centre, sans sortir les autres du cadre.
-    const vert = demo.classList.contains("vertical");
-    const z = vert ? 1.12 : 1.2, pull = 0.4;
-    const x = (a.offsetLeft / cam.clientWidth) * 100, y = (a.offsetTop / cam.clientHeight) * 100;
-    cam.style.setProperty("--z", z);
-    cam.style.setProperty("--tx", `${((50 - x) * pull).toFixed(2)}%`);
-    cam.style.setProperty("--ty", `${((50 - y) * pull).toFixed(2)}%`);
-  }
-  function play() { if (!timer && visible && !document.hidden) { nextSpeaker(); timer = setInterval(nextSpeaker, reduced ? 4200 : 2600); } }
-  function stop() { clearInterval(timer); timer = 0; }
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? play() : stop(); }, { threshold: 0.25 }).observe($("#stage"));
-  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : play()));
+  // ---------- Démo Hush : un salon vocal comme dans l'appli ----------
+  // Mêmes pseudos et mêmes couleurs que le mode démo de Hush, mêmes mises en scène (Bande, Cinéma 3D, Grille),
+  // même fond animé (hush-fond.js est le fichier de Hush). Tout est calculé ici, rien n'est envoyé nulle part.
+  const demo = $("#demo"), stage = $("#stage"), cam = $("#cam"), sky = $("#sky");
+  const NAMES = ["Locks", "Imo", "KCM", "Lazy", "Nuraskip", "Disk", "Stryzki", "Youbi", "Luzz", "Elo", "Dreamy", "Marga", "Sanji"];
+  const HUES = [235, 8, 150, 45, 285, 192, 330, 100, 25, 260, 170, 350, 60];
+  const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 5.2 2"/><path d="M15 9.5V6a3 3 0 0 0-1-2.2M5 11a7 7 0 0 0 11.5 5.3M19 11a7 7 0 0 1-.4 2.3M12 18v3M4 4l16 16"/></svg>';
+  const HEAD = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 13.7-5.6M20 12v3"/><path d="M4 15h3v5H5a1 1 0 0 1-1-1zM20 15h-3v5h2a1 1 0 0 0 1-1z"/><path d="M3 3l18 18"/></svg>';
+  const people = NAMES.map((name, i) => {
+    const el = document.createElement("div");
+    el.className = "t";
+    el.style.setProperty("--h", HUES[i]);
+    const muted = name === "Lazy", deaf = name === "Stryzki";
+    el.classList.toggle("muted", muted || deaf);
+    el.innerHTML = `<span class="nm"></span><span class="w"><span class="ring"></span><span class="av"><img src="img/discord-logo.png" alt=""></span>${muted ? `<span class="bd">${MIC}</span>` : deaf ? `<span class="bd">${HEAD}</span>` : ""}</span>`;
+    el.querySelector(".nm").textContent = name;
+    cam.append(el);
+    // Petite profondeur propre à chacun : en Bande, ils ne sont pas tous parfaitement alignés (comme dans Hush)
+    return { el, w: el.querySelector(".w"), name, silent: muted || deaf, depth: 0.88 + ((i * 37) % 13) / 60, dy: (((i * 53) % 9) - 4) / 100,
+      lvl: 0, fast: 0, target: 0, talkUntil: 0, x: 0, y: 0, s: 0 };
+  });
 
-  tCam.addEventListener("change", frame);
+  let layout = "strip", focus = 5, camX = 0, camY = 0, zoom = 1, running = false, raf = 0;
+  const follow = $("#t-cam"), t0 = performance.now();
+  if (reduced) follow.checked = false;
+
+  // Qui parle : une ou deux personnes à la fois, des phrases de 1 à 3 s, la voix qui monte et descend
+  function voices(now) {
+    const talking = people.filter((p) => p.talkUntil > now);
+    if (talking.length < 2 && Math.random() < (talking.length ? 0.006 : 0.03)) {
+      const free = people.filter((p) => !p.silent && p.talkUntil <= now);
+      const p = free[(Math.random() * free.length) | 0];
+      if (p) { p.talkUntil = now + 1000 + Math.random() * 2200; if (!talking.length) focus = people.indexOf(p); }
+    }
+    for (const p of people) {
+      const on = p.talkUntil > now;
+      // Syllabes : le volume vise une nouvelle valeur plusieurs fois par seconde
+      if (on && Math.random() < 0.2) p.target = 0.25 + Math.random() * 0.75;
+      if (!on) p.target = 0;
+      p.fast += (p.target - p.fast) * (p.target > p.fast ? 0.55 : 0.16);
+      p.lvl += (p.fast - p.lvl) * 0.12;
+      if (on && people[focus].talkUntil <= now) focus = people.indexOf(p);
+    }
+  }
+
+  // Place de chacun selon la mise en scène, en pixels de la scène (W × H)
+  function place(W, H) {
+    const vert = demo.classList.contains("vertical");
+    const n = people.length, mid = (n - 1) / 2;
+    if (layout === "grid") {
+      const cols = vert ? 3 : 5, rows = Math.ceil(n / cols);
+      const cell = Math.min((W * 0.86) / cols, (H * 0.78) / rows), s = cell * 0.6;
+      people.forEach((p, i) => {
+        const r = (i / cols) | 0, inRow = r === rows - 1 ? n - r * cols : cols, c = i - r * cols;
+        p.x = W / 2 + (c - (inRow - 1) / 2) * cell; p.y = H * 0.47 + (r - (rows - 1) / 2) * cell + s * 0.12; p.s = s;
+      });
+      return { cx: W / 2, cy: H / 2, z: 1 };
+    }
+    // Bande et Cinéma 3D : une file de personnes ; le Cinéma 3D est la même file, filmée de beaucoup plus près
+    const film = layout === "film";
+    const s = vert ? W * (film ? 0.36 : 0.2) : H * (film ? 0.5 : 0.21);
+    const gap = s * (film ? 1.45 : vert ? 1.6 : 1.18); // en vertical, le pseudo au-dessus a besoin de place
+    people.forEach((p, i) => {
+      const along = (i - mid) * gap, side = p.dy * s * 2.2;
+      p.x = W / 2 + (vert ? side : along); p.y = H / 2 + (vert ? along : side) + (vert ? 0 : s * 0.1); p.s = s * (film ? 1 : p.depth);
+    });
+    const span = n * gap, view = vert ? H : W;
+    // Sans caméra : toute la file, vue depuis le milieu
+    if (!follow.checked) return { cx: W / 2, cy: H / 2, z: film ? 1 : Math.min(1, (view * 0.94) / span) };
+    // La caméra va chercher qui parle
+    const f = people[focus];
+    const z = film ? 1 : Math.max(Math.min(1.25, (view * 0.94) / (span * 0.62)), (view * 0.94) / span);
+    const pull = film ? 0 : 0.25; // en Cinéma 3D, celui qui parle est pile au centre
+    const cx = vert ? W / 2 : f.x + (W / 2 - f.x) * pull, cy = vert ? f.y + (H / 2 - f.y) * pull : H / 2;
+    return { cx, cy, z };
+  }
+
+  const ctx = sky.getContext("2d");
+  function frame(now) {
+    raf = 0;
+    if (!running) return;
+    voices(now);
+    const W = stage.clientWidth, H = stage.clientHeight;
+    // Fond « espace rose » de Hush, qui respire un peu avec les voix
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    if (sky.width !== Math.round(W * dpr) || sky.height !== Math.round(H * dpr)) { sky.width = Math.round(W * dpr); sky.height = Math.round(H * dpr); }
+    const energy = Math.max(...people.map((p) => p.lvl));
+    if (!demo.classList.contains("overlay") && window.Patterns) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      window.Patterns.draw("pinkspace", ctx, W, H, (now - t0) / 1000, energy, reduced ? 0 : 1);
+    }
+    const v = place(W, H);
+    const k = reduced ? 1 : 0.06; // la caméra glisse doucement d'une personne à l'autre
+    camX += (v.cx - camX) * k; camY += (v.cy - camY) * k; zoom += (v.z - zoom) * k;
+    for (const p of people) {
+      const on = p.lvl > 0.04;
+      const sx = W / 2 + (p.x - camX) * zoom, sy = H / 2 + (p.y - camY) * zoom, size = p.s * zoom * (on ? 1 + p.lvl * 0.12 : 1);
+      p.el.style.setProperty("--s", `${size.toFixed(1)}px`);
+      p.el.style.transform = `translate(${(sx - size / 2).toFixed(1)}px,${(sy - size / 2).toFixed(1)}px)`;
+      p.el.style.zIndex = on ? 3 : 1;
+      p.el.classList.toggle("on", on);
+      p.el.style.setProperty("--lvl", p.lvl.toFixed(3));
+      // Animation « selon le volume » de Hush : l'avatar saute un peu et s'écrase sur les syllabes
+      if (!reduced && on) {
+        const punch = Math.max(-0.05, Math.min(0.09, (p.fast - p.lvl) * 0.6));
+        p.w.style.setProperty("--lift", `${(-p.fast * 5).toFixed(2)}px`);
+        p.w.style.setProperty("--sx", (1 - punch * 0.6).toFixed(4));
+        p.w.style.setProperty("--sy", (1 + punch).toFixed(4));
+      } else { p.w.style.removeProperty("--lift"); p.w.style.removeProperty("--sx"); p.w.style.removeProperty("--sy"); }
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function play() { if (!running) { running = true; raf = requestAnimationFrame(frame); } }
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+  let visible = false;
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible && !document.hidden ? play() : stop(); }, { threshold: 0.15 }).observe(stage);
+  document.addEventListener("visibilitychange", () => (document.hidden || !visible ? stop() : play()));
+  { const v = place(stage.clientWidth, stage.clientHeight); camX = v.cx; camY = v.cy; zoom = v.z; }
+
+  $$("[data-lay]").forEach((b) => b.addEventListener("click", () => {
+    layout = b.dataset.lay;
+    demo.classList.toggle("grid", layout === "grid");
+    $$("[data-lay]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+    follow.closest(".toggle").style.opacity = layout === "grid" ? 0.45 : 1;
+  }));
   $("#t-glitch").addEventListener("change", (e) => demo.classList.toggle("glitch", e.target.checked));
-  $("#t-vert").addEventListener("change", (e) => { demo.classList.toggle("vertical", e.target.checked); requestAnimationFrame(frame); });
+  $("#t-vert").addEventListener("change", (e) => demo.classList.toggle("vertical", e.target.checked));
   $("#t-overlay").addEventListener("change", (e) => demo.classList.toggle("overlay", e.target.checked));
-  addEventListener("resize", () => requestAnimationFrame(frame));
 })();

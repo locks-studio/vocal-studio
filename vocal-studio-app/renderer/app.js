@@ -449,7 +449,7 @@ let sandbox = null;
 function setSandbox(on, quiet) {
   if (sandbox) clearInterval(sandbox.timer);
   if (on && !sandbox) {
-    const me = state.me || { id: "me", name: "Toi", avatar: null };
+    const me = state.me || { id: "me", name: DEMO_ME, avatar: null }; // pas encore connecté : le pseudo d'exemple
     sandbox = { real: state, talk: true, guests: false, me, phase: 0 };
     state = { status: "demo", error: null, me, channel: { id: "sandbox", name: "Personnalisation", guild: "Hush" },
       members: [{ ...me, muted: false, deaf: false, speaking: false }], settings: { mute: false, deaf: false } };
@@ -492,11 +492,14 @@ $("#sandboxQuit").onclick = () => setSandbox(false);
 $("#sandboxTalk").onclick = () => { sandbox.talk = !sandbox.talk; $("#sandboxTalk").classList.toggle("on", sandbox.talk); };
 $("#sandboxGuests").onclick = () => { sandbox.guests = !sandbox.guests; $("#sandboxGuests").classList.toggle("on", sandbox.guests); };
 
-const DEMO_NAMES = ["Nova", "Kenji", "Sasha", "Milo", "Inès", "Rayan", "Luzz", "Imo", "Sanji", "Elo", "Nura", "Maroa", "Kaze", "Yuna", "Orel"];
+// Pseudos d'exemple : Locks d'abord (c'est « toi » dans la démo), puis la bande, dans l'ordre de priorité
+const DEMO_ME = "Locks";
+const DEMO_NAMES = ["Imo", "KCM", "Lazy", "Nuraskip", "Disk", "Stryzki", "Youbi", "Luzz", "Elo", "Dreamy", "Marga", "Sanji",
+  "Gabinoul", "Nejiraya", "Ayman", "Soso", "Bocchii", "Sofiane", "Reiya", "Emro", "Yussuf", "Raph", "Sei"];
 // Joueurs fictifs : toi + autant d'autres que le réglage « Joueurs affichés »
 function demoMembers(keep = []) {
   const old = new Map(keep.map((m) => [m.id, m]));
-  return [{ id: "me", name: "Toi", avatar: null, muted: false, deaf: false, speaking: false },
+  return [{ id: "me", name: DEMO_ME, avatar: null, muted: false, deaf: false, speaking: false },
     ...DEMO_NAMES.slice(0, Math.max(0, S.players - 1)).map((n, i) => ({ id: "d" + i, name: n, avatar: null, muted: i === 2, deaf: i === 5, speaking: false }))]
     .map((m) => old.get(m.id) || m);
 }
@@ -508,7 +511,7 @@ function setDemo(on, silent) {
     window.studio.voice.stop();
     editingConfig = false;
     state = {
-      status: "demo", error: null, me: { id: "me", name: "Toi" },
+      status: "demo", error: null, me: { id: "me", name: DEMO_ME },
       channel: { id: "demo", name: "soirée-chill", guild: "Serveur de démo" },
       members: demoMembers(),
       settings: { mute: false, deaf: false },
