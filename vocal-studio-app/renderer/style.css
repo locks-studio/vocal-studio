@@ -1093,3 +1093,67 @@ body.mini.ov-preview .app{outline:2px dashed rgba(255,255,255,.85);outline-offse
 .ov-pos button{border:0;border-radius:7px;background:rgba(255,255,255,.28);cursor:pointer;transition:background .15s,transform .15s}
 .ov-pos button:hover{background:rgba(255,255,255,.5)}
 .ov-pos button[aria-pressed="true"]{background:var(--ui-deep,var(--ui));transform:scale(1.04)}
+
+/* ——— Paramètres façon Discord : catégories à gauche (avec recherche), la page à droite ———
+   Fond plein (sans verre flouté) : le verre recalculait le flou de la scène animée à chaque image et faisait ramer. */
+.settings{display:grid;grid-template-columns:232px minmax(0,1fr);width:min(1000px,100%);height:min(720px,100%);border-radius:18px;
+  background:rgb(var(--tint-l));-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:var(--ink);
+  box-shadow:0 24px 70px rgba(var(--sh),.45),0 0 0 1px rgba(var(--sh),.12)}
+.settings::before,.settings::after{display:none}
+.set-side{display:flex;flex-direction:column;gap:6px;min-height:0;padding:16px 10px 16px 14px;
+  background:color-mix(in srgb,rgb(var(--tint)) 38%,rgb(var(--tint-l)));border-right:1px solid rgba(var(--sh),.1)}
+.set-search{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;margin:0 2px 8px;border-radius:9px;cursor:text;
+  background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(var(--sh),.12)}
+body.glass-dark .set-search{background:rgba(0,0,0,.25)}
+.set-search:focus-within{box-shadow:inset 0 0 0 2px var(--ui-deep)}
+.set-search svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--ink-soft);stroke-width:2;stroke-linecap:round}
+.set-search input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;font-size:13.5px;outline:none}
+.set-search input::placeholder{color:var(--ink-soft)}
+.set-search input::-webkit-search-cancel-button{cursor:pointer}
+.settings .tabs{display:flex;flex-direction:column;gap:2px;padding:0;margin:0;background:none!important;box-shadow:none!important;border-radius:0;overflow-y:auto;min-height:0}
+.settings .tab-glass{display:none}
+.set-cat{padding:14px 10px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.set-cat:first-child{padding-top:2px}
+.settings .tabs button{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:7px;font-size:14.5px;font-weight:500;color:var(--ink-soft);
+  background:none!important;box-shadow:none!important;transition:background-color .12s,color .12s}
+.settings .tabs button:hover{background:rgba(var(--sh),.08)!important;color:var(--ink)}
+.settings .tabs button[aria-selected="true"]{background:rgba(var(--sh),.14)!important;color:var(--ink);font-weight:600}
+body.glass-dark .settings .tabs button:hover{background:rgba(255,255,255,.08)!important}
+body.glass-dark .settings .tabs button[aria-selected="true"]{background:rgba(255,255,255,.14)!important}
+.set-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.settings .settings-head{padding:22px 22px 12px 34px;border-bottom:0;gap:10px}
+.settings .settings-head h2{font-size:21px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.settings .settings-close{margin-left:0;width:36px;height:36px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(var(--sh),.25)}
+.settings .settings-body{padding:6px 34px 34px}
+.settings .tab-panel{grid-template-columns:minmax(0,1fr);max-width:660px;gap:18px}
+.settings .group{padding:0 0 18px;border-bottom:1px solid rgba(var(--sh),.1)}
+.settings .group:last-child{border-bottom:0}
+.settings .sec{margin:14px 0 -6px;font-family:var(--f-body,inherit);font-size:12px;letter-spacing:.07em;color:var(--ink-soft)}
+.settings .sec::after{display:none}
+.settings .tab-panel > .sec:first-child{margin-top:4px}
+.settings .row > span,.settings .row > label{font-size:14.5px;color:var(--ink)}
+/* Recherche : chaque page trouvée porte le nom de sa catégorie */
+.set-searching .settings .tab-panel::before{content:attr(data-title);display:block;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin-top:6px}
+.search-hide{display:none!important}
+.set-empty{margin:30px 0;text-align:center;color:var(--ink-soft)}
+/* Paramètres sur le côté (aperçu en direct) : plus étroits, catégories en colonne fine */
+.settings-wrap.docked .settings{width:min(560px,100%);height:100%;grid-template-columns:150px minmax(0,1fr);background:rgb(var(--tint-l))}
+.settings-wrap.docked .set-side{padding:12px 6px 12px 8px}
+.settings-wrap.docked .settings .tabs button{font-size:13px;padding:7px 8px}
+.settings-wrap.docked .settings .settings-head{padding:16px 14px 8px 18px}
+.settings-wrap.docked .settings .settings-body{padding:4px 18px 24px}
+@media (max-width:700px){.settings{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.set-side{border-right:0;border-bottom:1px solid rgba(var(--sh),.1);max-height:34vh}}
+
+/* ——— Image de fond : nette (plus de zoom automatique qui la floutait), zoom au choix ——— */
+.bg-media img,.bg-media video,body.eco .bg-media img,body.eco .bg-media video{animation:none;transform:scale(var(--bg-zoom,1));transform-origin:center;object-fit:cover}
+
+/* ——— Anneau plein en dégradé de deux couleurs (Dégradé 2 couleurs, Avatar de chacun) ——— */
+body.ring-two.ring-solid .ring{background:conic-gradient(from calc(var(--lvl) * 200deg),var(--ring1),var(--ring2),var(--ring1))}
+body.ring-two.ring-solid .tile.speaking .av-wrap{filter:drop-shadow(0 0 calc(var(--glow) * (8px + var(--lvl) * 22px)) var(--ring1)) drop-shadow(0 0 calc(var(--glow) * 5px) var(--ring2))}
+
+/* ——— Arrivées et départs à la couleur de l'anneau ——— */
+@keyframes joinWave{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ring1,#23a559) 90%,transparent)}100%{box-shadow:0 0 0 calc(var(--ctile, var(--tile, 120px)) * .35) color-mix(in srgb,var(--ring2,var(--ring1,#23a559)) 0%,transparent)}}
+@keyframes joinIn{0%{transform:scale(0) rotate(-25deg);opacity:0;filter:drop-shadow(0 0 0 var(--ring1,#23a559))}60%{transform:scale(1.15) rotate(4deg);opacity:1;filter:drop-shadow(0 0 18px var(--ring1,#23a559))}100%{transform:none}}
+@keyframes leaveOut{0%{transform:none;opacity:1}30%{transform:scale(1.08);filter:drop-shadow(0 0 20px var(--ring1,#23a559)) drop-shadow(0 0 6px var(--ring2,var(--ring1,#23a559)))}100%{transform:scale(0) rotate(20deg);opacity:0;filter:drop-shadow(0 0 30px var(--ring1,#23a559)) blur(4px)}}
+@keyframes joinFade{from{opacity:0;filter:blur(8px) drop-shadow(0 0 22px var(--ring1,#23a559));transform:scale(.92)}to{opacity:1;filter:none;transform:none}}
+@keyframes leaveFade{to{opacity:0;filter:blur(8px) drop-shadow(0 0 22px var(--ring1,#23a559));transform:scale(.92)}}

@@ -204,7 +204,8 @@ async function toggleRecording() {
 let cardCover = undefined, cardColor = vivid(null);
 // Couleur du lecteur : celle de la pochette, ou la couleur d'accent de l'ambiance (réglage « Couleur du lecteur »)
 function cardLook(cover) {
-  const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
+  // Sans relire le style calculé (ça forçait un recalcul de toute la page à chaque réglage)
+  const accent = S.accent || (SKINS[S.skin] && SKINS[S.skin].a) || "#fcbbdd";
   const key = (S.playerColor === "accent" ? "accent|" + accent : "cover|" + cover) + "|" + S.playerBg;
   if (key === cardCover) return;
   cardCover = key;

@@ -3,13 +3,28 @@
    qu'on peut exporter en fichier .hush pour le partager et réimporter.
    Profil : tous les réglages de Hush d'un coup (look, lecteur, sons, noms de salons…). On en a autant
    qu'on veut (« Stream », « Potes »…) et on passe de l'un à l'autre. */
-const PRESET_KEYS = ["skin", "accent", "layout", "shape", "bg", "bgImage", "bgKind", "bgBlur", "blurType", "glow", "speed", "names", "cards", "hideMuted",
-  "players", "ring", "ringFrom", "ringColor", "pixel", "camera", "zoom", "font", "showMe", "avShadow", "voiceMin", "playerColor", "playerBg"];
+// Tout le visuel : appliquer un préréglage remet Hush exactement dans l'état où il a été enregistré
+// (les couleurs choisies comprises : anneau, fond, accent).
+const PRESET_KEYS = ["skin", "accent", "layout", "vertical", "vertNameTop", "freePos", "shape", "players", "zoom", "camera",
+  "bg", "bgImage", "bgKind", "bgColor", "bgColor2", "bgZoom", "bgBlur", "blurType",
+  "ring", "ringFrom", "ringColor", "ringColor2", "glow", "voiceMin", "avShadow", "avOutline", "avOutlineAuto", "avAnim", "speed", "joinAnim",
+  "names", "cards", "hideMuted", "showMe", "namePos", "nameSize", "nameMask", "nameHover", "font", "pixel",
+  "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "musicOn", "playerColor", "playerBg", "playerW", "playerPos"];
+// Applique un préréglage : un réglage absent (préréglage d'une ancienne version) reprend sa valeur de base
+function applyLook(data) {
+  for (const k of PRESET_KEYS) {
+    const v = k in data ? data[k] : DEFAULTS[k];
+    S[k] = v && typeof v === "object" ? JSON.parse(JSON.stringify(v)) : v;
+  }
+  normS();
+  apply();
+  loadBgImg();
+}
 const PROFILES_KEY = "hush-profiles";
 
 function lookOf(src) {
   const o = {};
-  for (const k of PRESET_KEYS) if (k in src) o[k] = src[k];
+  for (const k of PRESET_KEYS) if (k in src) o[k] = src[k] && typeof src[k] === "object" ? JSON.parse(JSON.stringify(src[k])) : src[k];
   return o;
 }
 
@@ -31,7 +46,7 @@ function renderPresets() {
     use.className = "snd-play";
     use.textContent = "▶";
     use.setAttribute("aria-label", `Appliquer ${p.name}`);
-    use.onclick = () => { Object.assign(S, p.data); apply(); loadBgImg(); showToast(`Préréglage « ${p.name} » appliqué`); };
+    use.onclick = () => { applyLook(p.data); showToast(`Préréglage « ${p.name} » appliqué`); };
     const info = document.createElement("span");
     info.className = "snd-info";
     const b = document.createElement("b"); b.textContent = p.name;

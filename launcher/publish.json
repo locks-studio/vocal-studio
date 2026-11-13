@@ -32,12 +32,13 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Hush arrive sur Mac (Apple Silicon et Intel)",
-        "Overlay en jeu comme Discord : toujours au premier plan, la souris passe à travers",
-        "Nouvel onglet Overlay : coin de l'écran, taille, anneau, pseudos, seulement ceux qui parlent",
-        "Ctrl+Maj+H (Cmd+Maj+H sur Mac) affiche ou cache l'overlay, même en pleine partie",
-        "Les avatars bougent selon le volume de la voix",
-        "Nouveaux réglages de base : bande, anneau plein Basique, halo doux"
+        "Paramètres façon Discord : catégories à gauche, barre de recherche (Ctrl+F), et beaucoup plus fluides",
+        "Préréglages complets : ils gardent tout le visuel, couleurs comprises",
+        "Nouvel anneau « Avatar de chacun » : un dégradé aux couleurs de la photo de chaque personne",
+        "Nouveau fond « Double dégradé » avec deux couleurs au choix",
+        "Image de fond nette, avec un zoom réglable",
+        "Arrivées et départs à la couleur de l'anneau ; « Live » devient « Stream » ; vue stream retirée",
+        "Couleur d'accent dans le nouvel onglet Thème ; pseudos de démo : Locks, Imo, KCM…"
       ],
       "artifacts": {
         "win32-x64": {

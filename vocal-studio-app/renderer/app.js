@@ -22,12 +22,13 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, streamView: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true, avAnim: "db",
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true, avAnim: "db",
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
 const OLD_DEFAULTS = { players: 7, zoom: 1, ring: "aura", glow: 70, voiceMin: 0.15, avShadow: true, showMe: true, playerBg: "mosaic" };
 let S = { ...DEFAULTS };
+let setSearchQ = ""; // recherche en cours dans les paramètres (vide : pages normales)
 try {
   const stored = JSON.parse(localStorage.getItem("vocal-studio") || "{}");
   S = { ...DEFAULTS, ...stored };
@@ -45,10 +46,12 @@ function normS() {
   // L'ancien interrupteur « s'aplatit en rythme » devient le choix d'animation
   if (!S.avAnimMig) { if (S.squash === false) S.avAnim = "off"; S.avAnimMig = true; }
   if (!["db", "rhythm", "off"].includes(S.avAnim)) S.avAnim = "db";
-  if (!["general", "avatars", "effets", "anim", "fond", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
+  if (!["looks", "general", "avatars", "effets", "anim", "fond", "theme", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
   // Réglages retirés : on bascule sur ce qui les remplace
   if (S.layout === "lyrics") S.layout = "strip";
   if (S.joinAnim === "glitch") S.joinAnim = "pop"; // arrivée « glitch » retirée
+  if (S.bg === "none") S.bg = "pinkspace"; // fond « Aucun » retiré
+  if (!(S.bgZoom > 0)) S.bgZoom = 1;
   // L'ancienne disposition « Verticale » devient la Bande en mode vertical (la mini-fenêtre garde sa colonne)
   if (S.layout === "column" && typeof MINI !== "undefined" && !MINI) { S.layout = "strip"; S.vertical = true; }
   if (S.ring === "energy") S.ring = "aura";
@@ -93,12 +96,76 @@ function createTile(m) {
   const el = document.createElement("div");
   el.className = "tile";
   el.dataset.id = m.id;
-  el.innerHTML = `<div class="av-wrap"><div class="av-drop"></div><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="En direct (partage d'écran)">LIVE</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
+  el.innerHTML = `<div class="av-wrap"><div class="av-drop"></div><div class="aura"><i></i><i></i><i></i></div><div class="ring"></div><div class="av"></div><div class="cam-badge" title="Caméra allumée"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3z"/></svg></div><div class="live-badge" title="Stream (partage d'écran)">STREAM</div><div class="mute-badge" title="Muet"><svg class="i-mic" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16"/></svg><svg class="i-deaf" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/><path d="M3 3l18 18"/></svg></div></div>
     <div class="bars">${"<i></i>".repeat(5)}</div>
     <div class="name"><span></span><span class="chips"></span></div>`;
   const t = { el, bars: [...el.querySelectorAll(".bars i")], chips: el.querySelector(".chips"), lvl: 0, seed: Math.random() * 10, ringPhase: tiles.size % 2, data: {} };
   el.querySelector(".av").style.setProperty("--h", hue(m.id));
   return t;
+}
+
+// Anneau « Avatar » : deux couleurs vives de la photo de chacun (la principale, puis la plus différente d'elle).
+// Sans photo : la couleur de son logo Discord et une voisine.
+const avDuos = new Map();
+function avatarDuo(m) {
+  const key = m.avatar || "h" + hue(m.id);
+  if (avDuos.has(key)) return avDuos.get(key);
+  const fallback = () => { const h = hue(m.id); return { a: `hsl(${h} 70% 58%)`, b: `hsl(${(h + 55) % 360} 80% 66%)`, duo: true }; };
+  const p = !m.avatar ? Promise.resolve(fallback()) : new Promise((res) => {
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 24;
+        const x = c.getContext("2d");
+        x.drawImage(i, 0, 0, 24, 24);
+        const d = x.getImageData(0, 0, 24, 24).data;
+        // Les pixels par teinte (12 cases), pondérés par leur vivacité
+        const bins = Array.from({ length: 12 }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
+        for (let k = 0; k < d.length; k += 4) {
+          const [r, g, b] = [d[k], d[k + 1], d[k + 2]];
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          const sat = mx ? (mx - mn) / mx : 0, wt = sat * sat * (mx / 255) + 0.01;
+          const h = hexHsl("#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")).h;
+          const bin = bins[Math.floor(((h % 360) / 360) * 12)];
+          bin.w += wt; bin.r += r * wt; bin.g += g * wt; bin.b += b * wt;
+        }
+        const order = bins.map((b, i) => ({ ...b, i })).filter((b) => b.w > 0).sort((a, b) => b.w - a.w);
+        if (!order.length) return res(fallback());
+        const first = order[0];
+        // Deuxième couleur : assez loin de la première sur le cercle des teintes, sinon une version plus claire
+        const far = order.find((b) => Math.min(Math.abs(b.i - first.i), 12 - Math.abs(b.i - first.i)) >= 2 && b.w > first.w * 0.08);
+        const css = (b, light) => {
+          const hx = "#" + [b.r, b.g, b.b].map((v) => Math.round(v / b.w).toString(16).padStart(2, "0")).join("");
+          const k = hexHsl(hx);
+          return `hsl(${k.h} ${Math.max(55, k.s)}% ${Math.max(45, Math.min(light ? 75 : 62, k.l + (light ? 18 : 0)))}%)`;
+        };
+        res({ a: css(first), b: far ? css(far) : css(first, true), duo: true });
+      } catch { res(fallback()); }
+    };
+    i.onerror = () => res(fallback());
+    i.src = m.avatar;
+  });
+  avDuos.set(key, p);
+  return p;
+}
+// Pose (ou retire) les couleurs de l'anneau propres à chaque membre
+function tileRing(t) {
+  const st = t.el.style;
+  if (S.ringFrom !== "avatar") {
+    t.duo = null;
+    for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3"]) st.removeProperty(k);
+    return;
+  }
+  avatarDuo(t.data).then((c) => {
+    if (S.ringFrom !== "avatar" || !t.el.isConnected) return;
+    t.duo = c;
+    st.setProperty("--ring1", c.a); st.setProperty("--ring2", c.b);
+    st.setProperty("--aura1", `color-mix(in srgb, ${c.a} 85%, transparent)`);
+    st.setProperty("--aura2", `color-mix(in srgb, ${c.b} 60%, transparent)`);
+    st.setProperty("--aura3", `color-mix(in srgb, ${c.b} 40%, transparent)`);
+  });
 }
 
 // Couleur dominante d'une photo de profil (la plus vive), pour le contour « couleur de l'avatar »
@@ -155,6 +222,8 @@ function updateTile(t, m) {
     t.el.querySelector(".name span").textContent = m.name;
     if (m.avatar) avatarColor(m.avatar).then((c) => c && t.el.style.setProperty("--oc-auto", c));
     else t.el.style.setProperty("--oc-auto", `hsl(${hue(m.id)} 62% 54%)`);
+    t.data = { ...t.data, id: m.id, avatar: m.avatar };
+    tileRing(t);
   }
   t.chips.innerHTML = m.deaf ? `<span class="chip">Sourdine</span>` : m.muted ? `<span class="chip">Muet</span>` : "";
   t.el.classList.toggle("muted", m.muted || m.deaf);
@@ -565,7 +634,56 @@ const togglePin = async () => { pinned = await window.studio.win.pin(!pinned); $
 $("#pin").onclick = togglePin;
 $("#setPin").onclick = togglePin;
 $("#setFull").onclick = () => window.studio.win.fullscreen();
-document.querySelectorAll("#tabs [data-tab]").forEach((b) => (b.onclick = () => { S.tab = b.dataset.tab; apply(); }));
+document.querySelectorAll("#tabs [data-tab]").forEach((b) => (b.onclick = () => { clearSetSearch(); S.tab = b.dataset.tab; apply(); $(".settings-body").scrollTop = 0; }));
+
+/* ——— Recherche dans les paramètres : chaque bloc de réglages qui contient le mot, toutes catégories confondues ——— */
+const fold = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function setSearch(q) {
+  setSearchQ = fold(q.trim());
+  const panels = [...document.querySelectorAll(".tab-panel")];
+  document.body.classList.toggle("set-searching", !!setSearchQ);
+  if (!setSearchQ) {
+    panels.forEach((p) => p.querySelectorAll(".search-hide").forEach((x) => x.classList.remove("search-hide")));
+    $("#setEmpty").hidden = true;
+    return apply();
+  }
+  let found = 0;
+  for (const p of panels) {
+    let any = false;
+    // Un bloc = un .group, ou une ligne isolée dans la page (titre de section exclu)
+    for (const el of p.children) {
+      if (el.classList.contains("sec")) continue;
+      // Le texte affiché, plus les infobulles (les boutons à icône)
+      const txt = fold(el.textContent + " " + [...el.querySelectorAll("[title],[aria-label]")].map((x) => x.title + " " + x.getAttribute("aria-label")).join(" "));
+      const hit = txt.includes(setSearchQ) || fold(p.dataset.title || "").includes(setSearchQ);
+      el.classList.toggle("search-hide", !hit);
+      if (hit && !el.hidden) any = true;
+    }
+    p.querySelectorAll(":scope > .sec").forEach((x) => x.classList.add("search-hide"));
+    p.hidden = !any;
+    if (any) found++;
+  }
+  $("#setEmpty").hidden = !!found;
+  $("#settingsTitle").textContent = `Résultats pour « ${q.trim()} »`;
+  document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", "false"));
+  $(".settings-body").scrollTop = 0;
+}
+function clearSetSearch() {
+  if (!setSearchQ && !$("#setSearch").value) return;
+  $("#setSearch").value = "";
+  setSearch("");
+}
+// Chaque page porte le nom de sa catégorie : affiché au-dessus des résultats de recherche
+document.querySelectorAll(".tab-panel").forEach((p) => {
+  const b = document.querySelector(`#tabs [data-tab="${p.dataset.tab}"]`);
+  if (b) p.dataset.title = typeof I18N !== "undefined" && I18N.lang !== "fr" ? I18N.tr(b.textContent) : b.textContent;
+});
+$("#setSearch").addEventListener("input", (e) => setSearch(e.target.value));
+$("#setSearch").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.stopPropagation(); clearSetSearch(); } });
+// Ctrl+F dans les paramètres : la recherche
+addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && !$("#settingsWrap").hidden) { e.preventDefault(); $("#setSearch").focus(); $("#setSearch").select(); }
+});
 $("#settingsClose").onclick = () => { S.panel = false; apply(); };
 // Dès qu'on touche à un réglage visuel, la fenêtre se range sur le côté pour voir le résultat en direct
 $("#panel").addEventListener("input", dockSettings);
@@ -695,7 +813,8 @@ new ResizeObserver(() => layout()).observe(stage);
    Le flux en grand à gauche dans un cadre arrondi (qui s'allume en vert quand la personne parle),
    les autres en zigzag sur un panneau sombre en biais à droite. */
 function featureSource() {
-  if (!S.streamView || MINI || ["discord", "lyrics"].includes(S.layout) || typeof Cap === "undefined") return null;
+  return null; // vue stream retirée (jugée pas belle) : les vidéos restent dans les tuiles et la fenêtre de partage
+  if (MINI || ["discord", "lyrics"].includes(S.layout) || typeof Cap === "undefined") return null;
   const me = meTileId();
   if (Cap.screen) return { id: me, kind: "screen", stream: Cap.screen };
   if (Cap.cam) return { id: me, kind: "cam", stream: Cap.cam };
@@ -809,7 +928,13 @@ function updateMusicCard() {
   else if (t) st.textContent = `♪ ${t.title}${t.artist ? " · " + t.artist : ""}${t.playing ? "" : " (en pause)"}`;
   else st.textContent = "Rien en lecture pour l'instant.";
   $("#music").hidden = !(S.musicOn && hasMusic());
-  placeMusic();
+  placeMusicSoon();
+}
+// Placement du lecteur : une fois par image au plus (il mesure la page, ce qui coûte quand on règle un curseur)
+let placeMusicRaf = 0;
+function placeMusicSoon() {
+  if (placeMusicRaf) return;
+  placeMusicRaf = requestAnimationFrame(() => { placeMusicRaf = 0; placeMusic(); });
 }
 // Pochette trouvée en ligne pour un morceau qui n'en a pas (vidéo YouTube dans un navigateur…)
 const foundCovers = new Map();
@@ -1031,10 +1156,8 @@ function setVolume(v) {
 $("#volume").oninput = (e) => setVolume(+e.target.value);
 $("#mpVol").oninput = (e) => setVolume(+e.target.value);
 $("#mpHide").onclick = () => { S.musicOn = false; apply(); showToast("Musique cachée : remets-la dans Paramètres › Musique"); };
-$("#presetBase").onclick = () => {
-  Object.assign(S, { skin: "nuit", accent: null, layout: "strip", shape: "round", ring: "aura", bg: "pinkspace", glow: 70, names: true, pixel: false, cards: false, camera: true, musicOn: true });
-  apply();
-};
+// Look de base : tout le visuel revient aux réglages d'origine de Hush
+$("#presetBase").onclick = () => { applyLook({}); showToast("Look de base appliqué"); };
 $("#glow").oninput = (e) => { S.glow = +e.target.value; apply(); };
 $("#players").oninput = (e) => {
   S.players = +e.target.value;
@@ -1051,9 +1174,12 @@ $("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
 $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = "duo"; apply(); };
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
+$("#bgColor2").oninput = (e) => { S.bgColor2 = e.target.value; apply(); };
+$("#bgZoom").oninput = (e) => { S.bgZoom = +e.target.value; apply(); };
+$("#bgZoomReset").onclick = () => { S.bgZoom = 1; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "streamView", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView"];
+const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView"];
 // Polices proposées (Google Fonts), chargées à la demande
 const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
 const fontSel = $("#fontSel");
@@ -1076,7 +1202,9 @@ SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }))
 // trop sombre, on l'éclaircit ; et le texte posé dessus est noir ou blanc selon sa clarté.
 function uiColors() {
   const b = document.body;
-  const acc = S.accent || getComputedStyle(b).getPropertyValue("--accent").trim() || "#ffffff";
+  // L'accent par défaut vient du thème (SKINS) : on ne relit pas le style calculé, ce qui forçait à recalculer
+  // tout le style de la page à chaque réglage (c'était le lag des paramètres)
+  const acc = S.accent || (SKINS[S.skin] && SKINS[S.skin].a) || "#ffffff";
   const m = /^#?([0-9a-f]{6})$/i.exec(acc);
   if (!m) return;
   let rgb = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
@@ -1121,6 +1249,7 @@ function drawBgPicks() {
       window.Patterns.draw(v, c.getContext("2d"), 120, 120, 0, 0, 0);
       dot.appendChild(c);
     } else if (v === "solid") dot.style.background = col;
+    else if (v === "duo") dot.style.background = `linear-gradient(135deg,${S.bgColor || "#fcbbdd"},${S.bgColor2 || "#9b7bff"})`;
     else if (v === "gradient") {
       const k = hexHsl(col);
       if (k.l > 70) k.s *= 0.65;
@@ -1165,9 +1294,11 @@ function applyRing() {
   }
   if (pal) ringCol = pal;
   else {
-    const cs = getComputedStyle(b);
-    ringCol = { a: cs.getPropertyValue("--accent").trim() || "#fff", b: cs.getPropertyValue("--accent2").trim() || "#fff" };
+    const sk = SKINS[S.skin] || {};
+    ringCol = { a: S.accent || sk.a || "#fff", b: sk.b || "#fff" };
   }
+  // Mode « Avatar de chacun » activé ou coupé : chaque tuile prend (ou perd) ses propres couleurs
+  if (applyRing.mode !== S.ringFrom) { applyRing.mode = S.ringFrom; for (const t of tiles.values()) tileRing(t); }
 }
 
 let colors = null;
@@ -1229,16 +1360,26 @@ function apply() {
   syncDock();
   if (!S.autoHide) document.body.classList.remove("hud-hidden");
   document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
-  document.querySelectorAll(".tab-panel").forEach((x) => (x.hidden = x.dataset.tab !== S.tab));
+  if (!setSearchQ) document.querySelectorAll(".tab-panel").forEach((x) => (x.hidden = x.dataset.tab !== S.tab));
+  const tabBtn = document.querySelector(`#tabs [data-tab="${S.tab}"]`);
+  if (!setSearchQ && tabBtn) $("#settingsTitle").textContent = tabBtn.textContent;
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
   $("#setPin").setAttribute("aria-checked", pinned);
   b.classList.toggle("ring-solid", S.ring === "solid");
+  b.classList.toggle("ring-two", S.ringFrom === "avatar" || S.ringFrom === "duo"); // anneau plein en dégradé de deux couleurs
   b.classList.toggle("ring-aura", S.ring === "aura");
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
-  $("#bgColorRow").hidden = S.bg !== "solid" && S.bg !== "gradient";
+  $("#bgColorRow").hidden = !["solid", "gradient", "duo"].includes(S.bg);
   $("#bgColor").value = S.bgColor || "#fcbbdd";
+  $("#bgColorLabel").textContent = S.bg === "duo" ? "Couleur 1" : "Couleur du fond";
+  $("#bgColor2Row").hidden = S.bg !== "duo";
+  $("#bgColor2").value = S.bgColor2 || "#9b7bff";
+  // Zoom de l'image de fond (image fixe : rendu net, sans le lent zoom automatique qui la floutait)
+  $("#bgZoomGroup").hidden = S.bg !== "image" || !S.bgImage;
+  $("#bgZoom").value = S.bgZoom; $("#bgZoomOut").textContent = Math.round(S.bgZoom * 100) + " %";
+  $("#bgMedia").style.setProperty("--bg-zoom", S.bgZoom);
   $("#freeHint").hidden = S.layout !== "free";
   $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
   loadBgImg();
@@ -1317,7 +1458,19 @@ function drawBg(t, energy) {
     colors = { a: cs.getPropertyValue("--accent").trim(), b: cs.getPropertyValue("--accent2").trim() };
   }
   ctx.clearRect(0, 0, w, h);
-  if (S.bg === "gradient") {
+  if (S.bg === "duo") {
+    // Double dégradé : les deux couleurs choisies, en biais, avec une lueur douce qui respire avec les voix
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, S.bgColor || "#fcbbdd");
+    g.addColorStop(1, S.bgColor2 || "#9b7bff");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const r = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.5);
+    r.addColorStop(0, `rgba(255,255,255,${0.14 + energy * 0.1})`);
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, w, h);
+  } else if (S.bg === "gradient") {
     // Dégradé sans motif : clair au centre, plus sombre sur les bords, dans la couleur choisie (comme le fond Uni)
     const c = hexHsl(S.bgColor || "#fcbbdd");
     if (c.l > 70) c.s *= 0.65; // couleur pâle : le dégradé reste doux au lieu de virer au fluo sur les bords
@@ -1941,7 +2094,7 @@ function frame(t) {
       const s = tile.lvl * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.018 * S.speed + i * 1.3 + tile.seed)));
       b.style.transform = `scaleY(${Math.max(0.12, s)})`;
     });
-    if (L !== "discord" && (!ECO || (frameN + tile.ringPhase) % 2 === 0)) Rings.draw(tile, S.ring, t, ringCol);
+    if (L !== "discord" && (!ECO || (frameN + tile.ringPhase) % 2 === 0)) Rings.draw(tile, S.ring, t, tile.duo || ringCol);
     energy += tile.lvl;
     if (speaking && (!loud || tile.lvl > loud.lvl)) loud = tile;
   }
@@ -2328,11 +2481,9 @@ $("#deleteData").onclick = async (e) => {
   showToast(r.error || "Tes données sont supprimées.");
 };
 if (!MINI) {
-  Lens.pill($("#tabs"), "aria-selected");
   Lens.pill(document.querySelector(".hs-tabs"), "aria-pressed");
   document.querySelectorAll("#homeTabs button").forEach((b) => Lens.apply(b));
   Lens.apply($("#homeSide"));
-  Lens.apply($("#panel"), 26, 52, "blur(9px) saturate(1.75) brightness(1.05)");
 }
 $("#gfonts").media = "all"; // polices chargées sans bloquer le premier affichage
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage
