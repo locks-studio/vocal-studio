@@ -58,6 +58,47 @@
           "exec": "hush"
         }
       }
+    },
+    {
+      "id": "hush-studio",
+      "name": "Hush Studio",
+      "kind": "Montage de vocaux",
+      "tagline": "Tu as oublié d'enregistrer ton vocal avec Hush ? Importe l'audio, Hush Studio recrée la scène et sort la vidéo.",
+      "description": "Importe un enregistrement Craig (une piste par personne) ou tes propres fichiers audio : chaque personne s'anime avec le vrai volume de sa voix, dans le style Hush. Coupe, déplace, change de scène sur la timeline, puis exporte en MP4 1080p 60 i/s, horizontal ou vertical.",
+      "accent": "#fcbbdd",
+      "usageDir": [
+        "hush-studio",
+        "Hush Studio"
+      ],
+      "package": "../hush-studio/package.json",
+      "icon": "../hush-studio/build/icon.png",
+      "banner": null,
+      "notes": [
+        "Première version : import Craig (pseudos et voix reconnus tout seuls) ou fichiers audio",
+        "La vraie scène Hush, animée par le volume réel de chaque piste",
+        "Timeline : déplacer, raccourcir, couper, superposer, sons et musique",
+        "Scènes : change de disposition, de fond et d'anneau en cours de vidéo, ou importe un préréglage Hush",
+        "Audio mélangé : maintiens 1, 2, 3… pendant la lecture pour dire qui parle",
+        "Export MP4 1080p 60 i/s, horizontal ou vertical, parfaitement fluide"
+      ],
+      "artifacts": {
+        "win32-x64": {
+          "file": "../hush-studio/dist/Hush-Studio-{version}-win-x64.zip",
+          "exec": "Hush Studio.exe"
+        },
+        "darwin-arm64": {
+          "file": "../hush-studio/dist/Hush-Studio-{version}-mac-arm64.zip",
+          "exec": "Hush Studio.app"
+        },
+        "darwin-x64": {
+          "file": "../hush-studio/dist/Hush-Studio-{version}-mac-x64.zip",
+          "exec": "Hush Studio.app"
+        },
+        "linux-x64": {
+          "file": "../hush-studio/dist/Hush-Studio-{version}-linux-x64.zip",
+          "exec": "hush-studio"
+        }
+      }
     }
   ],
   "testCode": "zjcxfpe83r"

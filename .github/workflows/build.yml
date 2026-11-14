@@ -1,4 +1,4 @@
-# Fabrique Hush et le launcher 1999 pour Windows, Mac et Linux.
+# Fabrique Hush, Hush Studio et le launcher 1999 pour Windows, Mac et Linux.
 # Une version Mac ne peut être fabriquée que sur un Mac : GitHub en prête un gratuitement le temps de la construction.
 # Lancement : onglet « Actions » du dépôt › « Construire » › « Run workflow » (ou en poussant un tag v1.2.3).
 # Résultat : les fichiers à récupérer dans « Artifacts », à mettre dans les dossiers dist/ puis à publier
@@ -39,6 +39,24 @@ jobs:
           npm ci
           npm run ${{ matrix.hush }}
 
+      - name: Hush Studio
+        if: runner.os != 'macOS'
+        working-directory: hush-studio
+        run: |
+          npm ci
+          npm run ${{ matrix.hush }}
+
+      # Mac : ffmpeg est un programme différent pour Apple Silicon et pour Intel, on fabrique l'un après l'autre
+      - name: Hush Studio (Mac)
+        if: runner.os == 'macOS'
+        working-directory: hush-studio
+        run: |
+          npm ci
+          npx electron-builder --mac zip --arm64 --publish never
+          rm -f node_modules/ffmpeg-static/ffmpeg
+          npm_config_arch=x64 node node_modules/ffmpeg-static/install.js
+          npx electron-builder --mac zip --x64 --publish never
+
       - name: Launcher 1999
         working-directory: launcher
         run: |
@@ -51,6 +69,7 @@ jobs:
           if-no-files-found: error
           path: |
             vocal-studio-app/dist/*.zip
+            hush-studio/dist/*.zip
             launcher/dist/*.exe
             launcher/dist/*.dmg
             launcher/dist/*.AppImage

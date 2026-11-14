@@ -1,4 +1,4 @@
-# Fabrique les versions Mac de Hush et du launcher 1999 (Apple Silicon et Intel), puis les teste sur ce Mac.
+# Fabrique les versions Mac de Hush, Hush Studio et du launcher 1999 (Apple Silicon et Intel), puis les teste sur ce Mac.
 # Un Mac est obligatoire pour ça : GitHub en prête un le temps de la construction.
 # Lancement : onglet « Actions » › « Version Mac » › « Run workflow » (ou : gh workflow run mac.yml --ref <branche>).
 # Résultat dans « Artifacts » : mac-builds (les zips et le .dmg à mettre dans dist/) et mac-test (captures d'écran).
@@ -34,6 +34,16 @@ jobs:
           npm ci
           npx electron-builder --mac zip --x64 --arm64 --publish never
 
+      # ffmpeg est un programme différent pour Apple Silicon et pour Intel : on fabrique l'un après l'autre
+      - name: Hush Studio
+        working-directory: hush-studio
+        run: |
+          npm ci
+          npx electron-builder --mac zip --arm64 --publish never
+          rm -f node_modules/ffmpeg-static/ffmpeg
+          npm_config_arch=x64 node node_modules/ffmpeg-static/install.js
+          npx electron-builder --mac zip --x64 --publish never
+
       - name: Launcher 1999
         working-directory: launcher
         run: |
@@ -55,5 +65,6 @@ jobs:
           if-no-files-found: error
           path: |
             vocal-studio-app/dist/Hush-*-mac-*.zip
+            hush-studio/dist/Hush-Studio-*-mac-*.zip
             launcher/dist/1999-Setup-*-mac-*.dmg
             launcher/dist/1999-Setup-*-mac-*.zip

@@ -1,0 +1,35 @@
+{
+  "name": "hush-studio",
+  "productName": "Hush Studio",
+  "version": "0.1.0",
+  "description": "Monte tes vocaux Discord dans le style Hush : pistes audio, scène animée, export vidéo",
+  "main": "src/main.js",
+  "private": true,
+  "author": "Locks",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win zip --x64",
+    "dist:linux": "electron-builder --linux zip --x64",
+    "dist:mac": "electron-builder --mac zip --arm64"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "yauzl": "^3.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "fr.locks.hush-studio",
+    "productName": "Hush Studio",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["src/**/*", "renderer/**/*", "package.json", "build/icon.png"],
+    "extraResources": [{ "from": "../vocal-studio-app/renderer", "to": "scene" }],
+    "asarUnpack": ["node_modules/ffmpeg-static/**"],
+    "artifactName": "Hush-Studio-${version}-${os}-${arch}.${ext}",
+    "win": { "icon": "build/icon.png" },
+    "mac": { "icon": "build/icon.png", "category": "public.app-category.video" },
+    "linux": { "icon": "build/icon.png", "executableName": "hush-studio", "category": "AudioVideo" }
+  }
+}
