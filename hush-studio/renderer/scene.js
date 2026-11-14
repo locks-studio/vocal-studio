@@ -74,12 +74,45 @@ function voiceAt(p, t) {
   return { level, speaking: speaking || talk, talk, present };
 }
 
+// Photo de profil en GIF : comme Hush avec Discord, une image fixe (la 1re image du GIF), et le GIF ne
+// s'affiche que quand la personne parle. La version fixe est calculée une fois par GIF.
+const STILL = new Map();
+const isGif = (u) => typeof u === "string" && u.startsWith("data:image/gif");
+function stillOf(gif) {
+  if (STILL.has(gif)) return STILL.get(gif);
+  STILL.set(gif, null);
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth || 256; c.height = img.naturalHeight || 256;
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    STILL.set(gif, c.toDataURL("image/png"));
+    Scene.lastSent = ""; // renvoie l'état avec l'image fixe
+  };
+  img.src = gif;
+  return null;
+}
+// Avant un export : toutes les images fixes prêtes
+function prepareStills() {
+  return Promise.all(P.people.filter((p) => isGif(p.avatar)).map((p) => new Promise((res) => {
+    if (STILL.get(p.avatar)) return res();
+    stillOf(p.avatar);
+    const t0 = Date.now();
+    const wait = () => (STILL.get(p.avatar) || Date.now() - t0 > 5000 ? res() : setTimeout(wait, 50));
+    wait();
+  })));
+}
+function avatarFields(p) {
+  if (!isGif(p.avatar)) return { avatar: p.avatar || null, avatarAnim: null };
+  return { avatar: stillOf(p.avatar) || p.avatar, avatarAnim: p.avatar };
+}
+
 function sceneState(t) {
   const members = [];
   for (const p of P.people) {
     const v = voiceAt(p, t);
     if (!v.present) continue;
-    const m = { id: p.id, name: p.name, avatar: p.avatar || null, muted: false, deaf: false, speaking: v.speaking };
+    const m = { id: p.id, name: p.name, ...avatarFields(p), muted: false, deaf: false, speaking: v.speaking };
     // Passage dessiné à la main : pas de volume, Hush imite une voix tout seul
     if (!v.talk) m.level = Math.round(v.level * 100) / 100;
     members.push(m);

@@ -54,7 +54,7 @@ async function importPaths(paths, targetRow = null) {
   if (!paths.length) return;
   const r = await window.hs.importFiles(paths);
   if (r.errors.length) toast(r.errors.join(" · "), 6000);
-  if (!r.people.length && !r.files.length) return;
+  if (!r.people.length && !r.files.length) return applyAvatars(r.avatars || [], true);
   await analyzeAll([...r.people.map((x) => x.file), ...r.files.map((x) => x.file)]);
   const wasEmpty = !P.clips.length;
   let mode = "person";
@@ -93,6 +93,25 @@ async function importPaths(paths, targetRow = null) {
   if (wasEmpty) { fitAll(); seek(0); }
   refresh();
   if (r.people.length) toast(`${r.people.length} personne(s) importée(s) depuis Craig`);
+  if ((r.avatars || []).length) await applyAvatars(r.avatars, false);
+}
+
+// Photos de profil (zip « avatars » de Craig, ou images « 1-pseudo.png ») : chacune va à la personne qui a le même
+// ID Discord, sinon le même pseudo (majuscules et accents ignorés)
+async function applyAvatars(list, ownStep) {
+  if (!list.length) return;
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (ownStep) checkpoint();
+  let n = 0;
+  const missing = [];
+  for (const a of list) {
+    const p = P.people.find((q) => a.discordId && q.discordId === a.discordId) || P.people.find((q) => norm(q.name) === norm(a.name));
+    if (!p) { missing.push(a.name); continue; }
+    p.avatar = await shrinkImage(a.data, 256);
+    n++;
+  }
+  refresh();
+  toast(n ? `${n} photo(s) de profil ajoutée(s)${missing.length ? ` · personne pour : ${missing.join(", ")}` : ""}` : `Aucune personne ne correspond à ces photos (${missing.join(", ")}). Importe d'abord l'audio Craig.`, 7000);
 }
 async function importInto(row) { importPaths(await window.hs.pickAudio(), row); }
 

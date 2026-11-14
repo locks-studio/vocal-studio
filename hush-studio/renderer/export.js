@@ -75,6 +75,7 @@ async function runExport(rs, re, out, quiet = false) {
   const N = Math.ceil((re - rs) * FPS);
   const t0 = performance.now();
   try {
+    await prepareStills();
     await window.hs.exp.begin({ W, H, fps: FPS, out, clips: audioPlan(rs, re), length: re - rs });
     txt.textContent = "Mise en place de la scène…";
     let lastLook = "";
