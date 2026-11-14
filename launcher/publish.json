@@ -32,13 +32,13 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Paramètres façon Discord : catégories à gauche, barre de recherche (Ctrl+F), et beaucoup plus fluides",
-        "Préréglages complets : ils gardent tout le visuel, couleurs comprises",
-        "Nouvel anneau « Avatar de chacun » : un dégradé aux couleurs de la photo de chaque personne",
-        "Nouveau fond « Double dégradé » avec deux couleurs au choix",
-        "Image de fond nette, avec un zoom réglable",
-        "Arrivées et départs à la couleur de l'anneau ; « Live » devient « Stream » ; vue stream retirée",
-        "Couleur d'accent dans le nouvel onglet Thème ; pseudos de démo : Locks, Imo, KCM…"
+        "Cloche de notifications : demandes d'ami, invitations, amis qui arrivent en vocal",
+        "Invite un ami dans ton vocal depuis Mes amis ; ajoute en ami d'un clic droit",
+        "Les GIF s'affichent dans le tchat de la voc",
+        "Menu clic droit plus simple, à la bonne taille même zoomé",
+        "Code ami : colle-le tel quel, ou avec le bouton Coller",
+        "Raccourci Hush sur le bureau et dans le menu (Windows, Mac, Linux)",
+        "Linux / niri : overlay sur tous les bureaux ; carte « Modifier la connexion » réparée"
       ],
       "artifacts": {
         "win32-x64": {

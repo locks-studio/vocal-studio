@@ -151,6 +151,9 @@ function send(channel, payload) {
 // Il ne prend jamais le clavier ni la souris au jeu ; sa place se règle dans Paramètres › Overlay.
 // Créé transparent pour le mode « avatars seuls » (Windows ne permet pas de changer ça après coup).
 let ovCfg = { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0 };
+// niri : l'overlay suit tous les bureaux (voir niri.js)
+const { NiriSticky } = require("./niri");
+const niriSticky = new NiriSticky("Hush · mini");
 function ovBounds() {
   const all = screen.getAllDisplays();
   const d = all[ovCfg.screen] || screen.getPrimaryDisplay();
@@ -203,7 +206,8 @@ function toggleMini() {
     mini.showInactive(); // s'affiche sans voler le clavier au jeu
     placeMini();
   });
-  mini.on("closed", () => { mini = null; send("win:mini", false); });
+  mini.on("closed", () => { mini = null; niriSticky.stop(); send("win:mini", false); });
+  niriSticky.start();
   return true;
 }
 // Fenêtre qui a envoyé la demande (principale ou mini)
@@ -345,6 +349,8 @@ app.whenReady().then(() => {
   botLink.meta = { version: app.getVersion(), os: process.platform };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
+  // Un ami t'invite dans son vocal : notification dans Hush (et la fenêtre clignote dans la barre des tâches)
+  botLink.onInvite = (inv) => { send("friends:invite", inv); if (win && !win.isDestroyed() && !win.isFocused()) win.flashFrame(true); };
   useMode(data.mode);
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
@@ -464,6 +470,8 @@ ipcMain.handle("bot:info", async () => {
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
 ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));
+// Bouton « Coller » du code ami : seulement un peu de texte
+ipcMain.handle("clip:read", () => clipboard.readText().slice(0, 200));
 
 ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
 // Commandes du lecteur : toggle (pause/lecture), next, prev

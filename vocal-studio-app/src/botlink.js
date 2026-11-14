@@ -46,6 +46,7 @@ class BotLink {
       else if (msg.type === "error") this.set({ ...this.state, error: msg.message });
       else if (msg.type === "chat") { if (this.onChat) this.onChat(msg.message); }
       else if (msg.type === "friends-changed") { if (this.onFriends) this.onFriends(); }
+      else if (msg.type === "friend-invite") { if (this.onInvite) this.onInvite(msg); }
       else if (msg.type === "hello") { this.admin = !!msg.admin; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); if (this.onFriends) this.onFriends(); }
       else if (msg.type === "mod-result") {
         const p = this.pending.get(msg.rid);

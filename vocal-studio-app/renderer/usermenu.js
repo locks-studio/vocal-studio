@@ -1,9 +1,7 @@
-/* ——— Menu clic droit sur un membre, comme dans Discord ———
-   Ce qui se fait dans Hush (note, masquer, volume dans Hush, mention copiée) marche partout.
-   Volume et muet « pour toi » passent par Discord en connexion directe (RPC).
-   Les actions de serveur (muet, sourdine, déplacer, pseudo, rôles, déconnecter) passent par le bot,
-   et seulement si tu as toi-même la permission sur le serveur.
-   Profil, message, appel, ami, blocage : Discord ne les ouvre pas aux applis, on ouvre le profil dans Discord. */
+/* ——— Menu clic droit sur un membre ———
+   Seulement ce qui marche vraiment : ajouter en ami Hush, volume dans Hush, masquer, note, profil Discord, mention.
+   Les actions de serveur (pseudo, rôles, déplacer, muet, sourdine, déconnecter) passent par le bot et n'apparaissent
+   que si tu as toi-même la permission sur ce serveur. */
 const UM = { el: null, sub: null, target: null, info: null };
 
 function closeUserMenu() {
@@ -72,30 +70,38 @@ function openUserMenu(m, x, y) {
       UM.info = info;
       const r = UM.el.getBoundingClientRect();
       renderUserMenu(m);
-      place(UM.el, r.left, r.top, true);
+      place(UM.el, r.left, r.top);
     }).catch((e) => {
       if (UM.target !== m.id || !UM.el) return;
       let msg = String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
       if (/Pas connecté au bot|n'a pas répondu/.test(msg)) msg = "Lance le bot et lie ton compte (Compte › Modifier la connexion › Avec le bot, puis Se connecter)";
-      UM.info = { error: msg };
-      renderUserMenu(m);
+      UM.info = { error: msg }; // pas de bot : le menu garde seulement ce qui marche sans lui
     });
   }
 }
 
-function place(el, x, y, keep) {
-  // Le menu suit le zoom de la scène et rapetisse s'il est plus haut que la fenêtre : on voit tout jusqu'en bas
+function place(el, x, y) {
+  // Taille normale quel que soit le zoom de la scène ; il rapetisse seulement s'il est plus haut que la fenêtre
   el.style.transform = "";
+  el.style.maxHeight = "";
   const full = el.scrollHeight + 12;
-  const s = Math.max(0.5, Math.min(1, S.zoom || 1, (innerHeight - 12) / full));
+  const s = Math.max(0.6, Math.min(1, (innerHeight - 12) / full));
   el.style.transformOrigin = "0 0";
   el.style.transform = s < 1 ? `scale(${s.toFixed(3)})` : "";
-  el.style.maxHeight = s < 1 ? "none" : "";
   el.dataset.scale = s;
-  const r = el.getBoundingClientRect();
-  const W = innerWidth, H = innerHeight;
-  el.style.left = Math.max(6, Math.min(x, W - r.width - 6)) + "px";
-  el.style.top = Math.max(6, Math.min(keep ? y : y, H - r.height - 6)) + "px";
+  const W = innerWidth, H = innerHeight, w = el.offsetWidth * s, h = el.offsetHeight * s;
+  el.style.left = Math.max(6, Math.min(x, W - w - 6)) + "px";
+  el.style.top = Math.max(6, Math.min(y, H - h - 6)) + "px";
+}
+
+// Où en est-on avec cette personne côté amis Hush
+function friendState(id) {
+  const fr = typeof Home !== "undefined" && Home.friends;
+  if (!fr) return "unknown";
+  if (fr.friends.some((p) => p.id === id)) return "friend";
+  if (fr.outgoing.some((p) => p.id === id)) return "sent";
+  if (fr.incoming.some((p) => p.id === id)) return "incoming";
+  return "none";
 }
 
 function renderUserMenu(m) {
@@ -112,45 +118,36 @@ function renderUserMenu(m) {
   head.textContent = m.name;
   el.appendChild(head);
 
-  // — Discord (ouvre le profil dans l'appli Discord) —
-  const prof = () => { window.studio.voice.openProfile(id); closeUserMenu(); };
-  const noDiscord = real ? null : "Membre fictif (mode démo)";
-  el.append(
-    umItem("Profil", { ext: true, off: noDiscord, onClick: prof }),
-    umItem("Mentionner", { off: noDiscord, title: "Copie la mention à coller dans un salon textuel", onClick: () => { window.studio.voice.copy(`<@${id}>`); showToast(`Mention de ${m.name} copiée : colle-la dans Discord`); closeUserMenu(); } }),
-  );
-  if (!isMe) el.append(
-    umItem("Envoyer un message", { ext: true, off: noDiscord, onClick: prof }),
-    umItem("Commencer un appel", { ext: true, off: noDiscord, onClick: prof }),
-  );
-  el.append(umItem(S.notes[id] ? "Modifier la note" : "Ajouter une note", { onClick: () => noteEditor(m) }));
-  el.appendChild(umSep());
+  // — Amis Hush —
+  if (!isMe && real) {
+    const st = friendState(id);
+    if (st === "friend") el.appendChild(umItem("Ami Hush ✓", { off: "Vous êtes déjà amis" }));
+    else if (st === "sent") el.appendChild(umItem("Demande d'ami envoyée", { off: "En attente de sa réponse" }));
+    else if (st === "incoming") el.appendChild(umItem("Accepter sa demande d'ami", { onClick: () => { friendOp("accept", id); closeUserMenu(); } }));
+    else el.appendChild(umItem("Ajouter en ami", {
+      onClick: async () => {
+        closeUserMenu();
+        const r = await window.studio.friends.op("add", id);
+        if (r.error) showToast(/n'existe pas|inconnue/i.test(r.error) ? `${m.name} n'utilise pas encore Hush : envoie-lui le lien de 1999` : r.error);
+        else { showToast(`Demande d'ami envoyée à ${m.name}`); friendOp("list"); }
+      },
+    }));
+  }
 
-  // — Volume —
+  // — Dans Hush —
   if (!isMe) {
     const vol = document.createElement("div");
     vol.className = "um-vol";
-    const rpc = isRpcMode();
+    const val = Math.round((S.userGain[id] ?? 1) * 100);
     const lab = document.createElement("label");
-    const val = rpc ? (S.userVol[id] ?? 100) : Math.round((S.userGain[id] ?? 1) * 100);
-    lab.innerHTML = `<span>${rpc ? "Volume de l'utilisateur" : "Volume dans Hush"}</span><output>${val} %</output>`;
+    lab.innerHTML = `<span>Volume dans Hush</span><output>${val} %</output>`;
     const range = document.createElement("input");
     range.type = "range"; range.min = 0; range.max = 200; range.value = val;
-    range.setAttribute("aria-label", lab.firstChild.textContent);
-    range.title = rpc ? "Change le volume de ce membre dans Discord, pour toi seulement" : "Rend cette voix plus ou moins « forte » pour l'anneau et la caméra (le son de Discord ne change pas)";
-    range.oninput = () => {
-      const v = +range.value;
-      lab.querySelector("output").textContent = v + " %";
-      if (rpc) { S.userVol[id] = v; userAct({ action: "volume", target: id, volume: v }).catch(() => {}); }
-      else S.userGain[id] = v / 100;
-      save();
-    };
+    range.setAttribute("aria-label", "Volume dans Hush");
+    range.title = "Rend cette voix plus ou moins « forte » pour l'anneau et la caméra (le son de Discord ne change pas)";
+    range.oninput = () => { lab.querySelector("output").textContent = range.value + " %"; S.userGain[id] = +range.value / 100; save(); };
     vol.append(lab, range);
     el.appendChild(vol);
-    el.appendChild(umItem("Rendre muet (pour toi)", {
-      check: !!S.localMuted[id], off: isRpcMode() ? null : "Connexion directe (RPC) uniquement : le bot ne peut pas couper le son chez toi",
-      onClick: () => { const on = !S.localMuted[id]; S.localMuted[id] = on; save(); umRun({ action: "localMute", target: id, on }); renderUserMenu(m); },
-    }));
   }
   el.appendChild(umItem("Masquer dans Hush", {
     check: S.hiddenUsers.includes(id),
@@ -160,34 +157,33 @@ function renderUserMenu(m) {
       showToast(S.hiddenUsers.includes(id) ? `${m.name} est masqué (clic droit sur le fond pour tout réafficher)` : `${m.name} est de nouveau affiché`);
     },
   }));
-  el.appendChild(umSep());
+  el.appendChild(umItem(S.notes[id] ? "Modifier la note" : "Ajouter une note", { onClick: () => noteEditor(m) }));
+  if (real) {
+    el.appendChild(umSep());
+    el.appendChild(umItem("Voir le profil dans Discord", { ext: true, onClick: () => { window.studio.voice.openProfile(id); closeUserMenu(); } }));
+    el.appendChild(umItem("Copier la mention", { title: "À coller dans un salon textuel", onClick: () => { window.studio.voice.copy(`<@${id}>`); showToast(`Mention de ${m.name} copiée : colle-la dans Discord`); closeUserMenu(); } }));
+  }
 
-  // — Serveur (bot) —
-  const botOff = S.demo ? "Membre fictif (mode démo)" : !info ? "Demande au bot…" : info.error || null;
+  // — Modération : seulement ce que tu as vraiment le droit de faire sur ce serveur (demandé au bot) —
   const p = (info && info.perms) || {};
-  const no = (ok, label) => botOff || (ok ? null : `Tu n'as pas la permission « ${label} » sur ce serveur`);
-  el.appendChild(umItem("Changer le pseudo", { off: botOff || (p.nick ? null : "Tu ne peux pas changer le pseudo de ce membre"), onClick: () => nickEditor(m) }));
-  el.appendChild(umItem("Rôles", { sub: true, off: no(p.roles, "Gérer les rôles"), onClick: (e) => subMenu(e.currentTarget, rolesMenu(m)) }));
-  el.appendChild(umItem("Déplacer vers", { sub: true, off: no(p.move, "Déplacer des membres"), onClick: (e) => subMenu(e.currentTarget, moveMenu(m)) }));
-  el.appendChild(umSep());
-  el.appendChild(umItem("Rendre muet sur le serveur", {
-    danger: true, check: !!(info && info.serverMute), off: no(p.mute, "Rendre les membres muets"),
-    onClick: async () => { await umRun({ action: "mute", target: id, on: !info.serverMute }, info.serverMute ? `${m.name} peut reparler` : `${m.name} est muet sur le serveur`); closeUserMenu(); },
-  }));
-  el.appendChild(umItem("Mettre en sourdine sur le serveur", {
-    danger: true, check: !!(info && info.serverDeaf), off: no(p.deaf, "Mettre en sourdine"),
-    onClick: async () => { await umRun({ action: "deaf", target: id, on: !info.serverDeaf }, info.serverDeaf ? `${m.name} entend de nouveau` : `${m.name} est en sourdine sur le serveur`); closeUserMenu(); },
-  }));
-  if (!isMe) el.appendChild(umItem("Déconnecter du vocal", {
-    danger: true, off: no(p.move, "Déplacer des membres"),
-    onClick: async () => { await umRun({ action: "disconnect", target: id }, `${m.name} a été déconnecté du vocal`); closeUserMenu(); },
-  }));
-  el.appendChild(umSep());
-  if (!isMe) el.append(
-    umItem("Ajouter en ami", { ext: true, off: noDiscord, onClick: prof }),
-    umItem("Bloquer", { ext: true, danger: true, off: noDiscord, onClick: prof }),
-  );
-  el.appendChild(umItem("Copier l'identifiant", { off: noDiscord, onClick: () => { window.studio.voice.copy(id); showToast("Identifiant copié"); closeUserMenu(); } }));
+  if (info && !info.error && (p.nick || p.roles || p.move || p.mute || p.deaf)) {
+    el.appendChild(umSep());
+    if (p.nick) el.appendChild(umItem("Changer le pseudo", { onClick: () => nickEditor(m) }));
+    if (p.roles) el.appendChild(umItem("Rôles", { sub: true, onClick: (e) => subMenu(e.currentTarget, rolesMenu(m)) }));
+    if (p.move) el.appendChild(umItem("Déplacer vers", { sub: true, onClick: (e) => subMenu(e.currentTarget, moveMenu(m)) }));
+    if (p.mute) el.appendChild(umItem("Rendre muet sur le serveur", {
+      danger: true, check: !!info.serverMute,
+      onClick: async () => { await umRun({ action: "mute", target: id, on: !info.serverMute }, info.serverMute ? `${m.name} peut reparler` : `${m.name} est muet sur le serveur`); closeUserMenu(); },
+    }));
+    if (p.deaf) el.appendChild(umItem("Mettre en sourdine sur le serveur", {
+      danger: true, check: !!info.serverDeaf,
+      onClick: async () => { await umRun({ action: "deaf", target: id, on: !info.serverDeaf }, info.serverDeaf ? `${m.name} entend de nouveau` : `${m.name} est en sourdine sur le serveur`); closeUserMenu(); },
+    }));
+    if (p.move && !isMe) el.appendChild(umItem("Déconnecter du vocal", {
+      danger: true,
+      onClick: async () => { await umRun({ action: "disconnect", target: id }, `${m.name} a été déconnecté du vocal`); closeUserMenu(); },
+    }));
+  }
 }
 
 function subMenu(anchor, sub) {

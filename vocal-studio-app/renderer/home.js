@@ -204,6 +204,14 @@ function drawPeople() {
         row.append(h("span", "hm-join", "Rejoindre"));
         row.onclick = () => joinVoice(v.channelId, v.guildId, v.name);
       }
+      // Inviter dans ton vocal un ami qui a Hush ouvert et n'y est pas déjà
+      const here = state.channel && !state.channel.call ? state.channel.id : null;
+      if (here && p.online && (!v || v.channelId !== here)) {
+        const inv = h("button", "ghost small fr-invite", "Inviter");
+        inv.title = `Inviter ${p.name} dans ton vocal`;
+        inv.onclick = (e) => { e.stopPropagation(); inviteFriend(p); };
+        row.append(inv);
+      }
       const del = h("button", "wb fr-del", "×");
       del.title = `Retirer ${p.name} de mes amis`;
       del.setAttribute("aria-label", del.title);
@@ -262,15 +270,36 @@ async function friendOp(op, arg) {
     // Un ami vient d'arriver en vocal : petit message, où qu'on soit dans Hush
     const before = new Map(((Home.friends && Home.friends.friends) || []).map((p) => [p.id, p.voice]));
     if (Home.friends) for (const p of r.data.friends) if (p.voice && !p.voice.call && !before.get(p.id) && before.has(p.id)) showToast(`${p.name} est en vocal dans ${p.voice.name}`);
+    const hadList = !!Home.friends;
     Home.friends = r.data; Home.frError = null;
     if (op === "add") showToast("Demande envoyée.");
+    if (window.notifOnFriends) notifOnFriends(hadList ? before : null, r.data);
   }
   if (!$("#home").hidden) drawHome();
 }
 window.studio.friends.onChanged(() => { if (!MINI) friendOp("list"); });
+// Le code ami dans ce qu'on a collé : « Mon code ami : AB12CD », un lien, des espaces… on retrouve les 6 caractères
+function pickFriendCode(text) {
+  const words = String(text || "").toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  const code = words.filter((w) => /^[A-HJ-NP-Z2-9]{6}$/.test(w)).pop();
+  if (code) return code;
+  const id = words.find((w) => /^\d{15,22}$/.test(w)); // ou l'identifiant Discord de la personne
+  return id || words.join("").slice(0, 6);
+}
+$("#frInput").addEventListener("paste", (e) => {
+  const t = (e.clipboardData || window.clipboardData).getData("text");
+  if (!t) return;
+  e.preventDefault();
+  $("#frInput").value = pickFriendCode(t);
+});
+$("#frPaste").onclick = async () => {
+  const t = await window.studio.voice.paste();
+  $("#frInput").value = pickFriendCode(t);
+  $("#frInput").focus();
+};
 $("#frAdd").onsubmit = (e) => {
   e.preventDefault();
-  const v = $("#frInput").value.trim();
+  const v = pickFriendCode($("#frInput").value);
   if (!v) return;
   $("#frInput").value = "";
   friendOp("add", v);

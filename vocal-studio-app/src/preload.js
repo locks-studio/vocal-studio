@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld("studio", {
     openChannel: (g, c) => ipcRenderer.invoke("discord:channel", g, c),
     openProfile: (id) => ipcRenderer.invoke("discord:user", id),
     copy: (text) => ipcRenderer.invoke("clip:write", text),
+    paste: () => ipcRenderer.invoke("clip:read"),
     onState: (fn) => ipcRenderer.on("voice:state", (_e, s) => fn(s)),
   },
   music: {
@@ -80,6 +81,7 @@ contextBridge.exposeInMainWorld("studio", {
     op: (op, arg) => ipcRenderer.invoke("friends:op", op, arg),
     presence: (voice) => ipcRenderer.send("friends:presence", voice),
     onChanged: (fn) => ipcRenderer.on("friends:changed", () => fn()),
+    onInvite: (fn) => ipcRenderer.on("friends:invite", (_e, inv) => fn(inv)),
   },
   chat: {
     history: () => ipcRenderer.invoke("chat:history"),
