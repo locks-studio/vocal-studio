@@ -18,6 +18,7 @@ if (!process.argv.includes("--sans-controles")) {
 }
 
 const root = path.join(__dirname, "..");
+const privateKey = require("../src/private-key");
 const cfg = JSON.parse(fs.readFileSync(path.join(root, "publish.json"), "utf8"));
 // --out=site-test : dossier de sortie (le test local n'écrase jamais le vrai dossier à envoyer)
 const outArg = process.argv.find((x) => x.startsWith("--out="));
@@ -58,12 +59,23 @@ const ship = (src, tag, rel) => {
   return `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(path.basename(src))}`;
 };
 
+// Logiciels privés (« private »: true dans publish.json) : absents du catalogue public. Chaque clé d'accès a son
+// dossier secret (prive-<empreinte de la clé>/) avec son propre catalogue et ses fichiers, jamais sur GitHub.
+// Les clés viennent du secret CLES_PRIVEES (« cle:app1,app2;cle2:app3 ») ou du fichier local cles-privees.env
+// (jamais sur GitHub). Sans clé, un logiciel privé n'est publié nulle part.
+let keysTxt = process.env.CLES_PRIVEES || "";
+const keysFile = path.join(root, "cles-privees.env");
+if (!keysTxt && fs.existsSync(keysFile)) keysTxt = (/^\s*CLES_PRIVEES\s*=\s*(.*)$/m.exec(fs.readFileSync(keysFile, "utf8")) || [])[1] || "";
+const privateKeys = testChannel ? [] : privateKey.parseKeys(keysTxt.replace(/^["']|["']$/g, ""));
+
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 const catalog = { generatedAt: new Date().toISOString(), apps: [] };
 const report = [];
 
+const privateEntries = new Map(); // id → entrée (fichiers rangés à part, pour chaque dossier secret)
 for (const a of cfg.apps) {
+  if (a.private) { privateEntries.set(a.id, a); continue; }
   const version = versionArg ? versionArg.slice(10) : JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
   const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: testNotes.length ? testNotes : a.notes || [], usageDir: a.usageDir, downloads: {} };
   if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(a.id, `icon-${sha(abs(a.icon)).slice(0, 8)}${path.extname(a.icon)}`)); // nom lié au contenu : le cache du CDN ne peut pas servir une ancienne icône
@@ -76,6 +88,30 @@ for (const a of cfg.apps) {
   }
   catalog.apps.push(entry);
 }
+
+// Les logiciels privés, dans le dossier secret de chaque clé (icône et fichiers copiés sur le site, pas sur GitHub)
+for (const k of privateKeys) {
+  const folder = privateKey.folderFor(k.key);
+  const priv = { generatedAt: catalog.generatedAt, apps: [] };
+  for (const id of k.apps) {
+    const a = privateEntries.get(id);
+    if (!a) { report.push(`  Clé privée : logiciel « ${id} » inconnu (pas de « private »: true dans publish.json)`); continue; }
+    const version = JSON.parse(fs.readFileSync(abs(a.package), "utf8")).version;
+    const entry = { id: a.id, name: a.name, kind: a.kind, tagline: a.tagline, description: a.description, accent: a.accent, version, notes: a.notes || [], usageDir: a.usageDir, downloads: {} };
+    if (a.icon && fs.existsSync(abs(a.icon))) entry.icon = copy(abs(a.icon), path.join(folder, a.id, `icon-${sha(abs(a.icon)).slice(0, 8)}${path.extname(a.icon)}`));
+    for (const [plat, art] of Object.entries(a.artifacts)) {
+      const f = abs(art.file.replace("{version}", version));
+      if (!fs.existsSync(f)) { report.push(`  ${a.name} (privé) ${plat} : absent (sauté)`); continue; }
+      entry.downloads[plat] = { url: copy(f, path.join(folder, a.id, version, path.basename(f))), size: fs.statSync(f).size, sha256: sha(f), exec: art.exec };
+      report.push(`  ${a.name} (privé) ${plat} : ok (${(fs.statSync(f).size / 1e6).toFixed(0)} Mo)`);
+    }
+    priv.apps.push(entry);
+  }
+  fs.mkdirSync(path.join(out, folder), { recursive: true });
+  fs.writeFileSync(path.join(out, folder, "catalog.json"), JSON.stringify(priv, null, 2));
+  report.push(`  Clé privée (${k.apps.join(", ")}) : catalogue secret prêt`);
+}
+for (const id of privateEntries.keys()) if (!privateKeys.some((k) => k.apps.includes(id))) report.push(`  ${id} : privé, aucune clé d'accès fournie → pas publié`);
 
 // Le launcher lui-même : ses installeurs
 if (cfg.launcher && !testChannel) {

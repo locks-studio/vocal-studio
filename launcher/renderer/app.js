@@ -420,7 +420,7 @@ $("#testForm").onsubmit = async (e) => {
   const r = await L.test.join($("#testCode").value);
   if (r.error) { $("#testError").textContent = r.error; $("#testError").hidden = false; return; }
   $("#testCode").value = "";
-  toast("Tu reçois maintenant les versions de test.");
+  toast(r.private ? `Accès débloqué : ${(r.names || []).join(", ") || "logiciel privé"}` : "Tu reçois maintenant les versions de test.");
   load();
 };
 $("#testLeave").onclick = async () => { await L.test.leave(); toast("Retour à la version normale."); load(); };

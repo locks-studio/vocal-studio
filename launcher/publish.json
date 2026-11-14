@@ -60,6 +60,7 @@
     },
     {
       "id": "hush-studio",
+      "private": true,
       "name": "Hush Studio",
       "kind": "Montage de vocaux",
       "tagline": "Tu as oublié d'enregistrer ton vocal avec Hush ? Importe l'audio, Hush Studio recrée la scène et sort la vidéo.",

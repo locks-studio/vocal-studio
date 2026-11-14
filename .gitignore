@@ -11,3 +11,6 @@ reports.json
 
 # Identifiants FTP de publication (launcher/tools/publish-ftp.js)
 ftp.env
+
+# Clés d'accès privées de 1999 (launcher/tools/make-catalog.js) : jamais sur GitHub
+cles-privees.env
