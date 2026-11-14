@@ -60,11 +60,23 @@ cd launcher
 node tools/make-catalog.js
 ```
 
-Ça prépare `launcher/site/1999/` : les fichiers, le `catalog.json` avec les empreintes, l'icône, et une **page de téléchargement** (`index.html`) avec un bouton par système.
+Ça prépare `launcher/site/1999/` : le `catalog.json` avec les empreintes, l'icône, et une **page de téléchargement** (`index.html`) avec un bouton par système. Un système dont le fichier manque (par exemple Mac pas encore construit) est simplement sauté : le launcher y affichera « Bientôt ».
 
-Envoie **tout le contenu** de `site/1999/` dans le dossier du sous-domaine `1999.organisationphantom.fr` sur Hostinger (Gestionnaire de fichiers, ou FTP avec FileZilla). Un système dont le fichier manque (par exemple Mac pas encore construit) est simplement sauté : le launcher y affichera « Bientôt ».
+**Les gros fichiers passent par GitHub.** Hush et les installeurs / mises à jour du launcher se téléchargent depuis les Releases du dépôt `publish.json` › `github.repo` (aujourd'hui `lrtdetrox-byte/vocal-studio`) : une release par version (`hush-v0.5.2`, `launcher-v0.5.1`, `test-hush-v…` pour le canal de test). `make-catalog.js` les range dans `site/github/`, et le catalogue pointe vers GitHub. Hostinger ne garde que le catalogue et le site.
 
-Pour une nouvelle version de Hush : augmente `version` dans `vocal-studio-app/package.json`, change les `notes` dans `publish.json`, refabrique, relance `make-catalog.js` et renvoie le dossier. Les launchers de tes amis proposeront **Mettre à jour** (ils relisent le catalogue toutes les 10 minutes et à chaque ouverture).
+- Ce dépôt doit être **public** : sinon les launchers reçoivent une erreur 404. Si le dépôt du code ne peut pas être public, crée un dépôt à part pour les releases et mets son nom dans `github.repo`.
+- Il faut `gh` (GitHub CLI) connecté à un compte qui peut écrire dans ce dépôt : `gh auth login`.
+- Pour revenir à l'ancien fonctionnement (tout sur Hostinger), retire `github` de `publish.json`.
+
+Puis publie :
+
+```bash
+npm run publier
+```
+
+Ça envoie d'abord les fichiers sur GitHub (seulement ceux qui manquent), vérifie que chaque lien marche sans compte, puis envoie le site et le catalogue en dernier par FTP. `node tools/publish-github.js --essai` montre ce qui partirait sur GitHub, sans rien envoyer.
+
+Pour une nouvelle version de Hush : augmente `version` dans `vocal-studio-app/package.json`, change les `notes` dans `publish.json`, refabrique, relance `make-catalog.js` puis `npm run publier`. Les launchers de tes amis proposeront **Mettre à jour** (ils relisent le catalogue toutes les 10 minutes et à chaque ouverture).
 
 Pour une nouvelle version du launcher : même chose avec `launcher/package.json` ; le launcher affiche alors un lien vers la page de téléchargement.
 
@@ -96,3 +108,4 @@ npx electron . --catalog=file:///C:/Users/.../Vocal%20Studio/launcher/site/1999/
 | `config.json` | Adresse du catalogue |
 | `publish.json` | Ce qui est publié : logiciels, notes, fichiers par système |
 | `tools/make-catalog.js` | Prépare le dossier à envoyer sur le site |
+| `tools/publish-github.js` | Envoie les gros fichiers sur les Releases GitHub (lancé par `npm run publier`) |

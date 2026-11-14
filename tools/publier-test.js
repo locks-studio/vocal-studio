@@ -29,6 +29,10 @@ else console.log("ELECTRON_LINUX absent : pas de version Linux dans ce test.");
 
 run(process.execPath, [path.join("tools", "make-catalog.js"), "--canal=test", `--version=${version}`, ...process.argv.slice(2).map((n) => `--note=${n}`)], LAUNCHER);
 
+// Les fichiers de Hush sur GitHub (release « test-hush-v… », marquée pré-version) : il ne reste que le catalogue à envoyer
+const testCat = fs.readdirSync(path.join(LAUNCHER, "site", "1999-test")).map((d) => path.join(LAUNCHER, "site", "1999-test", d, "catalog.json")).find((f) => fs.existsSync(f));
+run(process.execPath, [path.join("tools", "publish-github.js"), `--catalog=${testCat}`], LAUNCHER);
+
 // Une archive simple (le dossier test-<code>/), sans compression : ce sont déjà des zip
 const site = path.join(LAUNCHER, "site", "1999-test");
 const out = path.join(LAUNCHER, "site", "1999-test-a-envoyer.zip");
