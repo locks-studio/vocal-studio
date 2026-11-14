@@ -1,7 +1,9 @@
 node_modules/
 .env
 sessions.json
-.claude/
+# Dossier de Claude Code : seul settings.json est partagé (le hook de suivi à deux)
+.claude/*
+!.claude/settings.json
 dist/
 site/
 site-test/
@@ -11,3 +13,6 @@ reports.json
 
 # Identifiants FTP de publication (launcher/tools/publish-ftp.js)
 ftp.env
+
+# Journaux de construction
+*.log

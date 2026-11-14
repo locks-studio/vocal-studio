@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tools/suivi.js --court",
+            "timeout": 60,
+            "statusMessage": "Suivi du travail à deux…"
+          }
+        ]
+      }
+    ]
+  }
+}
