@@ -4,7 +4,7 @@
 // Le launcher fait le même calcul quand quelqu'un tape la clé dans « Code d'accès ».
 const crypto = require("crypto");
 
-// Majuscules, minuscules et espaces autour ne comptent pas : « GabinouniLocks018 » = « gabinounilocks018 »
+// Majuscules, minuscules et espaces autour ne comptent pas : « MaCle42 » = « macle42 »
 const normalize = (key) => String(key || "").trim().toLowerCase();
 const folderFor = (key) => "prive-" + crypto.createHash("sha256").update("1999-prive:" + normalize(key)).digest("hex").slice(0, 32);
 const isFolder = (f) => /^prive-[0-9a-f]{32}$/.test(String(f || ""));
