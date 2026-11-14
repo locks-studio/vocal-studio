@@ -9,6 +9,7 @@ const { Installer, PLATFORM } = require("./installer");
 const { Account } = require("./account");
 const { SelfUpdate } = require("./selfupdate");
 const shortcuts = require("./shortcuts");
+const privateKey = require("./private-key");
 // Raccourci « Hush » (et des prochains logiciels) : 1999 --lancer=hush ouvre le logiciel sans montrer le launcher,
 // vérifie les mises à jour en arrière-plan, puis se ferme
 const lancerArg = (argv) => { const a = argv.find((x) => x.startsWith("--lancer=")); return a ? a.slice(9).replace(/[^\w-]/g, "") : null; };
@@ -163,11 +164,26 @@ function fetchText(url, hops = 0) {
   });
 }
 
+// Logiciels privés (débloqués avec une clé d'accès) : leur catalogue est dans un dossier secret du site
+const privateUrl = (folder) => CATALOG_URL.replace(/catalog\.json$/, `${folder}/catalog.json`);
+const privateFolders = () => [].concat(settings.privateKeys || []).filter(privateKey.isFolder);
+async function fetchCatalog(url) {
+  const cat = JSON.parse(await fetchText(url));
+  if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue invalide");
+  return cat;
+}
+
 // Catalogue : en ligne si possible, sinon la dernière copie connue (le launcher marche hors ligne pour lancer)
 async function getCatalog() {
   try {
-    const cat = JSON.parse(await fetchText(catalogUrl()));
-    if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue invalide");
+    const cat = await fetchCatalog(catalogUrl());
+    // On ajoute les logiciels privés débloqués (un dossier injoignable est simplement ignoré cette fois-ci)
+    for (const folder of privateFolders()) {
+      try {
+        const priv = await fetchCatalog(privateUrl(folder));
+        for (const a of priv.apps) if (a && a.id && !cat.apps.some((x) => x.id === a.id)) cat.apps.push({ ...a, private: true });
+      } catch {}
+    }
     fs.writeFileSync(cacheFile(), JSON.stringify(cat));
     if (selfUpdate && !settings.testCode) selfUpdate.check(cat.launcher); // nouvelle version du launcher : téléchargée en arrière-plan
     return { catalog: cat, online: true };
@@ -294,14 +310,21 @@ ipcMain.handle("app:usage", (_e, entry) => {
   }
   return null;
 });
-// Rejoindre le canal de test : le code n'est gardé que si son catalogue existe vraiment
+// Code d'accès : d'abord une clé privée (débloque des logiciels), sinon le canal de test.
+// Le code n'est gardé que si son catalogue existe vraiment.
 ipcMain.handle("test:join", async (_e, raw) => {
+  if (privateKey.normalize(raw).length >= 4) {
+    const folder = privateKey.folderFor(raw);
+    try {
+      const priv = await fetchCatalog(privateUrl(folder));
+      settings.privateKeys = [...new Set([...privateFolders(), folder])];
+      saveSettings();
+      return { ok: true, private: true, names: priv.apps.map((a) => a.name).filter(Boolean) };
+    } catch {}
+  }
   const code = String(raw || "").trim().toLowerCase();
   if (!/^[a-z0-9]{4,40}$/.test(code)) return { error: "Ce code n'est pas valide." };
-  try {
-    const cat = JSON.parse(await fetchText(testUrl(code)));
-    if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue");
-  } catch { return { error: "Ce code n'est pas valide." }; }
+  try { await fetchCatalog(testUrl(code)); } catch { return { error: "Ce code n'est pas valide." }; }
   settings.testCode = code;
   saveSettings();
   return { ok: true };

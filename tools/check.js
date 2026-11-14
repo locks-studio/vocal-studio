@@ -18,7 +18,7 @@ const walk = (d, ok) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =
 });
 
 // 1. Tout le JavaScript se lit sans erreur de syntaxe
-for (const d of ["vocal-studio-app/src", "vocal-studio-app/renderer", "vocal-studio-bot/src", "launcher/src", "launcher/renderer", "launcher/tools", "launcher/website", "tools"]) {
+for (const d of ["vocal-studio-app/src", "vocal-studio-app/renderer", "hush-studio/src", "hush-studio/renderer", "hush-studio/test", "vocal-studio-bot/src", "launcher/src", "launcher/renderer", "launcher/tools", "launcher/website", "tools"]) {
   for (const f of walk(path.join(ROOT, d), (p) => p.endsWith(".js"))) {
     try { new vm.Script(fs.readFileSync(f, "utf8").replace(/^#!.*/, ""), { filename: f }); done++; }
     catch (e) { fail(`${rel(f)} : ${e.message}`); }
@@ -26,12 +26,12 @@ for (const d of ["vocal-studio-app/src", "vocal-studio-app/renderer", "vocal-stu
 }
 
 // 2. Les fichiers de réglages sont du JSON valide
-for (const f of ["vocal-studio-app/package.json", "vocal-studio-bot/package.json", "launcher/package.json", "launcher/publish.json", "launcher/config.json"]) {
+for (const f of ["vocal-studio-app/package.json", "hush-studio/package.json", "vocal-studio-bot/package.json", "launcher/package.json", "launcher/publish.json", "launcher/config.json"]) {
   try { JSON.parse(fs.readFileSync(path.join(ROOT, f), "utf8")); done++; } catch (e) { fail(`${f} : ${e.message}`); }
 }
 
 // 3. Chaque page charge des fichiers qui existent et qui ne sont pas vides
-const pages = ["vocal-studio-app/renderer/index.html", "launcher/renderer/index.html", "launcher/website/index.html"];
+const pages = ["vocal-studio-app/renderer/index.html", "hush-studio/renderer/index.html", "launcher/renderer/index.html", "launcher/website/index.html"];
 for (const page of pages) {
   const html = fs.readFileSync(path.join(ROOT, page), "utf8");
   for (const [, src] of html.matchAll(/(?:src|href)="([^"#:]+\.(?:js|css|png))"/g)) {
@@ -43,7 +43,7 @@ for (const page of pages) {
 }
 
 // 4. Chaque $("#identifiant") du code existe dans la page (ou est créé par le code)
-for (const [page, dir] of [["vocal-studio-app/renderer/index.html", "vocal-studio-app/renderer"], ["launcher/renderer/index.html", "launcher/renderer"]]) {
+for (const [page, dir] of [["vocal-studio-app/renderer/index.html", "vocal-studio-app/renderer"], ["hush-studio/renderer/index.html", "hush-studio/renderer"], ["launcher/renderer/index.html", "launcher/renderer"]]) {
   const html = fs.readFileSync(path.join(ROOT, page), "utf8");
   for (const f of walk(path.join(ROOT, dir), (p) => p.endsWith(".js"))) {
     const code = fs.readFileSync(f, "utf8");
@@ -79,7 +79,7 @@ if (fs.readFileSync(path.join(ROOT, "vocal-studio-app/renderer/i18n.js"), "utf8"
 done++;
 
 // 7 bis. Tests des modules
-for (const t of [...walk(path.join(ROOT, "vocal-studio-bot/test"), (p) => p.endsWith(".test.js")), ...walk(path.join(ROOT, "launcher/test"), (p) => p.endsWith(".test.js"))]) {
+for (const t of [...walk(path.join(ROOT, "vocal-studio-bot/test"), (p) => p.endsWith(".test.js")), ...walk(path.join(ROOT, "launcher/test"), (p) => p.endsWith(".test.js")), ...walk(path.join(ROOT, "hush-studio/test"), (p) => p.endsWith(".test.js"))]) {
   const r = spawnSync(process.execPath, [t], { encoding: "utf8" });
   if (r.status !== 0) fail(`${rel(t)} : ${(r.stderr || r.stdout).trim().split("\n").slice(0, 6).join(" | ")}`);
   done++;

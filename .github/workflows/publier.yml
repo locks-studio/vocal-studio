@@ -7,6 +7,8 @@
 # Pour publier : augmente la version (et les notes dans launcher/publish.json), puis push sur main.
 # « Run workflow » (onglet Actions) republie le catalogue même sans nouvelle version (ex. notes corrigées).
 # Secrets du dépôt à créer (Settings › Secrets and variables › Actions) : FTP_HOST, FTP_USER, FTP_PASS.
+# Logiciels privés (Hush Studio) : secret CLES_PRIVEES = « cle:hush-studio » (plusieurs clés : séparées par « ; »).
+# Leurs fichiers vont dans le dossier secret de chaque clé sur Hostinger, jamais sur les Releases GitHub (publiques).
 name: Publier
 
 on:
@@ -34,26 +36,40 @@ jobs:
       launcher: ${{ steps.v.outputs.launcher }}
       build_hush: ${{ steps.v.outputs.build_hush }}
       build_launcher: ${{ steps.v.outputs.build_launcher }}
+      build_studio: ${{ steps.v.outputs.build_studio }}
       publish: ${{ steps.v.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
       - id: v
+        env:
+          CLES_PRIVEES: ${{ secrets.CLES_PRIVEES }}
         run: |
           H=$(node -p "require('./vocal-studio-app/package.json').version")
+          S=$(node -p "require('./hush-studio/package.json').version")
+          # Hush Studio (privé) : déjà en ligne dans son dossier secret à cette version ?
+          BS=false
+          F=$(node -e "const k=require('./launcher/src/private-key');const c=k.parseKeys(process.env.CLES_PRIVEES).find((x)=>x.apps.includes('hush-studio'));console.log(c?k.folderFor(c.key):'')")
+          if [ -n "$F" ]; then
+            BASE=$(node -p "require('./launcher/publish.json').baseUrl")
+            ON=$( (curl -fsS "$BASE/$F/catalog.json" 2>/dev/null || true) | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log((JSON.parse(s).apps.find(a=>a.id==='hush-studio')||{}).version||'')}catch{console.log('')}})")
+            [ "$ON" = "$S" ] || BS=true
+          fi
           L=$(node -p "require('./launcher/package.json').version")
           has() { gh release view "$1" -R "$REPO" >/dev/null 2>&1 && echo false || echo true; }
           BH=$(has "hush-v$H"); BL=$(has "launcher-v$L")
           P=false
-          if [ "$BH" = true ] || [ "$BL" = true ] || [ "${{ github.event_name }}" = workflow_dispatch ]; then P=true; fi
+          if [ "$BH" = true ] || [ "$BL" = true ] || [ "$BS" = true ] || [ "${{ github.event_name }}" = workflow_dispatch ]; then P=true; fi
           echo "hush=$H" >> "$GITHUB_OUTPUT"; echo "launcher=$L" >> "$GITHUB_OUTPUT"
           echo "build_hush=$BH" >> "$GITHUB_OUTPUT"; echo "build_launcher=$BL" >> "$GITHUB_OUTPUT"; echo "publish=$P" >> "$GITHUB_OUTPUT"
+          echo "build_studio=$BS" >> "$GITHUB_OUTPUT"
+          echo "Hush Studio $S (privé) : $([ -z "$F" ] && echo 'pas de clé CLES_PRIVEES, non publié' || ([ "$BS" = true ] && echo 'nouvelle version, à compiler' || echo 'déjà publiée'))" >> "$GITHUB_STEP_SUMMARY"
           echo "Hush $H : $([ "$BH" = true ] && echo 'nouvelle version, à compiler' || echo 'déjà publiée')" >> "$GITHUB_STEP_SUMMARY"
           echo "1999 $L : $([ "$BL" = true ] && echo 'nouvelle version, à compiler' || echo 'déjà publiée')" >> "$GITHUB_STEP_SUMMARY"
           [ "$P" = true ] || echo "Rien de nouveau : pas de publication." >> "$GITHUB_STEP_SUMMARY"
 
   build:
     needs: plan
-    if: needs.plan.outputs.build_hush == 'true' || needs.plan.outputs.build_launcher == 'true'
+    if: needs.plan.outputs.build_hush == 'true' || needs.plan.outputs.build_launcher == 'true' || needs.plan.outputs.build_studio == 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -80,6 +96,20 @@ jobs:
           npm ci
           npx electron-builder --linux zip --x64 --publish never
 
+      - name: Hush Studio (Windows)
+        if: needs.plan.outputs.build_studio == 'true' && runner.os == 'Windows'
+        working-directory: hush-studio
+        run: |
+          npm ci
+          npx electron-builder --win zip --x64 --publish never
+
+      - name: Hush Studio (Linux)
+        if: needs.plan.outputs.build_studio == 'true' && runner.os == 'Linux'
+        working-directory: hush-studio
+        run: |
+          npm ci
+          npx electron-builder --linux zip --x64 --publish never
+
       - name: 1999 (Windows)
         if: needs.plan.outputs.build_launcher == 'true' && runner.os == 'Windows'
         working-directory: launcher
@@ -102,6 +132,7 @@ jobs:
           retention-days: 3
           path: |
             vocal-studio-app/dist/Hush-*.zip
+            hush-studio/dist/Hush-Studio-*.zip
             launcher/dist/1999-Setup-*.exe
             launcher/dist/1999-Setup-*.tar.gz
 
@@ -133,7 +164,7 @@ jobs:
       # Une version déjà publiée : on reprend exactement ses fichiers (mêmes empreintes, rien n'est renvoyé)
       - name: Fichiers déjà publiés
         run: |
-          mkdir -p vocal-studio-app/dist launcher/dist
+          mkdir -p vocal-studio-app/dist launcher/dist hush-studio/dist
           if [ "${{ needs.plan.outputs.build_hush }}" = false ]; then
             gh release download "hush-v${{ needs.plan.outputs.hush }}" -R "$REPO" -D vocal-studio-app/dist --clobber
           fi
@@ -142,8 +173,28 @@ jobs:
           fi
           ls -la vocal-studio-app/dist launcher/dist
 
+      # Hush Studio déjà en ligne à cette version : on reprend ses fichiers dans son dossier secret
+      - name: Hush Studio déjà publié
+        if: needs.plan.outputs.build_studio == 'false'
+        env:
+          CLES_PRIVEES: ${{ secrets.CLES_PRIVEES }}
+        run: |
+          node -e "
+            const k=require('./launcher/src/private-key');const c=k.parseKeys(process.env.CLES_PRIVEES).find((x)=>x.apps.includes('hush-studio'));
+            if(!c)process.exit(0);
+            const base=require('./launcher/publish.json').baseUrl;
+            fetch(base+'/'+k.folderFor(c.key)+'/catalog.json').then(r=>r.json()).then(cat=>{
+              const a=cat.apps.find(x=>x.id==='hush-studio');
+              for(const d of Object.values(a?a.downloads:{}))console.log(d.url);
+            });" > studio-urls.txt
+          while read -r u; do [ -n "$u" ] && curl -fsSL "$u" -o "hush-studio/dist/$(basename "$u")"; done < studio-urls.txt
+          rm -f studio-urls.txt
+          ls -la hush-studio/dist
+
       - name: Catalogue
         working-directory: launcher
+        env:
+          CLES_PRIVEES: ${{ secrets.CLES_PRIVEES }}
         run: xvfb-run -a node tools/make-catalog.js
 
       - name: GitHub puis Hostinger
