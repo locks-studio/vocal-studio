@@ -493,7 +493,8 @@
         <div class="tab-panel" data-tab="overlay" role="tabpanel">
           <h4 class="sec">Overlay en jeu</h4>
           <div class="group">
-            <div class="row"><span>Overlay</span><button class="ghost" id="setMini">Ouvrir</button></div>
+            <div class="row"><span>Overlay</span><span><button class="ghost" id="ovEdit" hidden>Déplacer</button> <button class="ghost" id="setMini">Ouvrir</button></span></div>
+            <p class="hint" id="ovEditHint" hidden>Fais glisser l'overlay où tu veux, même sur un autre écran, et change sa taille avec la molette. Échap, clic droit ou « Terminé » pour finir.</p>
             <p class="hint">Toujours au premier plan, et la souris passe à travers : il ne gêne jamais quand tu joues. Ctrl+Maj+H l'affiche ou le cache, même en jeu. Un jeu en plein écran exclusif le recouvre : mets le jeu en « fenêtré sans bordure ».</p>
           </div>
           <div class="group linux-warn" id="linuxWarn" hidden>
@@ -510,9 +511,9 @@
               <button data-v="bl" title="En bas à gauche" aria-label="En bas à gauche"></button><button data-v="bc" title="En bas au centre" aria-label="En bas au centre"></button><button data-v="br" title="En bas à droite" aria-label="En bas à droite"></button>
             </div>
             <div id="ovXRow"><div class="label"><label for="ovX">Écart avec le bord (côté)</label><output id="ovXOut"></output></div>
-            <input type="range" id="ovX" min="0" max="800" step="2"></div>
+            <input type="range" id="ovX" min="0" max="2000" step="2"></div>
             <div id="ovYRow"><div class="label"><label for="ovY">Écart avec le bord (haut ou bas)</label><output id="ovYOut"></output></div>
-            <input type="range" id="ovY" min="0" max="800" step="2"></div>
+            <input type="range" id="ovY" min="0" max="2000" step="2"></div>
             <div class="label"><label for="ovW">Largeur</label><output id="ovWOut"></output></div>
             <input type="range" id="ovW" min="120" max="1200" step="10">
             <div class="label"><label for="ovH">Hauteur</label><output id="ovHOut"></output></div>

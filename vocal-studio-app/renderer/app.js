@@ -2352,6 +2352,25 @@ $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
 
+/* ——— Déplacer l'overlay à la souris : glisser pour la place, molette pour la taille ——— */
+if (!MINI) {
+  const setEdit = (on) => {
+    $("#ovEdit").textContent = on ? "Terminé" : "Déplacer";
+    $("#ovEdit").classList.toggle("on", on);
+    $("#ovEditHint").hidden = !on;
+  };
+  const showEdit = (open) => { $("#ovEdit").hidden = !open; if (!open) setEdit(false); };
+  $("#ovEdit").onclick = async () => setEdit(await window.studio.win.overlayEdit(!$("#ovEdit").classList.contains("on")));
+  window.studio.win.onMini(showEdit);
+  new MutationObserver(() => showEdit($("#miniBtn").classList.contains("on"))).observe($("#miniBtn"), { attributes: true, attributeFilter: ["class"] });
+  window.studio.win.onOverlayEdit(setEdit);
+  // L'overlay a été déplacé ou agrandi à la souris : on garde sa nouvelle place (coin haut gauche + écart)
+  window.studio.win.onOverlayMoved((p) => {
+    S.ov = { ...S.ov, pos: p.pos, x: p.x, y: p.y, w: p.w, h: p.h, screen: p.screen ?? S.ov.screen };
+    apply();
+  });
+}
+
 /* ——— Panneau Overlay : emplacement et affichage ——— */
 const OV_SWITCHES = { ovNames: "names", ovAnim: "anim", ovOnlyTalk: "onlyTalk", ovHideMuted: "hideMuted" };
 const OV_SEGS = { ovPos: "pos", ovLayout: "layout", ovRing: "ring" };
@@ -2412,6 +2431,8 @@ window-rule {
     focus-ring { off; }
     border { off; }
     shadow { off; }
+    // Pas de flou derrière l'overlay, même si une autre règle floute toutes les fenêtres (niri 26.04 ou plus récent)
+    background-effect { blur false; }
 }`;
     },
     tip: "Avec cette règle, l'overlay flotte au-dessus des fenêtres, et Hush le fait suivre sur chaque bureau où tu vas. Pour le déplacer : Mod + glisser.",
