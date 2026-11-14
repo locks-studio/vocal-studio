@@ -842,7 +842,7 @@ function renderFeature(f) {
   } else {
     // Flux d'un autre membre : Discord ne le donne à aucune appli, on montre son avatar flouté
     v.srcObject = null; v.hidden = true; ph.hidden = false;
-    $("#featurePhImg").src = (t && (t.data.avatarAnim || t.data.avatar)) || "assets/discord-logo.png";
+    $("#featurePhImg").src = (t && t.data.avatar) || "assets/discord-logo.png"; // image fixe : un GIF ne bouge que quand on parle
     $("#featurePhText").textContent = f.kind === "remote-stream" ? `${name} est en live · à regarder dans Discord` : `${name} a allumé sa caméra · visible dans Discord`;
   }
   // Le partage affiché en grand remplace la petite fenêtre flottante
