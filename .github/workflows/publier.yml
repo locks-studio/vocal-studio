@@ -1,0 +1,162 @@
+# Publie Hush et le launcher 1999 tout seul, à chaque push sur main qui change de version.
+#   1. Regarde les versions de vocal-studio-app/package.json et launcher/package.json.
+#      Si leur release GitHub existe déjà (hush-v0.5.2, launcher-v0.5.1…), rien n'est publié.
+#   2. Compile ce qui est nouveau, pour Windows et Linux (Mac : pas pour le moment).
+#   3. Prépare le catalogue (avec les contrôles), envoie les fichiers sur les Releases GitHub,
+#      puis le site et catalog.json sur Hostinger par FTP.
+# Pour publier : augmente la version (et les notes dans launcher/publish.json), puis push sur main.
+# « Run workflow » (onglet Actions) republie le catalogue même sans nouvelle version (ex. notes corrigées).
+# Secrets du dépôt à créer (Settings › Secrets and variables › Actions) : FTP_HOST, FTP_USER, FTP_PASS.
+name: Publier
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Une seule publication à la fois, dans l'ordre des push
+concurrency:
+  group: publier
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  REPO: ${{ github.repository }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      hush: ${{ steps.v.outputs.hush }}
+      launcher: ${{ steps.v.outputs.launcher }}
+      build_hush: ${{ steps.v.outputs.build_hush }}
+      build_launcher: ${{ steps.v.outputs.build_launcher }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          H=$(node -p "require('./vocal-studio-app/package.json').version")
+          L=$(node -p "require('./launcher/package.json').version")
+          has() { gh release view "$1" -R "$REPO" >/dev/null 2>&1 && echo false || echo true; }
+          BH=$(has "hush-v$H"); BL=$(has "launcher-v$L")
+          P=false
+          if [ "$BH" = true ] || [ "$BL" = true ] || [ "${{ github.event_name }}" = workflow_dispatch ]; then P=true; fi
+          echo "hush=$H" >> "$GITHUB_OUTPUT"; echo "launcher=$L" >> "$GITHUB_OUTPUT"
+          echo "build_hush=$BH" >> "$GITHUB_OUTPUT"; echo "build_launcher=$BL" >> "$GITHUB_OUTPUT"; echo "publish=$P" >> "$GITHUB_OUTPUT"
+          echo "Hush $H : $([ "$BH" = true ] && echo 'nouvelle version, à compiler' || echo 'déjà publiée')" >> "$GITHUB_STEP_SUMMARY"
+          echo "1999 $L : $([ "$BL" = true ] && echo 'nouvelle version, à compiler' || echo 'déjà publiée')" >> "$GITHUB_STEP_SUMMARY"
+          [ "$P" = true ] || echo "Rien de nouveau : pas de publication." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.build_hush == 'true' || needs.plan.outputs.build_launcher == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Hush (Windows)
+        if: needs.plan.outputs.build_hush == 'true' && runner.os == 'Windows'
+        working-directory: vocal-studio-app
+        run: |
+          npm ci
+          npx electron-builder --win zip --x64 --publish never
+
+      - name: Hush (Linux)
+        if: needs.plan.outputs.build_hush == 'true' && runner.os == 'Linux'
+        working-directory: vocal-studio-app
+        run: |
+          npm ci
+          npx electron-builder --linux zip --x64 --publish never
+
+      - name: 1999 (Windows)
+        if: needs.plan.outputs.build_launcher == 'true' && runner.os == 'Windows'
+        working-directory: launcher
+        run: |
+          npm ci
+          npx electron-builder --win nsis --x64 --publish never
+
+      - name: 1999 (Linux)
+        if: needs.plan.outputs.build_launcher == 'true' && runner.os == 'Linux'
+        working-directory: launcher
+        run: |
+          npm ci
+          npx electron-builder --linux dir --x64 --publish never
+          python3 tools/pack-linux.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builds-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            vocal-studio-app/dist/Hush-*.zip
+            launcher/dist/1999-Setup-*.exe
+            launcher/dist/1999-Setup-*.tar.gz
+
+  publish:
+    needs: [plan, build]
+    if: always() && needs.plan.outputs.publish == 'true' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Pour les contrôles de make-catalog.js (il ouvre Hush et 1999 pour de vrai)
+      - name: Dépendances
+        run: |
+          (cd vocal-studio-app && npm ci)
+          (cd launcher && npm ci)
+
+      - name: Fichiers compilés
+        if: needs.build.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: builds-*
+          merge-multiple: true
+          path: .
+
+      # Une version déjà publiée : on reprend exactement ses fichiers (mêmes empreintes, rien n'est renvoyé)
+      - name: Fichiers déjà publiés
+        run: |
+          mkdir -p vocal-studio-app/dist launcher/dist
+          if [ "${{ needs.plan.outputs.build_hush }}" = false ]; then
+            gh release download "hush-v${{ needs.plan.outputs.hush }}" -R "$REPO" -D vocal-studio-app/dist --clobber
+          fi
+          if [ "${{ needs.plan.outputs.build_launcher }}" = false ]; then
+            gh release download "launcher-v${{ needs.plan.outputs.launcher }}" -R "$REPO" -D launcher/dist --clobber
+          fi
+          ls -la vocal-studio-app/dist launcher/dist
+
+      - name: Catalogue
+        working-directory: launcher
+        run: xvfb-run -a node tools/make-catalog.js
+
+      - name: GitHub puis Hostinger
+        working-directory: launcher
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: |
+          if [ -z "$FTP_HOST" ] || [ -z "$FTP_USER" ] || [ -z "$FTP_PASS" ]; then
+            echo "Secrets FTP_HOST, FTP_USER et FTP_PASS manquants (Settings › Secrets and variables › Actions)."; exit 1
+          fi
+          umask 077
+          printf 'FTP_HOST=%s\nFTP_USER=%s\nFTP_PASS=%s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASS" > ftp.env
+          node tools/publish-ftp.js
+          rm -f ftp.env
