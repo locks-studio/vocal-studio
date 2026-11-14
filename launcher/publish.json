@@ -1,5 +1,8 @@
 {
   "baseUrl": "https://1999.organisationphantom.fr",
+  "github": {
+    "repo": "lrtdetrox-byte/vocal-studio"
+  },
   "launcher": {
     "package": "package.json",
     "page": "https://1999.organisationphantom.fr/",
@@ -32,13 +35,9 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Paramètres façon Discord : catégories à gauche, barre de recherche (Ctrl+F), et beaucoup plus fluides",
-        "Préréglages complets : ils gardent tout le visuel, couleurs comprises",
-        "Nouvel anneau « Avatar de chacun » : un dégradé aux couleurs de la photo de chaque personne",
-        "Nouveau fond « Double dégradé » avec deux couleurs au choix",
-        "Image de fond nette, avec un zoom réglable",
-        "Arrivées et départs à la couleur de l'anneau ; « Live » devient « Stream » ; vue stream retirée",
-        "Couleur d'accent dans le nouvel onglet Thème ; pseudos de démo : Locks, Imo, KCM…"
+        "Linux : l'overlay reste au premier plan, même devant un jeu en plein écran",
+        "Linux : bouton Déplacer pour placer l'overlay où tu veux",
+        "Linux / niri : l'overlay suit le bon écran en multi-écran"
       ],
       "artifacts": {
         "win32-x64": {

@@ -8,6 +8,11 @@ const https = require("https");
 const { Installer, PLATFORM } = require("./installer");
 const { Account } = require("./account");
 const { SelfUpdate } = require("./selfupdate");
+const shortcuts = require("./shortcuts");
+// Raccourci « Hush » (et des prochains logiciels) : 1999 --lancer=hush ouvre le logiciel sans montrer le launcher,
+// vérifie les mises à jour en arrière-plan, puis se ferme
+const lancerArg = (argv) => { const a = argv.find((x) => x.startsWith("--lancer=")); return a ? a.slice(9).replace(/[^\w-]/g, "") : null; };
+const startLancer = lancerArg(process.argv);
 
 const CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.json"), "utf8"));
 // Pour tester sans le site : --catalog=file:///C:/chemin/catalog.json (ou la variable CATALOG_1999)
@@ -185,7 +190,7 @@ function windowGlass(mode) {
 function createWindow(prev) {
   win = new BrowserWindow({
     ...(prev ? prev.getBounds() : { width: 1180, height: 720 }), minWidth: 900, minHeight: 560,
-    frame: false, title: "1999", ...windowGlass(settings.glass), show: !prev,
+    frame: false, title: "1999", ...windowGlass(settings.glass), show: !prev && !startLancer,
     icon: path.join(__dirname, "..", "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
@@ -225,8 +230,41 @@ app.whenReady().then(() => {
     } catch { cb({}); }
   });
   createWindow();
+  // Raccourcis : le launcher (Linux) et les logiciels déjà installés (mis à jour à chaque démarrage)
+  shortcuts.forLauncher();
+  for (const id of Object.keys(installer.state)) shortcuts.forApp(appEntry(id), installer.installed(id));
+  if (startLancer) {
+    if (launchApp(startLancer)) quietExit();
+    else showWin(); // pas encore installé : on montre le launcher
+  }
 });
-app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+// Nom affiché d'un logiciel du catalogue (pour ses raccourcis), même hors ligne
+function appEntry(id) {
+  try { const c = JSON.parse(fs.readFileSync(cacheFile(), "utf8")); const a = (c.apps || []).find((x) => x.id === id); if (a) return a; } catch {}
+  return { id, name: id.charAt(0).toUpperCase() + id.slice(1) };
+}
+// Ouvre un logiciel installé (Hush reprend le compte du launcher). false s'il n'est pas installé.
+function launchApp(id) {
+  if (!installer.installed(id)) return false;
+  try { installer.launch(id, id === "hush" ? account.token() : null); return true; } catch (e) { logError("lancement " + id, e); return false; }
+}
+function showWin() { if (!win) return; quietUntil = 0; if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+app.on("second-instance", (_e, argv) => {
+  const id = lancerArg(argv);
+  if (id && launchApp(id)) return; // raccourci Hush pendant que 1999 tourne : on ouvre Hush, rien d'autre
+  showWin();
+});
+// Lancé par un raccourci : le launcher reste caché, fait ses mises à jour, puis se ferme quand il n'a plus rien à faire
+let quietUntil = 0;
+function quietExit() {
+  quietUntil = Date.now() + 30_000;
+  const tick = setInterval(() => {
+    if (!quietUntil) return clearInterval(tick); // quelqu'un a ouvert la fenêtre entre-temps
+    if (Date.now() < quietUntil || installer.busy.size || (selfUpdate && selfUpdate.state.status === "downloading")) return;
+    clearInterval(tick);
+    app.quit();
+  }, 5000);
+}
 app.on("window-all-closed", () => app.quit());
 // Une mise à jour du launcher est prête : elle s'installe à la fermeture, sans le relancer
 app.on("before-quit", () => { if (selfUpdate && selfUpdate.ready) selfUpdate.apply(false); });
@@ -244,6 +282,7 @@ ipcMain.handle("app:install", async (_e, entry) => {
   const a = catalog.apps.find((x) => x.id === entry.id);
   if (!a) throw new Error("Logiciel inconnu.");
   await installer.install(a, (step) => send("app:progress", { id: a.id, ...step }));
+  shortcuts.forApp(a, installer.installed(a.id)); // raccourci sur le bureau et dans le menu (créé ou mis à jour)
   return installer.state;
 });
 ipcMain.handle("app:cancel", (_e, id) => installer.cancel(id));
@@ -301,7 +340,7 @@ ipcMain.handle("settings:set", (_e, patch) => {
   applyCapture();
   return settings;
 });
-ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); return installer.state; });
+ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); shortcuts.removeApp(appEntry(id)); return installer.state; });
 ipcMain.handle("app:folder", (_e, id) => { const s = installer.installed(id); shell.openPath(s ? s.dir : installer.appsDir); });
 ipcMain.handle("open:url", (_e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(url); });
 ipcMain.handle("win:minimize", () => win.minimize());

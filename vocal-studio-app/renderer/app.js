@@ -1043,7 +1043,7 @@ addEventListener("keydown", (e) => {
 // ——— 3. Lecteur : on le déplace en le faisant glisser, on le redimensionne avec l'arc du coin en bas à droite ———
 // La position est gardée en distance au bord droit / au bas de la fenêtre (le lecteur reste collé à son coin).
 // Largeur prise par les paramètres rangés sur le côté : le lecteur se pousse pour rester visible
-const dockW = () => (document.body.classList.contains("panel-docked") ? Math.min(400, innerWidth) + 28 : 0);
+const dockW = () => (document.body.classList.contains("panel-docked") ? Math.min(560, innerWidth) + 28 : 0);
 function placeMusic() {
   const card = $("#music"), grab = $("#musicGrab");
   const D = dockW(), W = mainEl.clientWidth - D, H = mainEl.clientHeight;
@@ -2352,6 +2352,30 @@ $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
 
+/* ——— Linux (overlay layer-shell) : déplacer l'overlay à la souris, glisser pour la place, molette pour la taille.
+   Le bouton n'apparaît que dans ce mode : rien ne change sous Windows et Mac. ——— */
+if (!MINI) {
+  const setEdit = (on) => {
+    $("#ovEdit").textContent = on ? "Terminé" : "Déplacer";
+    $("#ovEdit").classList.toggle("on", on);
+    $("#ovEditHint").hidden = !on;
+  };
+  const showEdit = async (open) => {
+    const can = open && (await window.studio.win.overlayCanEdit());
+    $("#ovEditRow").hidden = !can;
+    if (!can) setEdit(false);
+  };
+  $("#ovEdit").onclick = async () => setEdit(await window.studio.win.overlayEdit(!$("#ovEdit").classList.contains("on")));
+  window.studio.win.onMini(showEdit);
+  new MutationObserver(() => showEdit($("#miniBtn").classList.contains("on"))).observe($("#miniBtn"), { attributes: true, attributeFilter: ["class"] });
+  window.studio.win.onOverlayEdit(setEdit);
+  // L'overlay a été déplacé ou agrandi à la souris : on garde sa nouvelle place (coin haut gauche + écart)
+  window.studio.win.onOverlayMoved((p) => {
+    S.ov = { ...S.ov, pos: p.pos, x: p.x, y: p.y, w: p.w, h: p.h, screen: p.screen ?? S.ov.screen };
+    apply();
+  });
+}
+
 /* ——— Panneau Overlay : emplacement et affichage ——— */
 const OV_SWITCHES = { ovNames: "names", ovAnim: "anim", ovOnlyTalk: "onlyTalk", ovHideMuted: "hideMuted" };
 const OV_SEGS = { ovPos: "pos", ovLayout: "layout", ovRing: "ring" };
@@ -2359,6 +2383,7 @@ const OV_RANGES = { ovX: ["x", (v) => v + " px"], ovY: ["y", (v) => v + " px"], 
 const setOv = (k, v) => { S.ov = { ...S.ov, [k]: v }; apply(); };
 let ovSent = "";
 function ovUi() {
+  if (window.linuxRuleRefresh) linuxRuleRefresh();
   if (MINI) return;
   const o = S.ov;
   for (const [id, k] of Object.entries(OV_SWITCHES)) $("#" + id).setAttribute("aria-checked", !!o[k]);
@@ -2393,16 +2418,29 @@ if (!MINI) {
 const LINUX_RULES = {
   niri: {
     file: "~/.config/niri/config.kdl",
-    text: `// Hush : l'overlay flotte au-dessus des autres fenêtres, sans fond ni bordure (transparence)
+    // Sous niri, c'est la règle qui place l'overlay : elle reprend le coin, l'écart et la taille de l'onglet Overlay
+    get text() {
+      const o = (S && S.ov) || {};
+      const rel = { tl: "top-left", tc: "top", tr: "top-right", ml: "left", mr: "right", bl: "bottom-left", bc: "bottom", br: "bottom-right" }[o.pos || "tl"];
+      const x = o.pos && o.pos[1] === "c" ? 0 : o.x ?? 24, y = o.pos && o.pos[0] === "m" ? 0 : o.y ?? 24;
+      return `// Hush : l'overlay flotte au-dessus des fenêtres, sans fond ni bordure, sans prendre le clavier
+// (place et taille reprises de Hush › Paramètres › Overlay en jeu : recopie la règle si tu les changes)
 window-rule {
     match title="^Hush · mini$"
     open-floating true
+    open-focused false${rel ? `
+    default-floating-position x=${x} y=${y} relative-to="${rel}"` : ""}
+    default-column-width { fixed ${o.w || 280}; }
+    default-window-height { fixed ${o.h || 420}; }
     draw-border-with-background false
     focus-ring { off; }
     border { off; }
     shadow { off; }
-}`,
-    tip: "Les fenêtres flottantes de niri restent au-dessus. Pour la déplacer : Mod + glisser.",
+    // Pas de flou derrière l'overlay, même si une autre règle floute toutes les fenêtres (niri 26.04 ou plus récent)
+    background-effect { blur false; }
+}`;
+    },
+    tip: "Avec cette règle, l'overlay flotte au-dessus des fenêtres, et Hush le fait suivre sur chaque bureau où tu vas. Pour le déplacer : Mod + glisser.",
   },
   hyprland: {
     file: "~/.config/hypr/hyprland.conf",
@@ -2433,12 +2471,21 @@ for_window [title="^Hush · mini$"] floating enable, sticky enable, border none`
     show(b.dataset.v);
     showToast("Changement pris en compte au prochain lancement (lancer-hush.sh)");
   }));
+  // X11 sur un bureau Wayland (niri, Hyprland, Sway passent alors par XWayland) : la transparence devient du noir.
+  // On le dit clairement, avec un bouton pour passer en Wayland.
+  const wl = ["niri", "hyprland", "sway"].includes(info.desktop);
+  if (wl && info.mode !== "wayland") {
+    $("#linuxWarn").hidden = false;
+    $("#linuxWarnBtn").onclick = async () => { await window.studio.linux.setMode("wayland"); show("wayland"); $("#linuxWarn").hidden = true; showToast("Wayland choisi : relance Hush pour l'appliquer"); };
+  }
   const rule = LINUX_RULES[info.desktop];
   if (rule) {
     $("#linuxRuleLabel").textContent = `Règle pour l'overlay · ${info.desktop} (à ajouter dans ${rule.file})`;
     $("#linuxRule").textContent = rule.text;
-    $("#linuxRuleHint").textContent = rule.tip + (info.mode !== "wayland" ? " Pour la transparence, choisis aussi l'affichage Wayland." : "");
-    $("#linuxCopy").onclick = () => { window.studio.voice.copy(rule.text); showToast("Règle copiée : colle-la dans " + rule.file); };
+    $("#linuxRuleHint").textContent = rule.tip;
+    $("#linuxCopy").onclick = () => { $("#linuxRule").textContent = rule.text; window.studio.voice.copy(rule.text); showToast("Règle copiée : colle-la dans " + rule.file); };
+    // La place de l'overlay change dans l'onglet Overlay : la règle affichée suit
+    window.linuxRuleRefresh = () => { $("#linuxRule").textContent = rule.text; };
   } else {
     $("#linuxRule").hidden = $("#linuxCopy").hidden = true;
     $("#linuxRuleLabel").textContent = `Bureau : ${info.desktop}`;

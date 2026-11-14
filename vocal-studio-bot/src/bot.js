@@ -31,6 +31,10 @@ class StudioBot extends EventEmitter {
     this.client.on(Events.VoiceStateUpdate, (oldS, newS) => this.onVoiceState(oldS, newS));
     this.client.on(Events.InteractionCreate, (i) => this.onInteraction(i).catch((e) => console.error("Commande :", e)));
     this.client.on(Events.MessageCreate, (m) => { if (m.channel && m.channel.isVoiceBased && m.channel.isVoiceBased()) this.emit("chat", m.channel.id, this.chatItem(m)); });
+    // Discord ajoute l'aperçu d'un lien GIF (Tenor…) juste après l'envoi : on renvoie le message mis à jour
+    this.client.on(Events.MessageUpdate, (_old, m) => {
+      if (!m.partial && m.channel && m.channel.isVoiceBased && m.channel.isVoiceBased() && m.embeds && m.embeds.length) this.emit("chat", m.channel.id, this.chatItem(m));
+    });
   }
 
   // « Message Content » doit être coché sur le portail Discord : sinon le bot démarre quand même, sans le texte du tchat
@@ -199,7 +203,24 @@ class StudioBot extends EventEmitter {
       avatar: m.author.displayAvatarURL({ size: 64, extension: "png", forceStatic: true }),
       text: m.content || "",
       images: [...m.attachments.values()].filter((a) => (a.contentType || "").startsWith("image/")).slice(0, 4).map((a) => a.url),
+      media: this.chatMedia(m),
     };
+  }
+  // Images, GIF et vidéos d'un message : pièces jointes, et GIF du sélecteur de Discord (Tenor, Giphy…).
+  // Les adresses passent par le proxy de Discord (media.discordapp.net) : Hush n'appelle aucun autre site.
+  chatMedia(m) {
+    const out = [];
+    for (const a of m.attachments.values()) {
+      const t = a.contentType || "";
+      if (t.startsWith("video/")) out.push({ kind: "video", url: a.proxyURL || a.url, w: a.width, h: a.height });
+      else if (t.startsWith("image/")) out.push({ kind: "image", url: a.proxyURL || a.url, w: a.width, h: a.height });
+    }
+    for (const e of m.embeds || []) {
+      const d = e.data || {};
+      if (d.type === "gifv" && d.video) out.push({ kind: "video", url: d.video.proxy_url || d.video.url, w: d.video.width, h: d.video.height, gif: true });
+      else if ((d.type === "image" || d.type === "gifv") && (d.thumbnail || d.image)) { const i = d.image || d.thumbnail; out.push({ kind: "image", url: i.proxy_url || i.url, w: i.width, h: i.height }); }
+    }
+    return out.filter((x) => /^https:\/\/(media|cdn|images-ext-\d+)\.discordapp\.(net|com)\//.test(x.url)).slice(0, 4);
   }
   async chatRoom(userId) {
     const P = PermissionFlagsBits;

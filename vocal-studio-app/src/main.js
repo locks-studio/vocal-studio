@@ -151,6 +151,9 @@ function send(channel, payload) {
 // Il ne prend jamais le clavier ni la souris au jeu ; sa place se règle dans Paramètres › Overlay.
 // Créé transparent pour le mode « avatars seuls » (Windows ne permet pas de changer ça après coup).
 let ovCfg = { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0 };
+// niri : l'overlay suit tous les bureaux (voir niri.js)
+const { NiriSticky } = require("./niri");
+const niriSticky = new NiriSticky("Hush · mini");
 function ovBounds() {
   const all = screen.getAllDisplays();
   const d = all[ovCfg.screen] || screen.getPrimaryDisplay();
@@ -162,7 +165,16 @@ function ovBounds() {
   const y = row === "t" ? a.y + ovCfg.y : row === "b" ? a.y + a.height - h - ovCfg.y : a.y + (a.height - h) / 2;
   return { x: fit(x, a.x, a.x + a.width - w), y: fit(y, a.y, a.y + a.height - h), width: w, height: h };
 }
-const placeMini = () => { if (mini && !mini.isDestroyed()) mini.setBounds(ovBounds()); };
+// Linux Wayland : l'overlay sur la couche « overlay » du bureau, devant même le plein écran (voir layer-overlay.js)
+const { LayerOverlay, layerSupported } = require("./layer-overlay");
+let layerOv = null;
+const placeMini = () => {
+  if (!mini || mini.isDestroyed()) return;
+  const b = ovBounds();
+  if (!layerOv) return mini.setBounds(b);
+  mini.setContentSize(b.width, b.height);
+  layerOv.place(b, screen.getDisplayMatching(b).bounds);
+};
 ipcMain.handle("overlay:set", (_e, c) => {
   if (!c || typeof c !== "object") return;
   const n = (v, d) => (Number.isFinite(+v) ? Math.max(0, Math.min(4000, Math.round(+v))) : d);
@@ -172,12 +184,22 @@ ipcMain.handle("overlay:set", (_e, c) => {
   };
   placeMini();
 });
+const sendMain = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
+// Mode « Déplacer » (Linux, overlay layer-shell seulement) : l'overlay prend la souris le temps de le placer
+// (glisser) et de régler sa taille (molette). Windows et Mac ne sont pas concernés : le bouton n'y apparaît pas.
+ipcMain.handle("overlay:canEdit", () => !!layerOv);
+ipcMain.handle("overlay:edit", (_e, on) => {
+  if (!layerOv) return false;
+  layerOv.edit(on);
+  return !!on;
+});
 ipcMain.handle("overlay:screens", () => {
   const prim = screen.getPrimaryDisplay().id;
   return screen.getAllDisplays().map((d, i) => ({ i, label: `Écran ${i + 1}${d.id === prim ? " (principal)" : ""} · ${d.size.width}×${d.size.height}` }));
 });
 function toggleMini() {
   if (mini && !mini.isDestroyed()) { mini.close(); return false; }
+  if (layerSupported()) { openLayerMini(); return true; }
   mini = new BrowserWindow({
     ...ovBounds(), show: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
@@ -203,8 +225,40 @@ function toggleMini() {
     mini.showInactive(); // s'affiche sans voler le clavier au jeu
     placeMini();
   });
-  mini.on("closed", () => { mini = null; send("win:mini", false); });
+  mini.on("closed", () => { mini = null; niriSticky.stop(); send("win:mini", false); });
+  niriSticky.start();
   return true;
+}
+// Version layer-shell : la mini-fenêtre est dessinée hors écran, et chaque image part vers layer-overlay.py.
+// Pas besoin de niriSticky : la couche overlay est sur tous les bureaux de son écran.
+function openLayerMini() {
+  const b = ovBounds();
+  mini = new BrowserWindow({
+    width: b.width, height: b.height, show: false, frame: false, transparent: true, backgroundColor: "#00000000",
+    title: "Hush · mini", useContentSize: true,
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true, offscreen: true },
+  });
+  const ov = new LayerOverlay();
+  layerOv = ov;
+  // Le programme s'arrête (fermé par le bureau, plantage) : on ferme l'overlay pour que le bouton reste juste.
+  // En mode « Déplacer », il renvoie la place choisie à la souris : la grande fenêtre l'enregistre dans les réglages.
+  ov.start(() => { if (layerOv === ov && mini && !mini.isDestroyed()) mini.close(); }, (m) => {
+    if (m.edit === false) return sendMain("overlay:edit", false);
+    // Glissé vers un autre écran : on retrouve son numéro dans la liste des écrans de Hush
+    const all = screen.getAllDisplays();
+    const i = m.screen ? all.findIndex((d) => d.bounds.x === m.screen.x && d.bounds.y === m.screen.y) : -1;
+    const scr = i >= 0 ? i : ovCfg.screen;
+    ovCfg = { ...ovCfg, pos: "tl", x: m.x, y: m.y, w: m.w, h: m.h, screen: scr };
+    if (mini && !mini.isDestroyed()) mini.setContentSize(m.w, m.h);
+    sendMain("overlay:moved", { pos: "tl", x: m.x, y: m.y, w: m.w, h: m.h, screen: scr });
+  });
+  mini.webContents.setFrameRate(30);
+  mini.webContents.on("paint", (_e, _dirty, image) => ov.frame(image));
+  mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
+  mini.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mini.webContents.on("will-navigate", (e) => e.preventDefault());
+  mini.on("closed", () => { mini = null; if (layerOv === ov) layerOv = null; ov.stop(); send("win:mini", false); });
+  placeMini();
 }
 // Fenêtre qui a envoyé la demande (principale ou mini)
 const winOf = (e) => BrowserWindow.fromWebContents(e.sender) || win;
@@ -345,6 +399,8 @@ app.whenReady().then(() => {
   botLink.meta = { version: app.getVersion(), os: process.platform };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
+  // Un ami t'invite dans son vocal : notification dans Hush (et la fenêtre clignote dans la barre des tâches)
+  botLink.onInvite = (inv) => { send("friends:invite", inv); if (win && !win.isDestroyed() && !win.isFocused()) win.flashFrame(true); };
   useMode(data.mode);
   spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
@@ -464,6 +520,8 @@ ipcMain.handle("bot:info", async () => {
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
 ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));
+// Bouton « Coller » du code ami : seulement un peu de texte
+ipcMain.handle("clip:read", () => clipboard.readText().slice(0, 200));
 
 ipcMain.handle("music:source", (_e, src) => setMusicSource(src));
 // Commandes du lecteur : toggle (pause/lecture), next, prev

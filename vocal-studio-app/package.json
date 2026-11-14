@@ -1,7 +1,7 @@
 {
   "name": "vocal-studio",
   "productName": "Hush",
-  "version": "0.5.1",
+  "version": "0.5.3",
   "description": "Interface d'appel vocal Discord personnalisable",
   "main": "src/main.js",
   "private": true,
@@ -58,7 +58,8 @@
       "executableName": "hush"
     },
     "asarUnpack": [
-      "src/media.ps1"
+      "src/media.ps1",
+      "src/layer-overlay.py"
     ],
     "afterPack": "../tools/mac-adhoc-sign.js"
   }

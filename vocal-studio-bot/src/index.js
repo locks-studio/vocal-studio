@@ -288,6 +288,20 @@ wss.on("connection", (ws) => {
         saveSessions();
         ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: true }));
       }
+      else if (msg.type === "friends" && msg.op === "invite") {
+        // Inviter un ami dans son vocal : il reçoit une notification « X t'invite à rejoindre #salon » dans Hush
+        try {
+          const me = friends.db[c.user.id], to = String(msg.arg || "");
+          if (!me || !me.friends.includes(to)) throw new Error("Tu ne peux inviter que tes amis Hush.");
+          const voice = friends.presence.get(c.user.id);
+          if (!voice || voice.call || !voice.channelId) throw new Error("Rejoins d'abord un salon vocal de serveur.");
+          const invite = { type: "friend-invite", from: { id: c.user.id, name: c.user.name, avatar: c.user.avatar || null }, voice, at: Date.now() };
+          let sent = 0;
+          for (const x of clients) if (x.user && x.user.id === to && x.ws.readyState === 1) { x.ws.send(JSON.stringify(invite)); sent++; }
+          if (!sent) throw new Error("Ton ami n'a pas Hush ouvert en ce moment.");
+          ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: true }));
+        } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
       else if (msg.type === "friends") {
         try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: friends.op(c.user.id, msg.op, msg.arg) })); }
         catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }

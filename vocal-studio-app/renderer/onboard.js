@@ -6,9 +6,9 @@ const ONBOARD_COLORS = [["#fcbbdd", "Rose pâle"], ["#c9b6ff", "Lilas"], ["#9fd8
 const ONBOARD_STEPS = [
   { title: "Bienvenue sur Hush", text: "Tes vocaux Discord, en version cinéma. En quelques choix, on règle Hush à ton goût : tu vois le résultat en direct derrière cette fenêtre.", next: "Commencer" },
   { title: "Ta couleur", text: "Elle colore toute l'interface et le lecteur de musique.", draw: (b) => {
-    const row = el("div", { className: "ob-colors" });
+    const row = obEl("div", { className: "ob-colors" });
     for (const [c, name] of ONBOARD_COLORS) {
-      const s = el("button", { className: "ob-color" + ((S.accent || "#fcbbdd") === c ? " on" : ""), title: name });
+      const s = obEl("button", { className: "ob-color" + ((S.accent || "#fcbbdd") === c ? " on" : ""), title: name });
       s.type = "button"; s.style.background = c; s.setAttribute("aria-label", name);
       s.onclick = () => { S.accent = c === "#fcbbdd" ? null : c; apply(); onboardDraw(); };
       row.append(s);
@@ -19,27 +19,28 @@ const ONBOARD_STEPS = [
   { title: "Quand quelqu'un parle", text: "L'anneau qui s'allume autour de l'avatar.", choices: ["ring", [["aura", "Aura"], ["wave", "Vagues"], ["flame", "Flammes"], ["solid", "Plein"]]] },
   { title: "La disposition", text: "Comment le salon est filmé.", choices: ["layout", [["strip", "Bande"], ["film", "Cinéma 3D"], ["grid", "Grille"], ["discord", "Discord"]]] },
   { title: "Dernière chose", text: "Si Hush plante, il peut envoyer un rapport technique pour que le problème soit corrigé. Il ne contient ni tes messages, ni ta voix.", draw: (b) => {
-    const label = el("label", { className: "ob-check" });
-    const box = el("input"); box.type = "checkbox"; box.checked = !!S.reports;
+    const label = obEl("label", { className: "ob-check" });
+    const box = obEl("input"); box.type = "checkbox"; box.checked = !!S.reports;
     box.onchange = () => { S.reports = box.checked; apply(); };
     label.append(box, " Envoyer les rapports d'erreur");
     b.append(label);
   }, next: "Terminer" },
 ];
 
-function el(tag, props = {}) { return Object.assign(document.createElement(tag), props); }
+// Nom à part : app.js a déjà une fonction el() (même nom = l'une remplaçait l'autre et vidait la carte « Modifier la connexion »)
+function obEl(tag, props = {}) { return Object.assign(document.createElement(tag), props); }
 
 function onboardDraw() {
   const box = $("#onboard"), step = ONBOARD_STEPS[Onboard.step];
   box.textContent = "";
-  const dots = el("div", { className: "ob-dots" });
-  ONBOARD_STEPS.forEach((_, i) => dots.append(el("i", { className: i === Onboard.step ? "on" : "" })));
-  const body = el("div", { className: "ob-body" });
+  const dots = obEl("div", { className: "ob-dots" });
+  ONBOARD_STEPS.forEach((_, i) => dots.append(obEl("i", { className: i === Onboard.step ? "on" : "" })));
+  const body = obEl("div", { className: "ob-body" });
   if (step.choices) {
     const [key, list] = step.choices;
-    const row = el("div", { className: "ob-choices" });
+    const row = obEl("div", { className: "ob-choices" });
     for (const [v, name] of list) {
-      const b = el("button", { className: "ob-choice" + (S[key] === v ? " on" : ""), textContent: name });
+      const b = obEl("button", { className: "ob-choice" + (S[key] === v ? " on" : ""), textContent: name });
       b.type = "button";
       b.onclick = () => { S[key] = v; apply(); onboardDraw(); };
       row.append(b);
@@ -47,14 +48,14 @@ function onboardDraw() {
     body.append(row);
   }
   if (step.draw) step.draw(body);
-  const foot = el("div", { className: "ob-foot" });
-  const skip = el("button", { className: "linkbtn", textContent: "Passer" });
+  const foot = obEl("div", { className: "ob-foot" });
+  const skip = obEl("button", { className: "linkbtn", textContent: "Passer" });
   skip.type = "button"; skip.onclick = () => onboardEnd();
-  const go = el("button", { className: "cta", textContent: step.next || "Continuer" });
+  const go = obEl("button", { className: "cta", textContent: step.next || "Continuer" });
   go.type = "button";
   go.onclick = () => { if (Onboard.step < ONBOARD_STEPS.length - 1) { Onboard.step++; onboardDraw(); } else onboardEnd(); };
   foot.append(dots, skip, go);
-  box.append(el("h2", { textContent: step.title }), el("p", { textContent: step.text }), body, foot);
+  box.append(obEl("h2", { textContent: step.title }), obEl("p", { textContent: step.text }), body, foot);
 }
 
 function onboardStart() {

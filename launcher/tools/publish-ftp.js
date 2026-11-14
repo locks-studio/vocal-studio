@@ -1,5 +1,5 @@
 // Publie le dossier site/1999 sur Hostinger par FTP (chiffré), sans zip ni gestionnaire de fichiers.
-//   node tools/publish-ftp.js            → envoie ce qui a changé, le catalogue en dernier, puis vérifie en ligne
+//   node tools/publish-ftp.js            → envoie ce qui a changé (les gros fichiers sur GitHub), le catalogue en dernier, puis vérifie en ligne
 //   node tools/publish-ftp.js --test     → teste seulement la connexion (rien n'est envoyé)
 //   node tools/publish-ftp.js --essai    → montre ce qui serait envoyé, sans rien envoyer
 // Les identifiants FTP sont dans launcher/ftp.env (jamais sur GitHub) : FTP_HOST, FTP_USER, FTP_PASS, et FTP_DIR (facultatif).
@@ -105,6 +105,10 @@ function get(url) {
   console.log(`Dossier du site : /${dir || "(racine du compte FTP)"}`);
   if (TEST) return console.log("\nConnexion FTP OK, rien n'a été envoyé.");
 
+  // Les gros fichiers sur GitHub d'abord (voir publish-github.js) : le catalogue ne doit pas annoncer un lien vide
+  console.log("");
+  await require("./publish-github").publish(path.join(site, "catalog.json"), { dry: DRY });
+
   // Ce qu'il faut envoyer : les petits fichiers du site à chaque fois, les gros seulement s'ils manquent ou ont changé
   const files = walk(site).filter((f) => !/\.zip$/.test(f) || f.split("/").length > 1).filter((f) => f !== "catalog.json");
   const todo = [];
@@ -135,7 +139,8 @@ function get(url) {
   const online = await get(`${cat.launcher && cat.launcher.page ? cat.launcher.page.replace(/\/$/, "") : "https://1999.organisationphantom.fr"}/catalog.json?v=${Date.now()}`);
   if (online.status !== 200 || online.body.toString() !== fs.readFileSync(path.join(site, "catalog.json"), "utf8")) fail("le catalogue en ligne n'est pas celui qu'on vient d'envoyer.");
   console.log("  catalogue : ok");
-  const all = [...Object.values(cat.launcher ? { ...cat.launcher.downloads, ...(cat.launcher.updates || {}) } : {}), ...cat.apps.flatMap((a) => Object.values(a.downloads))];
+  // Tous les fichiers du catalogue : téléchargements du launcher (.exe, .dmg…), ses mises à jour (.zip Mac…) et les logiciels
+  const all = [...Object.values((cat.launcher && cat.launcher.downloads) || {}), ...Object.values((cat.launcher && cat.launcher.updates) || {}), ...cat.apps.flatMap((a) => Object.values(a.downloads))];
   const seen = new Set();
   for (const d of all) {
     const rel = d.url.split("/").slice(3).join("/");

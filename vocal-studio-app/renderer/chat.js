@@ -19,8 +19,25 @@ function chatMsgEl(m) {
   time.textContent = fmtHour(m.at);
   who.append(name, time);
   body.append(who);
-  if (m.text) { const p = document.createElement("p"); p.textContent = m.text; body.append(p); }
-  for (const u of m.images || []) { const i = document.createElement("img"); i.className = "pic"; i.alt = ""; i.src = u; i.onload = chatStick; body.append(i); }
+  // Un GIF envoyé par lien (Tenor, Giphy) : le lien seul est caché, on montre le GIF
+  const media = m.media && m.media.length ? m.media : (m.images || []).map((url) => ({ kind: "image", url }));
+  const onlyLink = media.length && /^\s*https?:\/\/\S+\s*$/.test(m.text || "") && /tenor\.com|giphy\.com|\.gif/i.test(m.text);
+  if (m.text && !onlyLink) { const p = document.createElement("p"); p.textContent = m.text; body.append(p); }
+  for (const x of media) {
+    let el;
+    if (x.kind === "video") {
+      // Les GIF de Discord sont de petites vidéos : en boucle, sans son, comme dans Discord
+      el = Object.assign(document.createElement("video"), { muted: true, loop: true, autoplay: true, playsInline: true, src: x.url });
+      el.onloadeddata = chatStick;
+    } else {
+      el = Object.assign(document.createElement("img"), { alt: "", src: x.url });
+      el.onload = chatStick;
+    }
+    el.className = "pic";
+    if (x.w && x.h) el.style.aspectRatio = `${x.w} / ${x.h}`;
+    body.append(el);
+  }
+  row.dataset.id = m.id;
   row.append(av, body);
   return row;
 }
@@ -70,10 +87,12 @@ $("#chatForm").onsubmit = async (e) => {
 };
 
 window.studio.chat.onMessage((m) => {
-  if (!Chat.open) { Chat.unread++; $("#chatDot").hidden = false; return; }
+  if (!Chat.open) { if (!(m.id && Chat.seen && Chat.seen.has(m.id))) { Chat.unread++; $("#chatDot").hidden = false; } (Chat.seen || (Chat.seen = new Set())).add(m.id); return; }
   const empty = $("#chatList").querySelector(".chat-empty");
   if (empty) empty.remove();
-  $("#chatList").append(chatMsgEl(m));
+  // Message déjà affiché (Discord vient d'ajouter l'aperçu d'un GIF) : on le remplace sur place
+  const old = m.id && $("#chatList").querySelector(`[data-id="${CSS.escape(m.id)}"]`);
+  if (old) old.replaceWith(chatMsgEl(m)); else $("#chatList").append(chatMsgEl(m));
   chatStick();
 });
 
