@@ -12,7 +12,7 @@
     "dist:mac": "electron-builder --mac zip --x64 --arm64"
   },
   "devDependencies": {
-    "electron": "^33.4.0",
+    "electron": "^42.11.16",
     "electron-builder": "^25.1.8"
   },
   "allowScripts": {
