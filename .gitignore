@@ -11,3 +11,6 @@ reports.json
 
 # Identifiants FTP de publication (launcher/tools/publish-ftp.js)
 ftp.env
+
+# Journaux de construction
+*.log
