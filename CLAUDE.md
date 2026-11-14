@@ -63,4 +63,33 @@ Les launchers installent ensuite la nouvelle version tout seuls.
 5. **L'autre relit la Pull Request** avant qu'elle soit fusionnée. Personne ne fusionne sa propre Pull Request sans relecture.
 6. Après la fusion, on revient sur `main`, on fait `git pull`, et on supprime la branche terminée.
 
-Pour Claude : suivre ces règles. Créer une branche avant de modifier quoi que ce soit, ne jamais pousser sur `main`, et ne commiter ou ouvrir une Pull Request que quand on le demande.
+## Suivi à deux (pour nos deux Claude)
+
+Le suivi se fait **sur GitHub**, pour que le Claude de Locks et celui de Gabinoul sachent toujours ce que l'autre fait, et ne modifient pas les mêmes fichiers en même temps.
+
+- **Les tâches = les issues GitHub.** Une issue par tâche, **assignée à celui qui la fait**, avec une étiquette d'état (`à faire`, `en cours`, `bloqué`) et de partie (`hush`, `launcher`, `bot`, `hush-studio`). Le modèle « Tâche » demande les fichiers qui vont bouger et la branche.
+- **Le tableau de bord** : `node tools/suivi.js` affiche les tâches, les Pull Requests (et celles à relire), les branches de l'autre et **les fichiers qu'il est en train de modifier**. Il se lance tout seul au début de chaque session Claude Code (hook dans `.claude/settings.json`).
+
+### Avant de commencer une tâche
+1. `git pull` sur `main`, puis lire le tableau de bord (`node tools/suivi.js`).
+2. Si un fichier à modifier est **en cours de modification par l'autre** : ne pas y toucher. Lui demander d'abord, en commentaire sur son issue ou sa Pull Request.
+3. Trouver l'issue de la tâche, ou la créer, puis se l'assigner :
+   ```bash
+   gh issue create --title "…" --label "à faire,hush" --body "Fichiers : …"
+   gh issue edit <n> --add-assignee @me --add-label "en cours" --remove-label "à faire"
+   ```
+4. Créer la branche depuis `main` à jour : `git checkout -b <nom-court>`.
+
+### Pendant
+- **Petits commits envoyés souvent** (`git push`) : c'est ce qui permet au tableau de bord de l'autre de voir les fichiers touchés.
+- À chaque étape importante, un mot sur l'issue : `gh issue comment <n> --body "Fait : … · Reste : …"`.
+- Si `main` a bougé : `git merge origin/main` sur sa branche, et régler les conflits tout de suite.
+- Bloqué ? Étiquette `bloqué` et un commentaire qui dit pourquoi.
+
+### À la fin
+- Pull Request vers `main` avec « Ferme #<n> » dans la description (le modèle le prévoit), puis relecture : `gh pr edit <n> --add-reviewer <l'autre>`.
+- L'autre relit avec `gh pr diff <n>` puis `gh pr review <n> --approve` (ou `--request-changes -b "…"`). La fusion ferme l'issue toute seule.
+
+Pseudos GitHub : Locks = `lrtdetrox-byte`, Gabinoul = `Gabinou22s`.
+
+Pour Claude : suivre ces règles. Au début d'une session, tenir compte du tableau de bord affiché par le hook (ou lancer `node tools/suivi.js`). Avant de modifier du code : vérifier qu'une issue existe et est assignée à la personne avec qui tu travailles, créer une branche, et ne jamais toucher aux fichiers que l'autre est en train de modifier sans accord. Mettre l'issue à jour au fil du travail. Ne jamais pousser sur `main`, et ne commiter ou ouvrir une Pull Request que quand on le demande.
