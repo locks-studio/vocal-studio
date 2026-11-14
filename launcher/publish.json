@@ -35,13 +35,9 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Cloche de notifications : demandes d'ami, invitations, amis qui arrivent en vocal",
-        "Invite un ami dans ton vocal depuis Mes amis ; ajoute en ami d'un clic droit",
-        "Les GIF s'affichent dans le tchat de la voc",
-        "Menu clic droit plus simple, à la bonne taille même zoomé",
-        "Code ami : colle-le tel quel, ou avec le bouton Coller",
-        "Raccourci Hush sur le bureau et dans le menu (Windows, Mac, Linux)",
-        "Linux / niri : overlay sur tous les bureaux ; carte « Modifier la connexion » réparée"
+        "Linux : l'overlay reste au premier plan, même devant un jeu en plein écran",
+        "Linux : bouton Déplacer pour placer l'overlay où tu veux",
+        "Linux / niri : l'overlay suit le bon écran en multi-écran"
       ],
       "artifacts": {
         "win32-x64": {
