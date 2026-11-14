@@ -35,9 +35,9 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Les photos de profil animées (GIF) ne bougent que quand la personne parle, partout",
-        "Linux : l'overlay reste au premier plan, même devant un jeu en plein écran",
-        "Linux : bouton Déplacer pour placer l'overlay où tu veux"
+        "Menu clic droit toujours à la même taille, même zoomé (désactivable dans Vidéo et fenêtre)",
+        "« Ajouter en ami Hush » bien visible dans le menu clic droit",
+        "Les photos de profil animées (GIF) ne bougent que quand la personne parle, partout"
       ],
       "artifacts": {
         "win32-x64": {
