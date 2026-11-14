@@ -10,7 +10,9 @@
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --x64",
     "dist:linux": "electron-builder --linux dir --x64 && python tools/pack-linux.py",
-    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64"
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64",
+    "publier": "node tools/publish-ftp.js",
+    "publier:test": "node tools/publish-ftp.js --test"
   },
   "build": {
     "appId": "fr.locks.launcher1999",
