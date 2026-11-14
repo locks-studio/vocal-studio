@@ -1,6 +1,26 @@
 // Hush Studio : fenêtre principale, fichiers (import Craig, projets, images) et analyse du son avec ffmpeg.
 // La scène affichée est le vrai rendu de Hush (dossier renderer de Hush), piloté par la timeline.
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+// ——— Sécurité : liens externes et pages ———
+// Liens ouverts hors de l'appli : seulement https:// et discord:// (jamais file:, ms-settings:, javascript:…),
+// même si une page ou un serveur piraté essayait d'en faire ouvrir un autre.
+function safeOpen(url) {
+  let u;
+  try { u = new URL(String(url)); } catch { return; }
+  if (u.protocol === "https:" || u.protocol === "discord:") shell.openExternal(u.toString());
+}
+// Toute page créée (fenêtres, overlay, pages cachées) : jamais de <webview>, jamais de nouvelle fenêtre, jamais de
+// navigation vers un autre site, et seuls les fichiers créés par l'appli elle-même (blob:, data:) se téléchargent
+const guardedSessions = new WeakSet();
+app.on("web-contents-created", (_e, wc) => {
+  wc.on("will-attach-webview", (e) => e.preventDefault());
+  wc.on("will-navigate", (e, url) => { if (!url.startsWith("file://")) e.preventDefault(); });
+  wc.setWindowOpenHandler(({ url }) => { safeOpen(url); return { action: "deny" }; });
+  if (!guardedSessions.has(wc.session)) {
+    guardedSessions.add(wc.session);
+    wc.session.on("will-download", (e, item) => { if (!/^(blob|data):/.test(item.getURL())) e.preventDefault(); });
+  }
+});
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -44,7 +64,7 @@ function createWindow() {
   if (process.env.HS_TEST_SHOT) win.webContents.on("console-message", (_e, level, msg, line, src) => console.log(`[page ${level}] ${msg} (${path.basename(src || "")}:${line})`));
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   // Liens externes : dans le navigateur, jamais dans l'appli
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) safeOpen(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
   // Fermeture avec des modifications non enregistrées : la page décide (elle a la sauvegarde auto)
   win.on("close", (e) => {

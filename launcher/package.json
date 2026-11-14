@@ -1,7 +1,7 @@
 {
   "name": "launcher-1999",
   "productName": "1999",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Le launcher de Locks : installe, met à jour et lance Hush et les prochains logiciels",
   "main": "src/main.js",
   "private": true,
@@ -63,12 +63,13 @@
       "category": "Utility",
       "executableName": "launcher-1999"
     },
-    "afterPack": "../tools/mac-adhoc-sign.js"
+    "afterPack": "../tools/after-pack.js"
   },
   "dependencies": {
     "extract-zip": "^2.0.1"
   },
   "devDependencies": {
+    "@electron/fuses": "1.8.0",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },

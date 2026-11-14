@@ -19,6 +19,22 @@ if (!process.argv.includes("--sans-controles")) {
 
 const root = path.join(__dirname, "..");
 const privateKey = require("../src/private-key");
+// Signature des catalogues (voir src/catalog-sign.js) : sans la clé secrète, rien n'est préparé, pour qu'aucun
+// catalogue non signé ne parte jamais (les launchers le refuseraient). --sans-signature : test local seulement.
+const catalogSign = require("../src/catalog-sign");
+const signingKey = process.env.CATALOG_SIGNING_KEY || (fs.existsSync(path.join(root, "cle-signature.pem")) ? fs.readFileSync(path.join(root, "cle-signature.pem"), "utf8") : "");
+const unsignedOk = process.argv.includes("--sans-signature") && process.argv.some((x) => x.startsWith("--out=") || x.startsWith("--base="));
+if (!signingKey && !unsignedOk) {
+  console.error("Clé de signature introuvable : launcher/cle-signature.pem (sur le PC de Locks) ou le secret GitHub CATALOG_SIGNING_KEY.");
+  console.error("Sans elle, les launchers refuseraient le catalogue. Rien n'est préparé.");
+  process.exit(1);
+}
+const signed = (cat) => {
+  if (!signingKey) return cat;
+  const s = catalogSign.sign(cat, signingKey);
+  if (!catalogSign.verify(s)) { console.error("La clé de signature ne correspond pas à la clé publique du launcher (src/catalog-sign.js). Rien n'est préparé."); process.exit(1); }
+  return s;
+};
 const cfg = JSON.parse(fs.readFileSync(path.join(root, "publish.json"), "utf8"));
 // --out=site-test : dossier de sortie (le test local n'écrase jamais le vrai dossier à envoyer)
 const outArg = process.argv.find((x) => x.startsWith("--out="));
@@ -108,7 +124,7 @@ for (const k of privateKeys) {
     priv.apps.push(entry);
   }
   fs.mkdirSync(path.join(out, folder), { recursive: true });
-  fs.writeFileSync(path.join(out, folder, "catalog.json"), JSON.stringify(priv, null, 2));
+  fs.writeFileSync(path.join(out, folder, "catalog.json"), JSON.stringify(signed(priv), null, 2));
   report.push(`  Clé privée (${k.apps.join(", ")}) : catalogue secret prêt`);
 }
 for (const id of privateEntries.keys()) if (!privateKeys.some((k) => k.apps.includes(id))) report.push(`  ${id} : privé, aucune clé d'accès fournie → pas publié`);
@@ -156,7 +172,8 @@ if (fs.existsSync(site)) {
 }
 }
 
-fs.writeFileSync(path.join(out, "catalog.json"), JSON.stringify(catalog, null, 2));
+fs.writeFileSync(path.join(out, "catalog.json"), JSON.stringify(signed(catalog), null, 2));
+console.log(signingKey ? "Catalogue signé (les launchers le vérifient)." : "ATTENTION : catalogue NON signé (test local) : un launcher installé le refusera.");
 console.log(`Dossier prêt : ${path.relative(process.cwd(), out)}`);
 console.log(report.join("\n"));
 if (catalog.launcher && !Object.keys(catalog.launcher.downloads).length) {
