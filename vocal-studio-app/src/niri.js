@@ -9,6 +9,7 @@ class NiriSticky {
     this.title = title;
     this.sock = null;
     this.win = null; // { id, workspace_id }
+    this.outputOf = new Map(); // bureau → écran (chaque écran a ses propres bureaux sous niri)
     this.stopped = true;
   }
 
@@ -49,7 +50,9 @@ class NiriSticky {
   isMine(w) { return w && w.title === this.title; }
 
   onEvent(e) {
-    if (e.WindowsChanged) {
+    if (e.WorkspacesChanged) {
+      this.outputOf = new Map((e.WorkspacesChanged.workspaces || []).map((w) => [w.id, w.output]));
+    } else if (e.WindowsChanged) {
       const w = (e.WindowsChanged.windows || []).find((x) => this.isMine(x));
       if (w) this.win = { id: w.id, workspace_id: w.workspace_id };
     } else if (e.WindowOpenedOrChanged) {
@@ -57,9 +60,14 @@ class NiriSticky {
       if (this.isMine(w)) this.win = { id: w.id, workspace_id: w.workspace_id };
     } else if (e.WindowClosed) {
       if (this.win && e.WindowClosed.id === this.win.id) this.win = null;
-    } else if (e.WorkspaceActivated && e.WorkspaceActivated.focused) {
+    } else if (e.WorkspaceActivated) {
+      // Plusieurs écrans : l'overlay reste sur le sien et suit seulement les changements de bureau de cet écran.
+      // (Avant, il sautait sur l'écran où passait la souris : avec focus-follows-mouse, survoler un écran
+      // y active un bureau.) Quand on change de bureau sur son écran sans le regarder, il suit aussi.
       const ws = e.WorkspaceActivated.id;
-      if (this.win && this.win.workspace_id !== ws) this.moveTo(ws);
+      if (!this.win || this.win.workspace_id === ws) return;
+      const mine = this.outputOf.get(this.win.workspace_id), there = this.outputOf.get(ws);
+      if (mine && there && mine === there) this.moveTo(ws);
     }
   }
 

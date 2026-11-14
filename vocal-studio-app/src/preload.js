@@ -109,5 +109,9 @@ contextBridge.exposeInMainWorld("studio", {
     onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
     overlay: (cfg) => ipcRenderer.invoke("overlay:set", cfg),
     screens: () => ipcRenderer.invoke("overlay:screens"),
+    overlayCanEdit: () => ipcRenderer.invoke("overlay:canEdit"),
+    overlayEdit: (on) => ipcRenderer.invoke("overlay:edit", on),
+    onOverlayMoved: (fn) => ipcRenderer.on("overlay:moved", (_e, place) => fn(place)),
+    onOverlayEdit: (fn) => ipcRenderer.on("overlay:edit", (_e, on) => fn(on)),
   },
 });

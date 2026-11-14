@@ -58,7 +58,8 @@
       "executableName": "hush"
     },
     "asarUnpack": [
-      "src/media.ps1"
+      "src/media.ps1",
+      "src/layer-overlay.py"
     ],
     "afterPack": "../tools/mac-adhoc-sign.js"
   }
