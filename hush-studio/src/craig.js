@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const yauzl = require("yauzl");
+// yauzl est chargé seulement à l'import (les tests de readInfo tournent sans les modules installés)
 
 const AUDIO = /\.(flac|wav|mp3|ogg|opus|m4a|aac|aiff?)$/i;
 
@@ -26,7 +26,7 @@ function importZip(zipFile, root) {
   const dir = path.join(root, `${path.basename(zipFile, ".zip").slice(0, 40)}-${id}`);
   fs.mkdirSync(dir, { recursive: true });
   return new Promise((resolve, reject) => {
-    yauzl.open(zipFile, { lazyEntries: true }, (err, zip) => {
+    require("yauzl").open(zipFile, { lazyEntries: true }, (err, zip) => {
       if (err) return reject(new Error("zip illisible"));
       const got = [];
       let info = "";
