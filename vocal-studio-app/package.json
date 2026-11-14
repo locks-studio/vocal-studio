@@ -19,7 +19,7 @@
     "electron@33.4.11": true
   },
   "dependencies": {
-    "music-metadata": "^7.14.0",
+    "music-metadata": "^11.16.0",
     "ws": "^8.22.0"
   },
   "author": "Locks",
