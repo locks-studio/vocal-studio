@@ -35,8 +35,9 @@ README et sur le site.
 
 ## 2. Mode « Déplacer » (souris et molette)
 
-La souris traverse l'overlay, donc on ne pouvait plus le déplacer à la main. Nouveau bouton **Déplacer** dans
-Paramètres › Overlay (visible quand l'overlay est ouvert, `#ovEdit` dans `index.html`).
+La souris traverse l'overlay, donc on ne pouvait plus le déplacer à la main. Nouvelle ligne « Place et taille » avec
+un bouton **Déplacer** dans Paramètres › Overlay (`#ovEditRow` dans `index.html`). Elle n'apparaît **que sous Linux,
+quand l'overlay layer-shell est ouvert** (`overlay:canEdit`) : sous Windows et Mac, rien ne change.
 - Pendant le réglage, `layer-overlay.py` met un **voile transparent sur chaque écran** (une surface layer-shell par écran,
   ancrée aux 4 bords). On fait glisser l'overlay, **même vers un autre écran** ; la molette change sa taille (5 % par cran,
   un cran à la fois, proportions gardées) ; Échap, clic droit ou « Terminé » pour finir.
@@ -44,9 +45,8 @@ Paramètres › Overlay (visible quand l'overlay est ouvert, `#ovEdit` dans `ind
   déplaçait la surface elle-même et la sensibilité était absurde (les positions reçues étaient relatives à une surface
   qui venait de bouger).
 - La nouvelle place est renvoyée à Hush (`overlay:moved`) et enregistrée dans `S.ov` (`pos: "tl"`, x, y, w, h, écran).
-- Hors layer-shell (mini-fenêtre normale), le bouton coupe seulement `setIgnoreMouseEvents` : on la fait glisser et
-  la poignée change sa taille, avec le code qui existait déjà.
-- Les curseurs « Écart avec le bord » vont maintenant jusqu'à 2000 px. Textes traduits dans les deux `i18n.js`.
+- Textes traduits dans les deux `i18n.js`. Les curseurs « Écart avec le bord » s'arrêtent toujours à 800 px : un overlay
+  glissé plus loin garde sa place, seul le curseur affiche 800.
 
 Pièges trouvés en route (GTK par Python) : `GtkLayerShell.set_monitor(None)` et
 `input_shape_combine_region(None)` sont refusés (on passe un vrai écran, et un rectangle pour « toute la surface ») ;

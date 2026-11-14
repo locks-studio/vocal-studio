@@ -185,11 +185,12 @@ ipcMain.handle("overlay:set", (_e, c) => {
   placeMini();
 });
 const sendMain = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
-// Mode « Déplacer » : l'overlay prend la souris le temps de le placer (glisser) et de régler sa taille (molette)
+// Mode « Déplacer » (Linux, overlay layer-shell seulement) : l'overlay prend la souris le temps de le placer
+// (glisser) et de régler sa taille (molette). Windows et Mac ne sont pas concernés : le bouton n'y apparaît pas.
+ipcMain.handle("overlay:canEdit", () => !!layerOv);
 ipcMain.handle("overlay:edit", (_e, on) => {
-  if (!mini || mini.isDestroyed()) return false;
-  if (layerOv) layerOv.edit(on);
-  else mini.setIgnoreMouseEvents(!on); // mini-fenêtre normale : on la fait glisser, la poignée change sa taille
+  if (!layerOv) return false;
+  layerOv.edit(on);
   return !!on;
 });
 ipcMain.handle("overlay:screens", () => {

@@ -2352,14 +2352,19 @@ $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
 
-/* ——— Déplacer l'overlay à la souris : glisser pour la place, molette pour la taille ——— */
+/* ——— Linux (overlay layer-shell) : déplacer l'overlay à la souris, glisser pour la place, molette pour la taille.
+   Le bouton n'apparaît que dans ce mode : rien ne change sous Windows et Mac. ——— */
 if (!MINI) {
   const setEdit = (on) => {
     $("#ovEdit").textContent = on ? "Terminé" : "Déplacer";
     $("#ovEdit").classList.toggle("on", on);
     $("#ovEditHint").hidden = !on;
   };
-  const showEdit = (open) => { $("#ovEdit").hidden = !open; if (!open) setEdit(false); };
+  const showEdit = async (open) => {
+    const can = open && (await window.studio.win.overlayCanEdit());
+    $("#ovEditRow").hidden = !can;
+    if (!can) setEdit(false);
+  };
   $("#ovEdit").onclick = async () => setEdit(await window.studio.win.overlayEdit(!$("#ovEdit").classList.contains("on")));
   window.studio.win.onMini(showEdit);
   new MutationObserver(() => showEdit($("#miniBtn").classList.contains("on"))).observe($("#miniBtn"), { attributes: true, attributeFilter: ["class"] });
