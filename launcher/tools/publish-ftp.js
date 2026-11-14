@@ -1,5 +1,5 @@
 // Publie le dossier site/1999 sur Hostinger par FTP (chiffré), sans zip ni gestionnaire de fichiers.
-//   node tools/publish-ftp.js            → envoie ce qui a changé, le catalogue en dernier, puis vérifie en ligne
+//   node tools/publish-ftp.js            → envoie ce qui a changé (les gros fichiers sur GitHub), le catalogue en dernier, puis vérifie en ligne
 //   node tools/publish-ftp.js --test     → teste seulement la connexion (rien n'est envoyé)
 //   node tools/publish-ftp.js --essai    → montre ce qui serait envoyé, sans rien envoyer
 // Les identifiants FTP sont dans launcher/ftp.env (jamais sur GitHub) : FTP_HOST, FTP_USER, FTP_PASS, et FTP_DIR (facultatif).
@@ -104,6 +104,10 @@ function get(url) {
   const dir = findDir();
   console.log(`Dossier du site : /${dir || "(racine du compte FTP)"}`);
   if (TEST) return console.log("\nConnexion FTP OK, rien n'a été envoyé.");
+
+  // Les gros fichiers sur GitHub d'abord (voir publish-github.js) : le catalogue ne doit pas annoncer un lien vide
+  console.log("");
+  await require("./publish-github").publish(path.join(site, "catalog.json"), { dry: DRY });
 
   // Ce qu'il faut envoyer : les petits fichiers du site à chaque fois, les gros seulement s'ils manquent ou ont changé
   const files = walk(site).filter((f) => !/\.zip$/.test(f) || f.split("/").length > 1).filter((f) => f !== "catalog.json");

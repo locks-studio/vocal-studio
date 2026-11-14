@@ -43,6 +43,21 @@ const sha = (f) => {
 };
 const copy = (src, rel) => { const d = path.join(out, rel); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(src, d); return `${base}/${rel.split(path.sep).join("/")}`; };
 
+// Les gros fichiers (logiciels, installeurs et mises à jour du launcher) sont téléchargés depuis les Releases GitHub
+// du dépôt publish.json › github.repo, une release par version (hush-v0.5.2, launcher-v0.5.1…).
+// Ils sont rangés dans site/github/<release>/ ; tools/publish-github.js les envoie AVANT le catalogue.
+// Sans github.repo, ou avec --base=… (test local), ils restent sur le site comme avant.
+const repo = !baseArg && cfg.github && cfg.github.repo;
+const ghOut = path.join(root, "site", "github");
+const shipped = new Set();
+const ship = (src, tag, rel) => {
+  if (!repo) return copy(src, rel);
+  const dir = path.join(ghOut, tag);
+  if (!shipped.has(tag)) { shipped.add(tag); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true }); }
+  fs.copyFileSync(src, path.join(dir, path.basename(src)));
+  return `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(path.basename(src))}`;
+};
+
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 const catalog = { generatedAt: new Date().toISOString(), apps: [] };
@@ -56,7 +71,7 @@ for (const a of cfg.apps) {
   for (const [plat, art] of Object.entries(a.artifacts)) {
     const f = abs(art.file.replace("{version}", version));
     if (!fs.existsSync(f)) { report.push(`  ${a.name} ${plat} : absent (sauté) — ${path.relative(root, f)}`); continue; }
-    entry.downloads[plat] = { url: copy(f, path.join(a.id, version, path.basename(f))), size: fs.statSync(f).size, sha256: sha(f), exec: art.exec };
+    entry.downloads[plat] = { url: ship(f, `${testChannel ? "test-" : ""}${a.id}-v${version}`, path.join(a.id, version, path.basename(f))), size: fs.statSync(f).size, sha256: sha(f), exec: art.exec };
     report.push(`  ${a.name} ${plat} : ok (${(fs.statSync(f).size / 1e6).toFixed(0)} Mo)`);
   }
   catalog.apps.push(entry);
@@ -70,7 +85,7 @@ if (cfg.launcher && !testChannel) {
     // Plusieurs fichiers possibles (installeur, sinon zip) : le premier qui existe
     const f = [].concat(p).map((x) => abs(x.replace("{version}", lv))).find((x) => fs.existsSync(x)) || abs([].concat(p)[0]);
     if (!fs.existsSync(f)) { report.push(`  Launcher ${plat} : absent (sauté)`); continue; }
-    const url = copy(f, path.join("launcher", path.basename(f)));
+    const url = ship(f, `launcher-v${lv}`, path.join("launcher", path.basename(f)));
     catalog.launcher.downloads[plat] = { url, size: fs.statSync(f).size, sha256: sha(f) };
     report.push(`  Launcher ${plat} : ok`);
   }
@@ -79,7 +94,7 @@ if (cfg.launcher && !testChannel) {
   for (const [plat, p] of Object.entries(cfg.launcher.updates || {})) {
     const f = abs(p.replace("{version}", lv));
     if (!fs.existsSync(f)) { report.push(`  Mise à jour auto du launcher ${plat} : absente (lien vers le site à la place)`); continue; }
-    const url = copy(f, path.join("launcher", path.basename(f)));
+    const url = ship(f, `launcher-v${lv}`, path.join("launcher", path.basename(f)));
     catalog.launcher.updates[plat] = { url, size: fs.statSync(f).size, sha256: sha(f) };
   }
 }
@@ -112,4 +127,5 @@ if (catalog.launcher && !Object.keys(catalog.launcher.downloads).length) {
   console.log(`\nATTENTION : aucun installeur du launcher ${catalog.launcher.version} dans dist/. Le site afficherait « Bientôt » partout.`);
   console.log("Compile d'abord le launcher à cette version, puis relance cette commande. N'envoie pas ce dossier sur Hostinger.");
 }
+if (shipped.size) console.log(`\nFichiers pour GitHub (${repo}) : ${[...shipped].join(", ")}. Ils partent avant le catalogue avec npm run publier (ou node tools/publish-github.js).`);
 console.log(`\nEnvoie le CONTENU de ce dossier dans le dossier du sous-domaine sur Hostinger (adresse finale : ${base}/catalog.json).`);

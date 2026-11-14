@@ -1,5 +1,8 @@
 {
   "baseUrl": "https://1999.organisationphantom.fr",
+  "github": {
+    "repo": "lrtdetrox-byte/vocal-studio"
+  },
   "launcher": {
     "package": "package.json",
     "page": "https://1999.organisationphantom.fr/",
