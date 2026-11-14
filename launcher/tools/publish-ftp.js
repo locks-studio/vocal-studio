@@ -135,7 +135,8 @@ function get(url) {
   const online = await get(`${cat.launcher && cat.launcher.page ? cat.launcher.page.replace(/\/$/, "") : "https://1999.organisationphantom.fr"}/catalog.json?v=${Date.now()}`);
   if (online.status !== 200 || online.body.toString() !== fs.readFileSync(path.join(site, "catalog.json"), "utf8")) fail("le catalogue en ligne n'est pas celui qu'on vient d'envoyer.");
   console.log("  catalogue : ok");
-  const all = [...Object.values(cat.launcher ? { ...cat.launcher.downloads, ...(cat.launcher.updates || {}) } : {}), ...cat.apps.flatMap((a) => Object.values(a.downloads))];
+  // Tous les fichiers du catalogue : téléchargements du launcher (.exe, .dmg…), ses mises à jour (.zip Mac…) et les logiciels
+  const all = [...Object.values((cat.launcher && cat.launcher.downloads) || {}), ...Object.values((cat.launcher && cat.launcher.updates) || {}), ...cat.apps.flatMap((a) => Object.values(a.downloads))];
   const seen = new Set();
   for (const d of all) {
     const rel = d.url.split("/").slice(3).join("/");
