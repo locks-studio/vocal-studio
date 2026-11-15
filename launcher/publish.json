@@ -1,7 +1,7 @@
 {
   "baseUrl": "https://1999.organisationphantom.fr",
   "github": {
-    "repo": "lrtdetrox-byte/vocal-studio"
+    "repo": "locks-studio/vocal-studio"
   },
   "launcher": {
     "package": "package.json",
@@ -38,9 +38,9 @@
         "Sécurité renforcée : Hush refuse de démarrer si son code a été modifié, et ne peut plus être détourné",
         "Liens et fichiers : seuls les liens sûrs (https, Discord) s'ouvrent, aucun téléchargement imposé",
         "Lecture des sons plus sûre (fichiers piégés ignorés)",
-        "Linux : l'overlay reste au premier plan, même devant un jeu en plein écran",
-        "Linux : bouton Déplacer pour placer l'overlay où tu veux",
-        "Linux / niri : l'overlay suit le bon écran en multi-écran"
+        "Menu clic droit toujours à la même taille, même zoomé (désactivable dans Vidéo et fenêtre)",
+        "« Ajouter en ami Hush » bien visible dans le menu clic droit",
+        "Les photos de profil animées (GIF) ne bougent que quand la personne parle, partout"
       ],
       "artifacts": {
         "win32-x64": {
@@ -77,12 +77,10 @@
       "icon": "../hush-studio/build/icon.png",
       "banner": null,
       "notes": [
-        "Première version : import Craig (pseudos et voix reconnus tout seuls) ou fichiers audio",
-        "La vraie scène Hush, animée par le volume réel de chaque piste",
-        "Timeline : déplacer, raccourcir, couper, superposer, sons et musique",
-        "Scènes : change de disposition, de fond et d'anneau en cours de vidéo, ou importe un préréglage Hush",
-        "Audio mélangé : maintiens 1, 2, 3… pendant la lecture pour dire qui parle",
-        "Export MP4 1080p 60 i/s, horizontal ou vertical, parfaitement fluide"
+        "Les avatars ne sont plus tous collés au milieu de la scène",
+        "Photos de profil Craig : importe le zip « avatars » (ou dépose-le), chaque photo va à la bonne personne",
+        "Photo de profil en GIF : elle ne bouge que quand la personne parle, comme dans Hush",
+        "Linux : ffmpeg et Electron s'installent correctement"
       ],
       "artifacts": {
         "win32-x64": {

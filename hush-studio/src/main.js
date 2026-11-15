@@ -94,23 +94,28 @@ ipcMain.handle("files:pickAudio", async () => {
   const r = await dialog.showOpenDialog(win, {
     title: "Importer des pistes audio ou un enregistrement Craig",
     properties: ["openFile", "multiSelections"],
-    filters: [{ name: "Audio ou zip Craig", extensions: [...AUDIO_EXT, "zip"] }, { name: "Tous les fichiers", extensions: ["*"] }],
+    filters: [{ name: "Audio, zip Craig ou photos de profil", extensions: [...AUDIO_EXT, "zip", "png", "jpg", "jpeg", "gif", "webp"] }, { name: "Tous les fichiers", extensions: ["*"] }],
   });
   return r.canceled ? [] : r.filePaths;
 });
 
 // Import : un zip Craig devient une piste par personne (avec pseudo et ID Discord), le reste est pris tel quel
 ipcMain.handle("files:import", async (_e, paths) => {
-  const out = { people: [], files: [], errors: [] };
+  const out = { people: [], files: [], avatars: [], errors: [] };
   for (const p of paths) {
     try {
       if (p.toLowerCase().endsWith(".zip")) {
         const r = await importZip(p, IMPORTS);
         out.people.push(...r.people);
         out.files.push(...r.files);
-        if (r.info) out.info = r.info;
+        out.avatars.push(...(r.avatars || []));
+        if (r.info && (r.people.length || r.files.length)) out.info = r.info;
       } else if (AUDIO_EXT.includes(path.extname(p).slice(1).toLowerCase())) {
         out.files.push({ file: p, name: path.basename(p).replace(/\.[^.]+$/, "") });
+      } else if (/\.(png|jpe?g|gif|webp)$/i.test(p) && fs.statSync(p).size < 15e6) {
+        const m = /^(\d+)-(.+)$/.exec(path.basename(p).replace(/\.[^.]+$/, ""));
+        const ext = path.extname(p).slice(1).toLowerCase().replace("jpg", "jpeg");
+        out.avatars.push({ n: m ? +m[1] : null, name: m ? m[2] : path.basename(p).replace(/\.[^.]+$/, ""), data: `data:image/${ext};base64,${fs.readFileSync(p).toString("base64")}` });
       } else out.errors.push(`${path.basename(p)} : ce n'est pas un fichier audio`);
     } catch (e) {
       out.errors.push(`${path.basename(p)} : ${e.message}`);

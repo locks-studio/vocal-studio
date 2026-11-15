@@ -63,7 +63,11 @@
       "category": "Utility",
       "executableName": "launcher-1999"
     },
-    "afterPack": "../tools/after-pack.js"
+    "afterPack": "../tools/after-pack.js",
+    "publish": {
+      "provider": "generic",
+      "url": "https://1999.organisationphantom.fr/launcher"
+    }
   },
   "dependencies": {
     "extract-zip": "^2.0.1"

@@ -62,7 +62,7 @@ node tools/make-catalog.js
 
 Ça prépare `launcher/site/1999/` : le `catalog.json` avec les empreintes, l'icône, et une **page de téléchargement** (`index.html`) avec un bouton par système. Un système dont le fichier manque (par exemple Mac pas encore construit) est simplement sauté : le launcher y affichera « Bientôt ».
 
-**Les gros fichiers passent par GitHub.** Hush et les installeurs / mises à jour du launcher se téléchargent depuis les Releases du dépôt `publish.json` › `github.repo` (aujourd'hui `lrtdetrox-byte/vocal-studio`) : une release par version (`hush-v0.5.2`, `launcher-v0.5.1`, `test-hush-v…` pour le canal de test). `make-catalog.js` les range dans `site/github/`, et le catalogue pointe vers GitHub. Hostinger ne garde que le catalogue et le site.
+**Les gros fichiers passent par GitHub.** Hush et les installeurs / mises à jour du launcher se téléchargent depuis les Releases du dépôt `publish.json` › `github.repo` (aujourd'hui `locks-studio/vocal-studio`) : une release par version (`hush-v0.5.2`, `launcher-v0.5.1`, `test-hush-v…` pour le canal de test). `make-catalog.js` les range dans `site/github/`, et le catalogue pointe vers GitHub. Hostinger ne garde que le catalogue et le site.
 
 - Ce dépôt doit être **public** : sinon les launchers reçoivent une erreur 404. Si le dépôt du code ne peut pas être public, crée un dépôt à part pour les releases et mets son nom dans `github.repo`.
 - Il faut `gh` (GitHub CLI) connecté à un compte qui peut écrire dans ce dépôt : `gh auth login`.

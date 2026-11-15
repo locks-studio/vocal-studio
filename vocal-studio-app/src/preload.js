@@ -1,6 +1,8 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
 contextBridge.exposeInMainWorld("studio", {
+  // Zoom de la page (Ctrl + / Ctrl −) : le menu clic droit le compense pour garder sa taille
+  pageZoom: () => webFrame.getZoomFactor(),
   config: {
     get: () => ipcRenderer.invoke("config:get"),
     save: (c) => ipcRenderer.invoke("config:save", c),

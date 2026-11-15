@@ -80,14 +80,27 @@ function openUserMenu(m, x, y) {
   }
 }
 
+// Échelle du menu. Réglage « taille fixe » (par défaut) : il garde la même taille à l'écran quel que soit le zoom
+// (zoom de la page Ctrl + / Ctrl −, molette sur la scène) et ne rapetisse jamais, il défile s'il est trop haut.
+// Désactivé : il suit le zoom de la page et celui de la scène, comme le reste.
+function menuScale() {
+  let pz = 1;
+  try { pz = window.studio.pageZoom() || 1; } catch {}
+  if (S.menuFixed !== false) return { k: 1 / pz, fit: false };
+  return { k: Math.max(0.7, Math.min(1.6, (S.zoom || 0.55) / 0.55)), fit: true };
+}
+
 function place(el, x, y) {
-  // Taille normale quel que soit le zoom de la scène ; il rapetisse seulement s'il est plus haut que la fenêtre
-  el.style.transform = "";
-  el.style.maxHeight = "";
+  const { k, fit } = menuScale();
+  el.style.scale = "";
+  el.style.maxHeight = "none";
   const full = el.scrollHeight + 12;
-  const s = Math.max(0.6, Math.min(1, (innerHeight - 12) / full));
+  // Mode « suit le zoom » : il peut rapetisser (jusqu'à 60 %) pour tenir dans la fenêtre
+  const s = fit ? Math.max(0.6 * k, Math.min(k, (innerHeight - 12) / full)) : k;
+  // « scale » et pas « transform » : l'animation d'ouverture (pop) écraserait transform
   el.style.transformOrigin = "0 0";
-  el.style.transform = s < 1 ? `scale(${s.toFixed(3)})` : "";
+  el.style.scale = s !== 1 ? s.toFixed(3) : "";
+  el.style.maxHeight = Math.floor((innerHeight - 12) / s) + "px"; // une fois mis à l'échelle, il tient à l'écran
   el.dataset.scale = s;
   const W = innerWidth, H = innerHeight, w = el.offsetWidth * s, h = el.offsetHeight * s;
   el.style.left = Math.max(6, Math.min(x, W - w - 6)) + "px";
@@ -121,10 +134,10 @@ function renderUserMenu(m) {
   // — Amis Hush —
   if (!isMe && real) {
     const st = friendState(id);
-    if (st === "friend") el.appendChild(umItem("Ami Hush ✓", { off: "Vous êtes déjà amis" }));
+    if (st === "friend") el.appendChild(umItem("✓ Ami Hush", { off: "Vous êtes déjà amis" }));
     else if (st === "sent") el.appendChild(umItem("Demande d'ami envoyée", { off: "En attente de sa réponse" }));
     else if (st === "incoming") el.appendChild(umItem("Accepter sa demande d'ami", { onClick: () => { friendOp("accept", id); closeUserMenu(); } }));
-    else el.appendChild(umItem("Ajouter en ami", {
+    else el.appendChild(umItem("➕ Ajouter en ami Hush", {
       onClick: async () => {
         closeUserMenu();
         const r = await window.studio.friends.op("add", id);
@@ -192,13 +205,16 @@ function subMenu(anchor, sub) {
   sub.className = "umenu sub glass";
   UM.sub = sub;
   document.body.appendChild(sub);
-  const a = anchor.getBoundingClientRect(), r = sub.getBoundingClientRect();
-  const left = a.right + 4 + r.width < innerWidth ? a.right + 4 : a.left - r.width - 4;
-  sub.style.position = "fixed";
+  // Même échelle que le menu principal
   const s = parseFloat(UM.el.dataset.scale) || 1;
-  if (s < 1) { sub.style.transformOrigin = "0 0"; sub.style.transform = `scale(${s})`; }
-  sub.style.left = left + "px";
-  sub.style.top = Math.max(6, Math.min(a.top - 6, innerHeight - r.height - 6)) + "px";
+  sub.style.position = "fixed";
+  sub.style.transformOrigin = "0 0";
+  sub.style.scale = s !== 1 ? String(s) : "";
+  sub.style.maxHeight = Math.floor(innerHeight * 0.6 / s) + "px";
+  const a = anchor.getBoundingClientRect(), w = sub.offsetWidth * s, h = sub.offsetHeight * s;
+  const left = a.right + 4 + w < innerWidth ? a.right + 4 : a.left - w - 4;
+  sub.style.left = Math.max(6, left) + "px";
+  sub.style.top = Math.max(6, Math.min(a.top - 6, innerHeight - h - 6)) + "px";
 }
 
 function rolesMenu(m) {

@@ -6,6 +6,7 @@ const crypto = require("crypto");
 // yauzl est chargé seulement à l'import (les tests de readInfo tournent sans les modules installés)
 
 const AUDIO = /\.(flac|wav|mp3|ogg|opus|m4a|aac|aiff?)$/i;
+const IMAGE = /\.(png|jpe?g|gif|webp)$/i;
 
 function readInfo(txt) {
   // « Tracks: » puis une ligne par personne : « pseudo#0 (123456789012345678) »
@@ -28,12 +29,27 @@ function importZip(zipFile, root) {
   return new Promise((resolve, reject) => {
     require("yauzl").open(zipFile, { lazyEntries: true }, (err, zip) => {
       if (err) return reject(new Error("zip illisible"));
-      const got = [];
+      const got = [], avatars = [];
       let info = "";
       zip.on("entry", (e) => {
         const base = path.basename(e.fileName);
         // Rien en dehors du dossier d'import, et seulement l'audio et info.txt (raw.dat ne sert pas)
-        if (/\/$/.test(e.fileName) || !(AUDIO.test(base) || base === "info.txt")) return zip.readEntry();
+        if (/\/$/.test(e.fileName) || !(AUDIO.test(base) || IMAGE.test(base) || base === "info.txt")) return zip.readEntry();
+        // Photo de profil (zip « avatars » de Craig : « 1-pseudo.png ») : gardée en mémoire, pas extraite
+        if (IMAGE.test(base)) {
+          if (e.uncompressedSize > 15e6) return zip.readEntry();
+          return zip.openReadStream(e, (er, rs) => {
+            if (er) return reject(er);
+            const parts = [];
+            rs.on("data", (d) => parts.push(d));
+            rs.on("end", () => {
+              const ext = path.extname(base).slice(1).toLowerCase().replace("jpg", "jpeg");
+              const m = /^(\d+)-(.+)$/.exec(base.replace(/\.[^.]+$/, ""));
+              avatars.push({ n: m ? +m[1] : null, name: m ? m[2] : base.replace(/\.[^.]+$/, ""), data: `data:image/${ext};base64,${Buffer.concat(parts).toString("base64")}` });
+              zip.readEntry();
+            });
+          });
+        }
         const dest = path.join(dir, base);
         if (base !== "info.txt" && fs.existsSync(dest) && fs.statSync(dest).size === e.uncompressedSize) { got.push(dest); return zip.readEntry(); }
         zip.openReadStream(e, (er, rs) => {
@@ -64,7 +80,9 @@ function importZip(zipFile, root) {
           } else if (m) people.push({ name: m[2], discordId: null, file: f });
           else files.push({ file: f, name: path.basename(f).replace(/\.[^.]+$/, "") });
         }
-        resolve({ people, files, info: { channel: meta.channel, start: meta.start } });
+        // Photo n° N = piste n° N de info.txt (même ordre chez Craig) : on lui donne aussi l'ID Discord
+        for (const a of avatars) { const t = a.n && meta.tracks[a.n - 1]; if (t && t.discordId) a.discordId = t.discordId; }
+        resolve({ people, files, avatars, info: { channel: meta.channel, start: meta.start } });
       });
       zip.readEntry();
     });
