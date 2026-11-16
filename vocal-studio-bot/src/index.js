@@ -84,6 +84,32 @@ try { sessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8")); } catch {}
 const saveSessions = () => fs.writeFile(SESSIONS_FILE + ".tmp", JSON.stringify(sessions), (e) => { if (!e) fs.rename(SESSIONS_FILE + ".tmp", SESSIONS_FILE, () => {}); });
 const pending = new Map(); // state → { at, token?, error? }
 
+// ——— Sécurité ———
+// Une session = un jeton de 43 caractères tiré au hasard. On ne lit jamais sessions[x] avec n'importe quoi :
+// « __proto__ » ou « constructor » ne doivent pas passer pour une session.
+const SESSION_DAYS = 90;
+function sessionOf(token) {
+  if (typeof token !== "string" || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !Object.prototype.hasOwnProperty.call(sessions, token)) return null;
+  const s = sessions[token];
+  if (Date.now() - (s.seen || s.at || 0) > SESSION_DAYS * 86_400_000) { delete sessions[token]; saveSessions(); return null; }
+  if (Date.now() - (s.seen || 0) > 86_400_000) { s.seen = Date.now(); saveSessions(); } // une fois par jour au plus
+  return s;
+}
+// Limites de vitesse : par adresse (connexions, logins) et par appli connectée (messages, amis, tchat).
+// Au-delà, la demande est refusée ; un client qui insiste beaucoup est déconnecté.
+const buckets = new Map();
+function allow(key, perMinute) {
+  const now = Date.now();
+  let b = buckets.get(key);
+  if (!b || now - b.t > 60_000) { b = { t: now, n: 0 }; buckets.set(key, b); }
+  return ++b.n <= perMinute;
+}
+setInterval(() => { const now = Date.now(); for (const [k, b] of buckets) if (now - b.t > 120_000) buckets.delete(k); }, 60_000).unref();
+// Adresse du visiteur : derrière le tunnel (Tailscale Funnel), elle arrive dans X-Forwarded-For
+const ipOf = (req) => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim().slice(0, 64);
+// En-têtes de sécurité de toutes les pages et réponses du serveur
+const SECURE_HEADERS = { "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" };
+
 function page(res, title, text) {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(`<!doctype html><meta charset="utf-8"><title>Hush</title>
@@ -107,7 +133,7 @@ async function handleCallback(url, res) {
     const user = await fetch(`${API}/users/@me`, { headers: { Authorization: `Bearer ${tok.access_token}` } }).then((r) => r.json());
     if (!user.id) throw new Error("profil Discord illisible");
     const token = crypto.randomBytes(32).toString("base64url");
-    sessions[token] = { id: user.id, name: user.global_name || user.username, at: Date.now() };
+    sessions[token] = { id: user.id, name: user.global_name || user.username, at: Date.now(), seen: Date.now() };
     saveSessions();
     p.token = token;
     page(res, "C'est bon ! · All set!", "Hush est connecté à ton compte Discord. Tu peux fermer cet onglet. · Hush is linked to your Discord account. You can close this tab.");
@@ -118,10 +144,16 @@ async function handleCallback(url, res) {
 }
 
 const server = http.createServer((req, res) => {
+  for (const [k, v] of Object.entries(SECURE_HEADERS)) res.setHeader(k, v);
+  // 120 requêtes par minute et par adresse : largement assez pour une appli, trop peu pour attaquer
+  if (!allow("http:" + ipOf(req), 120)) { res.writeHead(429).end("Trop de demandes, réessaie dans une minute."); return; }
+  if ((req.url || "").length > 2048) { res.writeHead(414).end(); return; }
   const url = new URL(req.url, PUBLIC_URL);
   if (url.pathname === "/auth/login") {
     const state = url.searchParams.get("state") || "";
     if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) { res.writeHead(400).end("state invalide"); return; }
+    // Pas plus de 10 connexions lancées par minute et par adresse, et 5000 en attente au total
+    if (!allow("login:" + ipOf(req), 10) || pending.size > 5000) { res.writeHead(429).end("Trop de demandes de connexion, réessaie dans une minute."); return; }
     pending.set(state, { at: Date.now() });
     const q = new URLSearchParams({ client_id: DISCORD_CLIENT_ID, response_type: "code", redirect_uri: REDIRECT, scope: "identify", state });
     res.writeHead(302, { Location: `https://discord.com/oauth2/authorize?${q}` }).end();
@@ -130,7 +162,7 @@ const server = http.createServer((req, res) => {
   } else if (url.pathname === "/auth/me") {
     // Qui est connecté (launcher 1999) : la session est vérifiée, jamais renvoyée
     const m = /^Bearer (\S{10,200})$/.exec(req.headers.authorization || "");
-    const s = m && sessions[m[1]];
+    const s = m && sessionOf(m[1]);
     if (!s) { res.writeHead(401).end(); return; }
     bot.avatarOf(s.id).then((avatar) => {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -223,7 +255,8 @@ setInterval(() => { for (const [k, p] of pending) if (Date.now() - p.at > 600_00
 
 // ——— Liaison en direct avec les applis ———
 const bot = new StudioBot(DISCORD_TOKEN);
-const wss = new WebSocketServer({ server, path: "/ws" });
+// 256 Ko par message au plus (un message énorme ne peut pas faire tomber le serveur)
+const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 256 * 1024 });
 const clients = new Set();
 
 function push(c) {
@@ -261,7 +294,10 @@ setInterval(() => {
   }
 }, 30_000).unref();
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
+  const ip = req ? ipOf(req) : "?";
+  // 30 nouvelles liaisons par minute et par adresse
+  if (!allow("ws:" + ip, 30)) return ws.close(4029, "trop de connexions");
   ws.alive = true;
   ws.on("pong", () => { ws.alive = true; });
   const c = { ws, user: null, last: null, cid: ++nextCid, rtc: false, video: { cam: false, screen: false } };
@@ -269,8 +305,12 @@ wss.on("connection", (ws) => {
   ws.on("message", async (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
+    if (!msg || typeof msg !== "object" || typeof msg.type !== "string") return;
+    // Par appli connectée : 300 messages par minute (l'appli en envoie quelques-uns) ; au-delà, déconnexion
+    if (!allow("msg:" + (c.user ? c.user.id : ip), 300)) return ws.close(4029, "trop de messages");
     if (!c.user) {
-      const s = msg.type === "auth" && sessions[msg.token];
+      if (!allow("auth:" + ip, 20)) return ws.close(4029, "trop d'essais");
+      const s = msg.type === "auth" && sessionOf(msg.token);
       if (!s) return ws.close(4001, "session inconnue");
       clearTimeout(authTimer);
       c.user = { id: s.id, name: s.name, avatar: await bot.avatarOf(s.id) };
@@ -328,6 +368,7 @@ wss.on("connection", (ws) => {
       else if (msg.type === "friends" && msg.op === "invite") {
         // Inviter un ami dans son vocal : il reçoit une notification « X t'invite à rejoindre #salon » dans Hush
         try {
+          if (!allow("invite:" + c.user.id, 10)) throw new Error("Trop d'invitations : attends une minute.");
           const me = friends.db[c.user.id], to = String(msg.arg || "");
           if (!me || !me.friends.includes(to)) throw new Error("Tu ne peux inviter que tes amis Hush.");
           const voice = friends.presence.get(c.user.id);
@@ -340,11 +381,16 @@ wss.on("connection", (ws) => {
         } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
       }
       else if (msg.type === "friends") {
-        try { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: friends.op(c.user.id, msg.op, msg.arg) })); }
+        try {
+          if (msg.op === "add" && !allow("friend-add:" + c.user.id, 20)) throw new Error("Trop d'essais : attends une minute.");
+          ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: friends.op(c.user.id, msg.op, msg.arg) }));
+        }
         catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
       }
       else if (msg.type === "chat") {
         try {
+          // Tchat : 10 messages par minute au plus, pour que personne ne spamme un salon avec le bot
+          if (msg.op === "send" && !allow("chat:" + c.user.id, 10)) throw new Error("Doucement : 10 messages par minute au plus.");
           const data = msg.op === "send" ? await bot.chatSend(c.user.id, msg.text) : await bot.chatHistory(c.user.id);
           ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data }));
         } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }

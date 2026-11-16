@@ -1,5 +1,25 @@
 // 1999 : le launcher. Lit le catalogue publié sur le site, installe / met à jour / lance les logiciels.
 const { app, BrowserWindow, ipcMain, shell, screen, nativeImage, session, desktopCapturer, safeStorage, Menu } = require("electron");
+// ——— Sécurité : liens externes et pages ———
+// Liens ouverts hors de l'appli : seulement https:// et discord:// (jamais file:, ms-settings:, javascript:…),
+// même si une page ou un serveur piraté essayait d'en faire ouvrir un autre.
+function safeOpen(url) {
+  let u;
+  try { u = new URL(String(url)); } catch { return; }
+  if (u.protocol === "https:" || u.protocol === "discord:") shell.openExternal(u.toString());
+}
+// Toute page créée (fenêtres, overlay, pages cachées) : jamais de <webview>, jamais de nouvelle fenêtre, jamais de
+// navigation vers un autre site, et seuls les fichiers créés par l'appli elle-même (blob:, data:) se téléchargent
+const guardedSessions = new WeakSet();
+app.on("web-contents-created", (_e, wc) => {
+  wc.on("will-attach-webview", (e) => e.preventDefault());
+  wc.on("will-navigate", (e, url) => { if (!url.startsWith("file://")) e.preventDefault(); });
+  wc.setWindowOpenHandler(({ url }) => { safeOpen(url); return { action: "deny" }; });
+  if (!guardedSessions.has(wc.session)) {
+    guardedSessions.add(wc.session);
+    wc.session.on("will-download", (e, item) => { if (!/^(blob|data):/.test(item.getURL())) e.preventDefault(); });
+  }
+});
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -167,16 +187,29 @@ function fetchText(url, hops = 0) {
 // Logiciels privés (débloqués avec une clé d'accès) : leur catalogue est dans un dossier secret du site
 const privateUrl = (folder) => CATALOG_URL.replace(/catalog\.json$/, `${folder}/catalog.json`);
 const privateFolders = () => [].concat(settings.privateKeys || []).filter(privateKey.isFolder);
+// Un catalogue n'est accepté que s'il est signé par Locks (src/catalog-sign.js) : un site piraté ne peut rien faire installer.
+// Version de développement (npm start) : un catalogue local non signé est toléré pour les tests.
+const catalogSign = require("./catalog-sign");
 async function fetchCatalog(url) {
   const cat = JSON.parse(await fetchText(url));
   if (!cat || !Array.isArray(cat.apps)) throw new Error("catalogue invalide");
+  if (!catalogSign.verify(cat) && (app.isPackaged || !/^file:/.test(url))) throw new Error("catalogue non signé ou modifié : refusé par sécurité");
   return cat;
+}
+// Anti-retour en arrière : un catalogue plus ancien que le dernier accepté (même bien signé) est refusé,
+// sinon on pourrait faire réinstaller une ancienne version qui avait une faille
+function olderThanCache(cat) {
+  try {
+    const old = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
+    return !!(old.generatedAt && cat.generatedAt && Date.parse(cat.generatedAt) < Date.parse(old.generatedAt));
+  } catch { return false; }
 }
 
 // Catalogue : en ligne si possible, sinon la dernière copie connue (le launcher marche hors ligne pour lancer)
 async function getCatalog() {
   try {
     const cat = await fetchCatalog(catalogUrl());
+    if (olderThanCache(cat)) throw new Error("catalogue plus ancien que celui déjà connu : refusé par sécurité");
     // On ajoute les logiciels privés débloqués (un dossier injoignable est simplement ignoré cette fois-ci)
     for (const folder of privateFolders()) {
       try {
@@ -220,7 +253,7 @@ function createWindow(prev) {
   win.on("focus", () => send("win:focus", true));
   win.on("blur", () => send("win:focus", false));
   win.webContents.on("render-process-gone", (_e, d) => { logError("page", d.reason); if (d.reason !== "clean-exit" && !win.isDestroyed()) win.webContents.reload(); });
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) safeOpen(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
 }
 
@@ -232,7 +265,7 @@ app.whenReady().then(() => {
   loadSettings();
   account = new Account({
     file: path.join(app.getPath("userData"), "account.json"), server: CONFIG.authServer,
-    openUrl: (u) => shell.openExternal(u),
+    openUrl: (u) => safeOpen(u),
     seal: (t) => (safeStorage.isEncryptionAvailable() ? "e:" + safeStorage.encryptString(t).toString("base64") : "p:" + t),
     unseal: (b) => (b.startsWith("e:") ? safeStorage.decryptString(Buffer.from(b.slice(2), "base64")) : b.slice(2)),
   });
@@ -331,8 +364,8 @@ ipcMain.handle("test:join", async (_e, raw) => {
 });
 ipcMain.handle("test:leave", () => { delete settings.testCode; saveSettings(); return { ok: true }; });
 ipcMain.handle("account:get", () => account.refresh());
-ipcMain.handle("open:invite", () => shell.openExternal(CONFIG.inviteUrl));
-ipcMain.handle("open:privacy", () => shell.openExternal(CONFIG.privacyUrl));
+ipcMain.handle("open:invite", () => safeOpen(CONFIG.inviteUrl));
+ipcMain.handle("open:privacy", () => safeOpen(CONFIG.privacyUrl));
 ipcMain.handle("win:reload", () => win.webContents.reload());
 ipcMain.handle("account:login", () => account.login());
 ipcMain.handle("account:cancel", () => account.cancel());
@@ -365,7 +398,7 @@ ipcMain.handle("settings:set", (_e, patch) => {
 });
 ipcMain.handle("app:uninstall", (_e, id) => { installer.uninstall(id); shortcuts.removeApp(appEntry(id)); return installer.state; });
 ipcMain.handle("app:folder", (_e, id) => { const s = installer.installed(id); shell.openPath(s ? s.dir : installer.appsDir); });
-ipcMain.handle("open:url", (_e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(url); });
+ipcMain.handle("open:url", (_e, url) => { if (/^https:\/\//.test(String(url))) safeOpen(url); });
 ipcMain.handle("win:minimize", () => win.minimize());
 ipcMain.handle("win:maximize", () => toggleMax());
 ipcMain.handle("win:close", () => win.close());

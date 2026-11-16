@@ -19,6 +19,13 @@ AddType application/gzip .gz
 
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
+  # Sécurité : le site ne s'affiche jamais dans un cadre piégé, ne charge que ses propres scripts,
+  # reste en https, et ne transmet pas l'adresse de la page aux autres sites
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
   # Le launcher et le site doivent toujours voir le catalogue et la page à jour
   <FilesMatch "\.(json|html)$">
     Header set Cache-Control "no-cache"

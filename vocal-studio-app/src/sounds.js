@@ -5,7 +5,8 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { Readable } = require("stream");
-const mm = require("music-metadata");
+// music-metadata 12 (sans les failles des versions 7 à 11) est un module ES : chargé à la demande
+const mm = () => import("music-metadata");
 
 const AUDIO = ["mp3", "m4a", "aac", "wav", "ogg", "opus", "flac", "webm", "weba", "mp4", "3gp"];
 const TYPES = {
@@ -94,7 +95,7 @@ class SoundLibrary {
       const item = { id, file: id + ext, title: base, artist: "", duration: 0, cover: null, lrc: null };
       fs.copyFileSync(src, path.join(this.dir, item.file));
       try {
-        const meta = await mm.parseFile(src, { duration: true });
+        const meta = await (await mm()).parseFile(src, { duration: true });
         const c = meta.common;
         if (c.title) item.title = c.title;
         if (c.artist) item.artist = c.artist;

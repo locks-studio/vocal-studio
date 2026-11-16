@@ -15,5 +15,8 @@ ftp.env
 # Clés d'accès privées de 1999 (launcher/tools/make-catalog.js) : jamais sur GitHub
 cles-privees.env
 
+# Clé SECRÈTE de signature des publications (launcher/tools/make-catalog.js) : jamais sur GitHub
+cle-signature.pem
+
 # Graphe de code généré par graphify
 graphify-out/

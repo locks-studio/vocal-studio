@@ -6,7 +6,8 @@
 #      puis le site et catalog.json sur Hostinger par FTP.
 # Pour publier : augmente la version (et les notes dans launcher/publish.json), puis push sur main.
 # « Run workflow » (onglet Actions) republie le catalogue même sans nouvelle version (ex. notes corrigées).
-# Secrets du dépôt à créer (Settings › Secrets and variables › Actions) : FTP_HOST, FTP_USER, FTP_PASS.
+# Secrets du dépôt à créer (Settings › Secrets and variables › Actions) : FTP_HOST, FTP_USER, FTP_PASS, CATALOG_SIGNING_KEY
+# (le contenu de launcher/cle-signature.pem : « gh secret set CATALOG_SIGNING_KEY < launcher/cle-signature.pem »).
 # Logiciels privés (Hush Studio) : secret CLES_PRIVEES = « cle:hush-studio » (plusieurs clés : séparées par « ; »).
 # Leurs fichiers vont dans le dossier secret de chaque clé sur Hostinger, jamais sur les Releases GitHub (publiques).
 name: Publier
@@ -195,6 +196,8 @@ jobs:
         working-directory: launcher
         env:
           CLES_PRIVEES: ${{ secrets.CLES_PRIVEES }}
+          # Clé SECRÈTE qui signe les catalogues : sans elle, rien n'est publié (les launchers refuseraient)
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
         run: xvfb-run -a node tools/make-catalog.js
 
       - name: GitHub puis Hostinger

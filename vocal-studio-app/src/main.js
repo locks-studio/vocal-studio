@@ -1,4 +1,25 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen, globalShortcut, Menu } = require("electron");
+// ——— Sécurité : liens externes et pages ———
+// Liens ouverts hors de l'appli : seulement https:// et discord:// (jamais file:, ms-settings:, javascript:…),
+// même si une page ou un serveur piraté essayait d'en faire ouvrir un autre.
+function safeOpen(url) {
+  let u;
+  try { u = new URL(String(url)); } catch { return; }
+  if (u.protocol === "https:" || u.protocol === "discord:") shell.openExternal(u.toString());
+}
+// Toute page créée (fenêtres, overlay, pages cachées) : jamais de <webview>, jamais de nouvelle fenêtre, jamais de
+// navigation vers un autre site, et seuls les fichiers créés par l'appli elle-même (blob:, data:) se téléchargent
+const guardedSessions = new WeakSet();
+app.on("web-contents-created", (_e, wc) => {
+  wc.on("will-attach-webview", (e) => e.preventDefault());
+  wc.on("will-navigate", (e, url) => { if (!url.startsWith("file://")) e.preventDefault(); });
+  wc.setWindowOpenHandler(({ url }) => { safeOpen(url); return { action: "deny" }; });
+  if (!guardedSessions.has(wc.session)) {
+    guardedSessions.add(wc.session);
+    wc.session.on("will-download", (e, item) => { if (!/^(blob|data):/.test(item.getURL())) e.preventDefault(); });
+  }
+});
+
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -286,7 +307,7 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://discord.com/") || url.startsWith("https://developer.spotify.com/")) shell.openExternal(url);
+    if (url.startsWith("https://discord.com/") || url.startsWith("https://developer.spotify.com/")) safeOpen(url);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -398,7 +419,7 @@ app.whenReady().then(() => {
   sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
   launcherSession();
-  botLink = new BotLink(botStore, (url) => shell.openExternal(url), (state) => { if (session === botLink) send("voice:state", state); });
+  botLink = new BotLink(botStore, (url) => safeOpen(url), (state) => { if (session === botLink) send("voice:state", state); });
   botLink.meta = { version: app.getVersion(), os: process.platform };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
@@ -406,7 +427,7 @@ app.whenReady().then(() => {
   // Un ami t'invite dans son vocal : notification dans Hush (et la fenêtre clignote dans la barre des tâches)
   botLink.onInvite = (inv) => { send("friends:invite", inv); if (win && !win.isDestroyed() && !win.isFocused()) win.flashFrame(true); };
   useMode(data.mode);
-  spotify = new SpotifySession(spotifyStore, (url) => shell.openExternal(url), (s) => {
+  spotify = new SpotifySession(spotifyStore, (url) => safeOpen(url), (s) => {
     if (musicSource === "spotify") sendMusic(s);
   });
   // Micro (enregistrer un son) et caméra (l'afficher dans Hush) : rien d'autre
@@ -480,7 +501,7 @@ ipcMain.handle("voice:summon", async () => {
 ipcMain.handle("voice:join", async (_e, c, g) => {
   if (!/^\d{5,25}$/.test(String(c)) || (g && !/^\d{5,25}$/.test(String(g)))) return false;
   if (session === localSession && localSession.ipc) { try { await localSession.join(String(c)); return true; } catch {} }
-  shell.openExternal(`discord://-/channels/${g || "@me"}/${c}`);
+  safeOpen(`discord://-/channels/${g || "@me"}/${c}`);
   return true;
 });
 
@@ -525,8 +546,8 @@ ipcMain.handle("bot:info", async () => {
   const i = await botLink.info();
   return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1), admin: !!botLink.admin };
 });
-ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) shell.openExternal(`discord://-/channels/${g}/${c}`); });
-ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) shell.openExternal(`discord://-/users/${id}`); });
+ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) safeOpen(`discord://-/channels/${g}/${c}`); });
+ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) safeOpen(`discord://-/users/${id}`); });
 ipcMain.handle("clip:write", (_e, text) => clipboard.writeText(String(text).slice(0, 200)));
 // Bouton « Coller » du code ami : seulement un peu de texte
 ipcMain.handle("clip:read", () => clipboard.readText().slice(0, 200));
@@ -552,7 +573,11 @@ ipcMain.handle("sounds:add", () => sounds.add(win));
 ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));
 ipcMain.handle("sounds:remove", (_e, id) => sounds.remove(id));
 ipcMain.handle("sounds:cover", (_e, id) => sounds.setCover(win, id));
-ipcMain.handle("sounds:record", (_e, data, duration) => sounds.addRecording(data, duration));
+// Enregistrement au micro : un vrai fichier son, pas plus de 100 Mo
+ipcMain.handle("sounds:record", (_e, data, duration) => {
+  const ok = (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) && data.byteLength > 0 && data.byteLength < 100e6;
+  return ok ? sounds.addRecording(data, Math.max(0, Math.min(3_600_000, +duration || 0))) : sounds.list();
+});
 ipcMain.handle("sounds:rename", (_e, id, title) => sounds.rename(id, title));
 ipcMain.handle("lyrics:get", (_e, q) => sounds.lyrics(q || {}));
 ipcMain.handle("cover:find", (_e, q) => sounds.findCover(q || {}));
@@ -570,7 +595,7 @@ ipcMain.handle("spotify:logout", () => spotify.logout());
 ipcMain.handle("win:minimize", (e) => winOf(e).minimize());
 ipcMain.handle("win:maximize", (e) => { const w = winOf(e); w.isMaximized() ? w.unmaximize() : w.maximize(); });
 ipcMain.handle("win:close", (e) => winOf(e).close());
-ipcMain.handle("open:privacy", () => shell.openExternal("https://1999.organisationphantom.fr/confidentialite.html"));
+ipcMain.handle("open:privacy", () => safeOpen("https://1999.organisationphantom.fr/confidentialite.html"));
 ipcMain.handle("win:reload", (e) => e.sender.reload()); // location.reload est bloqué par la protection will-navigate
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
