@@ -297,7 +297,8 @@ const STATUS = {
   error: ["err", "Erreur"], demo: ["ok", "Mode démo"],
 };
 function renderChrome() {
-  const [cls, label] = STATUS[state.status] || STATUS.idle;
+  let [cls, label] = STATUS[state.status] || STATUS.idle;
+  if (state.status === "disconnected" && /serveur Hush/i.test(state.error || "")) label = "Serveur Hush injoignable";
   $("#status").innerHTML = `<i class="dot ${cls}"></i> `;
   $("#status").append(label);
   const ch = state.channel;
@@ -417,8 +418,10 @@ async function renderScreen() {
         ? "Rejoins un salon vocal sur un serveur où le bot Hush est invité : il s'affichera ici tout seul."
         : "Rejoins un salon vocal ou un appel dans Discord : il s'affichera ici tout seul."));
   } else if (s === "disconnected") {
-    card.append(el("div", { class: "spinner" }), el("h3", {}, isBot ? "Serveur Hush injoignable" : "Discord est fermé"),
-      el("p", {}, isBot ? "Vérifie ta connexion internet. Hush réessaie toutes les 5 secondes." : "Ouvre Discord sur ce PC. Hush se reconnecte toutes les 5 secondes."),
+    // En connexion directe, l'erreur peut venir du serveur Hush (pas de Discord) : on le dit
+    const srv = isBot || /serveur Hush/i.test(state.error || "");
+    card.append(el("div", { class: "spinner" }), el("h3", {}, srv ? "Serveur Hush injoignable" : "Discord est fermé"),
+      el("p", {}, srv ? "Vérifie ta connexion internet (certains Wi-Fi publics ou d'école le bloquent). Hush réessaie toutes les 5 secondes." : "Ouvre Discord sur ce PC. Hush se reconnecte toutes les 5 secondes."),
       actions(button("Essayer le mode démo", "ghost", () => setDemo(true))));
   } else if (s === "error") {
     card.append(el("h3", {}, "La connexion a échoué"), el("p", { class: "err" }, state.error || "Erreur inconnue"),
@@ -812,57 +815,74 @@ new ResizeObserver(() => layout()).observe(stage);
 /* ——— Vue « stream » : quand une caméra ou un partage d'écran est actif ———
    Le flux en grand à gauche dans un cadre arrondi (qui s'allume en vert quand la personne parle),
    les autres en zigzag sur un panneau sombre en biais à droite. */
-function featureSource() {
-  return null; // vue stream retirée (jugée pas belle) : les vidéos restent dans les tuiles et la fenêtre de partage
-  if (MINI || ["discord", "lyrics"].includes(S.layout) || typeof Cap === "undefined") return null;
-  const me = meTileId();
-  if (Cap.screen) return { id: me, kind: "screen", stream: Cap.screen };
-  if (Cap.cam) return { id: me, kind: "cam", stream: Cap.cam };
-  const live = [...tiles.values()].map((t) => t.data);
-  const m = live.find((d) => d.stream) || live.find((d) => d.video);
-  return m ? { id: m.id, kind: m.stream ? "remote-stream" : "remote-cam", member: m } : null;
+// Tout ce qu'on peut regarder : ma caméra, mon écran, et ceux des amis Hush du salon
+function feeds() {
+  if (typeof Cap === "undefined") return [];
+  const me = meTileId(), out = [];
+  for (const t of tiles.values()) for (const kind of ["screen", "cam"]) {
+    const stream = mediaOf(t.data.id, kind);
+    if (stream) out.push({ id: t.data.id, kind, stream, mine: t.data.id === me });
+  }
+  return out;
 }
-let featKey = "";
+let featPin = ""; // « id|kind » choisi à la main dans le sélecteur
+function featureSource() {
+  if (MINI || ["discord", "lyrics"].includes(S.layout)) return null;
+  const list = feeds();
+  // Ordre : le flux choisi, l'écran d'un ami, le mien, la caméra d'un ami, la mienne
+  return list.find((f) => `${f.id}|${f.kind}` === featPin) || list.find((f) => f.kind === "screen" && !f.mine)
+    || list.find((f) => f.kind === "screen") || list.find((f) => !f.mine) || list[0] || null;
+}
+let featKey = "", featList = "";
 function renderFeature(f) {
   const box = $("#feature");
   box.hidden = !f;
+  const all = f ? feeds() : [];
+  const listKey = all.map((x) => `${x.id}|${x.kind}`).join(",");
   const key = f ? `${f.id}|${f.kind}` : "";
-  if (key === featKey) return;
-  featKey = key;
-  if (!f) return;
+  const v = $("#featureVideo");
+  if (key === featKey && listKey === featList && (!f || v.srcObject === f.stream)) return;
+  featKey = key; featList = listKey;
+  if (!f) { v.srcObject = null; return; }
   const t = tiles.get(f.id);
   const name = t ? t.data.name : "";
-  $("#featureName").textContent = name;
-  const v = $("#featureVideo"), ph = $("#featurePh");
-  if (f.stream) {
-    v.srcObject = f.stream;
-    v.classList.toggle("mirror", f.kind === "cam");
-    v.play().catch(() => {});
-    v.hidden = false; ph.hidden = true;
-  } else {
-    // Flux d'un autre membre : Discord ne le donne à aucune appli, on montre son avatar flouté
-    v.srcObject = null; v.hidden = true; ph.hidden = false;
-    $("#featurePhImg").src = (t && t.data.avatar) || "assets/discord-logo.png"; // image fixe : un GIF ne bouge que quand on parle
-    $("#featurePhText").textContent = f.kind === "remote-stream" ? `${name} est en live · à regarder dans Discord` : `${name} a allumé sa caméra · visible dans Discord`;
+  $("#featureName").textContent = f.mine ? (f.kind === "screen" ? "Ton écran" : "Toi") : name;
+  $("#featureAv").src = (t && t.data.avatar) || "assets/discord-logo.png";
+  $("#featureLive").hidden = f.kind !== "screen";
+  $("#featureBox").classList.toggle("is-screen", f.kind === "screen");
+  if (v.srcObject !== f.stream) { v.srcObject = f.stream; v.play().catch(() => {}); }
+  v.classList.toggle("mirror", f.kind === "cam" && f.mine);
+  // Plusieurs flux : petites pastilles pour choisir lequel est en grand
+  const pick = $("#featurePick");
+  pick.textContent = "";
+  pick.hidden = all.length < 2;
+  for (const x of all) {
+    const xt = tiles.get(x.id);
+    const b = el("button", { class: "fp" + (x === f || (x.id === f.id && x.kind === f.kind) ? " on" : ""), role: "tab", title: x.kind === "screen" ? "Écran" : "Caméra" });
+    const img = el("img", { alt: "" });
+    img.src = (xt && xt.data.avatar) || "assets/discord-logo.png";
+    b.append(img, el("span", {}, x.mine ? "Toi" : xt ? xt.data.name : ""), el("small", {}, x.kind === "screen" ? "Écran" : "Caméra"));
+    b.onclick = () => { featPin = `${x.id}|${x.kind}`; layout(); };
+    pick.appendChild(b);
   }
-  // Le partage affiché en grand remplace la petite fenêtre flottante
-  $("#screenView").classList.toggle("in-feature", f.kind === "screen");
 }
+$("#featureFull").onclick = () => (document.fullscreenElement ? document.exitFullscreen() : $("#featureBox").requestFullscreen().catch(() => {}));
+$("#featureBox").ondblclick = () => $("#featureFull").onclick();
 function placeStream() {
   const W = stage.clientWidth, H = stage.clientHeight;
   const list = [...tiles.values()];
   const n = Math.max(1, list.length);
-  const panelL = W * 0.62, panelW = W - panelL;
-  // Le zoom de la scène ne s'applique pas ici : le panneau est toujours rempli au mieux
-  // En zigzag sur deux colonnes : deux voisins d'une même colonne sont à 2 rangs d'écart (place pour le pseudo)
-  const top = H * 0.07, usable = H * 0.86;
-  const size = Math.round(Math.max(32, Math.min(panelW * 0.36, (usable / n) * 1.25, 220)));
+  // Les avatars en un rang centré sous le cadre (pseudo dessous), le cadre prend tout le reste
+  const gap = 18;
+  const size = Math.round(Math.max(30, Math.min(H * 0.13, (W * 0.92 - (n - 1) * gap) / n, 96 * Math.max(0.6, S.zoom))));
+  const nameH = Math.max(14, size * 0.2) + 6;
+  const rowY = H - nameH - size - Math.max(10, H * 0.025);
   stage.style.setProperty("--st", size + "px");
+  stage.style.setProperty("--feat-h", Math.max(120, rowY - Math.max(12, H * 0.03) - 16) + "px");
+  const total = n * size + (n - 1) * gap;
   list.forEach((t, i) => {
-    const y = top + ((i + 0.5) / n) * usable + size * 0.08;
-    const x = panelL + panelW * (i % 2 ? 0.7 : 0.34);
-    t.el.style.left = x - size / 2 + "px";
-    t.el.style.top = y - size / 2 + "px";
+    t.el.style.left = (W - total) / 2 + i * (size + gap) + "px";
+    t.el.style.top = rowY + "px";
   });
 }
 

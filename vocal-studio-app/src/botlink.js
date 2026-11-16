@@ -18,6 +18,7 @@ class BotLink {
     this.state = this.blank("idle");
     this.pending = new Map(); // rid → { resolve, reject } (actions du menu clic droit)
     this.rid = 0;
+    this.lastVideo = { cam: false, screen: false };
   }
 
   blank(status, error = null) {
@@ -47,7 +48,8 @@ class BotLink {
       else if (msg.type === "chat") { if (this.onChat) this.onChat(msg.message); }
       else if (msg.type === "friends-changed") { if (this.onFriends) this.onFriends(); }
       else if (msg.type === "friend-invite") { if (this.onInvite) this.onInvite(msg); }
-      else if (msg.type === "hello") { this.admin = !!msg.admin; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); if (this.onFriends) this.onFriends(); }
+      else if (msg.type === "hello") { this.admin = !!msg.admin; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); this.send({ type: "video", ...this.lastVideo }); if (this.onFriends) this.onFriends(); }
+      else if (msg.type === "video-room" || msg.type === "rtc") { if (this.onVideo) this.onVideo(msg); }
       else if (msg.type === "mod-result") {
         const p = this.pending.get(msg.rid);
         if (!p) return;
@@ -141,6 +143,9 @@ class BotLink {
   // Amis : liste, ajout, acceptation… ; presence : le vocal où tu es, gardé pour le renvoyer après une reconnexion
   friends(op, arg) { return this.ask({ type: "friends", op, arg }); }
   adminOp(op) { return this.ask({ type: "admin", op }); }
+  // Vidéo entre applis Hush : ce que je montre (caméra / écran), et les messages WebRTC pour un autre membre
+  video(v) { this.lastVideo = { cam: !!(v && v.cam), screen: !!(v && v.screen) }; this.send({ type: "video", ...this.lastVideo }); }
+  rtc(to, data) { this.send({ type: "rtc", to, data }); }
   presence(voice) { this.lastPresence = voice; this.send({ type: "presence", voice }); }
   ask(msg) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Pas connecté au bot."));

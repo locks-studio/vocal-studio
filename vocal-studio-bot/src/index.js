@@ -231,6 +231,27 @@ function push(c) {
   if (s !== c.last) { c.last = s; c.ws.send(s); }
 }
 
+// ——— Caméras et partages d'écran entre utilisateurs Hush ———
+// La vidéo ne passe jamais par ce serveur : il présente seulement les applis Hush d'un même salon vocal
+// (salon vu par le bot, pas déclaré par l'appli : impossible de s'inviter dans un salon où on n'est pas),
+// puis relaie leurs messages WebRTC pour qu'elles se connectent directement entre elles.
+let nextCid = 0;
+const roomOf = (c) => { const l = c.user && bot.findUser(c.user.id); return l ? l.channel.id : null; };
+function pushRooms() {
+  const byRoom = new Map();
+  for (const c of clients) {
+    c.room = c.rtc ? roomOf(c) : null;
+    if (c.room) { if (!byRoom.has(c.room)) byRoom.set(c.room, []); byRoom.get(c.room).push(c); }
+  }
+  for (const c of clients) {
+    if (!c.rtc) continue;
+    const peers = c.room ? byRoom.get(c.room).filter((x) => x !== c && x.user.id !== c.user.id)
+      .map((x) => ({ cid: x.cid, id: x.user.id, cam: x.video.cam, screen: x.video.screen })) : [];
+    const s = JSON.stringify({ type: "video-room", me: c.cid, peers });
+    if (s !== c.lastRoom && c.ws.readyState === 1) { c.lastRoom = s; c.ws.send(s); }
+  }
+}
+
 // Ping toutes les 30 s : garde la liaison ouverte derrière le proxy HTTPS et repère les applis disparues
 setInterval(() => {
   for (const ws of wss.clients) {
@@ -243,7 +264,7 @@ setInterval(() => {
 wss.on("connection", (ws) => {
   ws.alive = true;
   ws.on("pong", () => { ws.alive = true; });
-  const c = { ws, user: null, last: null };
+  const c = { ws, user: null, last: null, cid: ++nextCid, rtc: false, video: { cam: false, screen: false } };
   const authTimer = setTimeout(() => ws.close(4001, "auth"), 10_000);
   ws.on("message", async (raw) => {
     let msg;
@@ -270,6 +291,22 @@ wss.on("connection", (ws) => {
       else if (msg.type === "beat") addMinute(c.user.id, c.user.name, c.user.avatar);
       else if (msg.type === "presence") friends.setPresence(c.user.id, msg.voice);
       else if (msg.type === "report") reports.add(msg.report, c.user);
+      else if (msg.type === "video") {
+        // Cette appli sait afficher la vidéo des autres ; cam / screen : ce qu'elle montre en ce moment
+        c.rtc = true;
+        c.video = { cam: !!msg.cam, screen: !!msg.screen };
+        c.lastRoom = null; // l'appli vient peut-être de redémarrer son interface : on lui redonne le salon
+        pushRooms();
+      }
+      else if (msg.type === "rtc") {
+        // Offre, réponse ou candidat WebRTC : seulement vers une appli du même salon vocal, à l'instant
+        const to = [...clients].find((x) => x.cid === msg.to);
+        const room = roomOf(c);
+        if (!to || !c.rtc || !to.rtc || !room || roomOf(to) !== room || to.ws.readyState !== 1) return;
+        const data = JSON.stringify(msg.data === undefined ? null : msg.data);
+        if (data.length > 64_000) return;
+        to.ws.send(`{"type":"rtc","from":${c.cid},"data":${data}}`);
+      }
       else if (msg.type === "admin") {
         try {
           if (!isAdmin(c.user.id)) throw new Error("Réservé à l'administrateur.");
@@ -330,6 +367,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     clearTimeout(authTimer);
     clients.delete(c);
+    if (c.rtc) pushRooms();
     if (c.user && ![...clients].some((x) => x.user && x.user.id === c.user.id)) friends.setPresence(c.user.id, null);
   });
 });
@@ -354,7 +392,7 @@ let queued = false;
 bot.on("change", () => {
   if (queued) return;
   queued = true;
-  setTimeout(() => { queued = false; for (const c of clients) push(c); }, 40);
+  setTimeout(() => { queued = false; for (const c of clients) push(c); pushRooms(); }, 40);
 });
 
 // Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles,

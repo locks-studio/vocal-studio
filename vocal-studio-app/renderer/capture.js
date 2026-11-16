@@ -1,50 +1,61 @@
 /* ——— Caméra, partage d'écran et clips ———
    Discord ne laisse aucune appli (ni aucun bot) recevoir ou envoyer de la vidéo dans un appel.
-   Hush affiche donc TA caméra et TON partage d'écran chez toi, dans la scène : parfait pour un stream
-   ou une vidéo (OBS capture la fenêtre Hush). Pour que le salon Discord les voie, il faut toujours
-   activer la caméra / le partage dans Discord. */
+   Hush affiche TA caméra et TON partage d'écran dans la scène, et les envoie aux autres utilisateurs
+   Hush du salon (rtc.js) : ils voient les tiens, tu vois les leurs. Pour les membres sans Hush,
+   il faut toujours activer la caméra / le partage dans Discord. */
 const Cap = { cam: null, screen: null, rec: null };
 
 const meTileId = () => (S.demo ? "me" : state.me && state.me.id);
 
-// Appelé après chaque mise à jour des avatars : remet la vidéo de la caméra dans ta tuile
+// La caméra / l'écran d'un membre : le mien, ou celui reçu d'un ami Hush
+function mediaOf(id, kind) {
+  if (id === meTileId()) return Cap[kind];
+  return typeof remoteMedia === "function" ? remoteMedia(id, kind) : null;
+}
+
+// Appelé après chaque mise à jour des avatars : met la caméra de chacun dans sa tuile
 function attachLocalMedia() {
-  const id = meTileId();
+  const me = meTileId();
   for (const t of tiles.values()) {
-    const mine = t.data.id === id;
-    let v = t.el.querySelector(".av video.selfcam");
-    if (mine && Cap.cam) {
+    const mine = t.data.id === me;
+    const cam = mediaOf(t.data.id, "cam"), screen = mediaOf(t.data.id, "screen");
+    let v = t.el.querySelector(".av video.tilecam");
+    if (cam) {
       if (!v) {
         v = document.createElement("video");
-        v.className = "selfcam";
+        v.className = "tilecam";
         v.muted = true; v.autoplay = true; v.playsInline = true;
         t.el.querySelector(".av").appendChild(v);
       }
-      if (v.srcObject !== Cap.cam) { v.srcObject = Cap.cam; v.play().catch(() => {}); }
+      v.classList.toggle("mirror", mine); // ta caméra en miroir, comme dans Discord
+      if (v.srcObject !== cam) { v.srcObject = cam; v.play().catch(() => {}); }
     } else if (v) v.remove();
-    if (mine) {
-      t.el.classList.toggle("video", !!Cap.cam || !!t.data.video);
-      t.el.classList.toggle("live", !!Cap.screen || !!t.data.stream);
-    }
+    t.el.classList.toggle("video", !!cam || !!t.data.video);
+    t.el.classList.toggle("live", !!screen || !!t.data.stream);
+    t.el.classList.toggle("has-feed", !!(cam || screen));
   }
   $("#camBtn").classList.toggle("on", !!Cap.cam);
   $("#shareBtn").classList.toggle("on", !!Cap.screen);
   // Une vidéo apparaît ou disparaît : la vue « stream » se met en place
   const f = featureSource(), k = f ? `${f.id}|${f.kind}` : "";
-  if (k !== featKey) requestAnimationFrame(layout);
+  if (k !== featKey || (f && f.stream !== $("#featureVideo").srcObject)) requestAnimationFrame(layout);
+  // Mon partage d'écran : en grand dans la vue stream, sinon dans la petite fenêtre flottante
+  $("#screenView").hidden = !Cap.screen || !!(f && f.kind === "screen" && f.id === meTileId());
 }
 
 async function toggleCam() {
   if (Cap.cam) {
     Cap.cam.getTracks().forEach((t) => t.stop());
     Cap.cam = null;
+    rtcPublish();
     return attachLocalMedia();
   }
   try {
     Cap.cam = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false });
-    Cap.cam.getVideoTracks()[0].addEventListener("ended", () => { Cap.cam = null; attachLocalMedia(); });
+    Cap.cam.getVideoTracks()[0].addEventListener("ended", () => { Cap.cam = null; rtcPublish(); attachLocalMedia(); });
+    rtcPublish();
     attachLocalMedia();
-    showToast("Caméra allumée dans Hush (allume-la aussi dans Discord pour que le salon te voie)");
+    showToast("Caméra allumée : les amis Hush du salon la voient (allume-la aussi dans Discord pour les autres)");
   } catch (e) {
     showToast(e.name === "NotFoundError" ? "Aucune caméra trouvée" : "Caméra indisponible (déjà utilisée par une autre appli ?)");
   }
@@ -53,12 +64,14 @@ async function toggleCam() {
 /* — Partage d'écran : choix de l'écran ou de la fenêtre, puis affichage dans une fenêtre flottante — */
 async function toggleShare() {
   if (Cap.screen) return stopShare();
+  const res = await window.studio.capture.sources();
+  // Linux Wayland : on passe directement au sélecteur du système
+  if (res.portal) return startShare({ id: "portal", name: "Partage d'écran" });
   const pick = $("#sharePick");
   const grid = $("#shareGrid");
-  grid.textContent = "Recherche des écrans et des fenêtres…";
   pick.hidden = false;
-  const list = await window.studio.capture.sources();
-  grid.textContent = "";
+  const list = res.list;
+  grid.textContent = list.length ? "" : "Aucun écran ni fenêtre trouvé.";
   for (const s of list) {
     const b = document.createElement("button");
     b.className = "share-src";
@@ -88,15 +101,17 @@ async function startShare(src) {
   v.srcObject = Cap.screen;
   v.play().catch(() => {});
   $("#screenTitle").textContent = src.name;
-  $("#screenView").hidden = false;
-  Cap.screen.getVideoTracks()[0].addEventListener("ended", stopShare);
+  const track = Cap.screen.getVideoTracks()[0];
+  track.contentHint = "detail"; // texte net plutôt que fluidité
+  track.addEventListener("ended", stopShare);
+  rtcPublish();
   attachLocalMedia();
 }
 function stopShare() {
   if (Cap.screen) Cap.screen.getTracks().forEach((t) => t.stop());
   Cap.screen = null;
   $("#screenVideo").srcObject = null;
-  $("#screenView").hidden = true;
+  rtcPublish();
   attachLocalMedia();
 }
 $("#screenStop").onclick = stopShare;

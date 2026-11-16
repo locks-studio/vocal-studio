@@ -4,6 +4,8 @@ const { DiscordIPC } = require("./rpc");
 const SCOPES = ["rpc", "rpc.voice.read", "rpc.voice.write", "identify"];
 const CHANNEL_EVENTS = ["VOICE_STATE_CREATE", "VOICE_STATE_UPDATE", "VOICE_STATE_DELETE", "SPEAKING_START", "SPEAKING_STOP"];
 const API = "https://discord.com/api/v10";
+// Identifiant (Application ID) de l'appli Discord de Hush, public : sert si le serveur Hush est injoignable
+const HUSH_CLIENT_ID = "";
 
 function toMember(vs) {
   const u = vs.user || {};
@@ -128,14 +130,27 @@ class VoiceSession {
     await this.useToken(t.access_token);
   }
 
-  // Identifiant de l'appli Discord : celui saisi, sinon celui du serveur Hush (connexion directe d'un ami)
+  // Identifiant de l'appli Discord de Hush (le même pour tout le monde, il n'a rien de secret) :
+  // celui saisi, sinon celui donné par le serveur Hush, sinon le dernier reçu, sinon celui inscrit dans Hush.
+  // Ainsi la connexion directe marche même quand le serveur est éteint ou bloqué par le réseau
+  // (seule la toute première autorisation a besoin de lui, pour l'échange du code).
   async clientId() {
-    const { clientId, botServer } = this.store.getConfig();
+    const { clientId, botServer, serverClientId } = this.store.getConfig();
     if (clientId) return clientId;
     if (this._serverClientId) return this._serverClientId;
-    const info = await fetch(`${botServer.replace(/\/$/, "")}/info`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).catch(() => null);
-    if (!info || !info.clientId) throw new Error("Le serveur Hush ne répond pas : impossible de préparer la connexion directe.");
-    return (this._serverClientId = info.clientId);
+    const known = serverClientId || HUSH_CLIENT_ID;
+    const ask = fetch(`${botServer.replace(/\/$/, "")}/info`, { signal: AbortSignal.timeout(8000) })
+      .then((r) => r.json()).catch(() => null)
+      .then((info) => {
+        const id = info && /^\d{17,20}$/.test(String(info.clientId)) ? String(info.clientId) : null;
+        if (id) { this._serverClientId = id; if (this.store.setServerClientId) this.store.setServerClientId(id); }
+        return id;
+      });
+    // Un identifiant déjà connu : on s'en sert tout de suite, le serveur le met à jour en arrière-plan
+    if (known) { ask.catch(() => {}); return known; }
+    const id = await ask;
+    if (!id) throw new Error("Le serveur Hush ne répond pas : impossible de préparer la connexion directe.");
+    return id;
   }
 
   async tokenRequest(params) {
