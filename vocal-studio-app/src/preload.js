@@ -59,6 +59,11 @@ contextBridge.exposeInMainWorld("studio", {
     login: () => ipcRenderer.invoke("spotify:login"),
     logout: () => ipcRenderer.invoke("spotify:logout"),
   },
+  video: {
+    state: (v) => ipcRenderer.send("video:state", v),
+    rtc: (to, data) => ipcRenderer.send("video:rtc", to, data),
+    onSignal: (fn) => ipcRenderer.on("video:signal", (_e, m) => fn(m)),
+  },
   capture: {
     sources: () => ipcRenderer.invoke("capture:sources"),
     pick: (p) => ipcRenderer.invoke("capture:pick", p),

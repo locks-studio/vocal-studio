@@ -35,6 +35,10 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
+        "Tes amis Hush du salon voient ta caméra et ton partage d'écran, et toi les leurs",
+        "Nouvelle vue stream : la vidéo en grand dans un cadre qui s'allume quand on parle, les avatars dessous",
+        "Linux Wayland : le partage d'écran passe par le sélecteur du système",
+        "Connexion directe même quand le serveur Hush est injoignable",
         "Sécurité renforcée : Hush refuse de démarrer si son code a été modifié, et ne peut plus être détourné",
         "Liens et fichiers : seuls les liens sûrs (https, Discord) s'ouvrent, aucun téléchargement imposé",
         "Lecture des sons plus sûre (fichiers piégés ignorés)",

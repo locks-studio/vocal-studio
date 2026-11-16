@@ -84,6 +84,11 @@ $("#chatForm").onsubmit = async (e) => {
   input.value = "";
   const r = await window.studio.chat.send(text);
   if (r.error) { input.value = text; showToast(r.error); }
+  // Envoyé sous le nom du bot au lieu de ton pseudo et ta photo : on dit pourquoi (une fois par salon)
+  else if (r.data && r.data.as === "bot" && r.data.why && Chat.warned !== Chat.channel) {
+    Chat.warned = Chat.channel;
+    showToast(`Message envoyé sous le nom du bot, pas sous ton pseudo : ${r.data.why}.`);
+  }
 };
 
 window.studio.chat.onMessage((m) => {

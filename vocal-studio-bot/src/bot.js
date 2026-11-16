@@ -254,13 +254,27 @@ class StudioBot extends EventEmitter {
       let hook = this.webhooks.get(channel.id);
       if (!hook) {
         const all = await channel.fetchWebhooks();
-        hook = all.find((w) => w.owner && w.owner.id === this.client.user.id) || (await channel.createWebhook({ name: "Hush" }));
+        hook = all.find((w) => w.owner && w.owner.id === this.client.user.id && w.token);
+        if (!hook) {
+          try { hook = await channel.createWebhook({ name: "Hush" }); }
+          catch (e) {
+            // Salon plein (15 webhooks max) : on réutilise un webhook déjà là
+            hook = e.code === 30007 && all.find((w) => w.token);
+            if (!hook) throw e;
+          }
+        }
         this.webhooks.set(channel.id, hook);
       }
       await hook.send({ content: t, username: member.displayName.slice(0, 80), avatarURL: member.displayAvatarURL({ size: 128, extension: "png", forceStatic: true }), allowedMentions });
-    } catch {
+      return { as: "webhook" };
+    } catch (e) {
       this.webhooks.delete(channel.id);
+      console.warn(`Tchat : webhook impossible dans #${channel.name} (${channel.guild.name}) : ${e.code || ""} ${e.message}`);
       await channel.send({ content: `**${member.displayName}** : ${t}`, allowedMentions });
+      const why = e.code === 50013 || /Missing Permissions/i.test(e.message)
+        ? `le bot n'a pas la permission « Gérer les webhooks » dans ce salon (ou sur ${channel.guild.name})`
+        : e.code === 30007 ? "ce salon a déjà trop de webhooks (15 maximum)" : `Discord a refusé le webhook (${e.message})`;
+      return { as: "bot", why };
     }
   }
 

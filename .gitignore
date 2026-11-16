@@ -17,3 +17,6 @@ cles-privees.env
 
 # Clé SECRÈTE de signature des publications (launcher/tools/make-catalog.js) : jamais sur GitHub
 cle-signature.pem
+
+# Graphe de code généré par graphify
+graphify-out/

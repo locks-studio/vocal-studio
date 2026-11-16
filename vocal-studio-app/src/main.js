@@ -74,7 +74,10 @@ const store = {
     redirectUri: data.redirectUri || "http://localhost",
     // Sans Client Secret, la connexion directe passe par le serveur du bot pour l'échange du code (cas des amis)
     botServer: data.botServer || DEFAULT_BOT_SERVER,
+    serverClientId: data.serverClientId || "",
   }),
+  // Identifiant de l'appli Hush donné par le serveur : gardé pour se reconnecter même si le serveur est injoignable
+  setServerClientId: (id) => { if (id && id !== data.serverClientId) { data.serverClientId = id; persist(); } },
   getToken: () => unseal(data.token),
   setToken: (t) => { data.token = seal(t); persist(); },
 };
@@ -420,6 +423,7 @@ app.whenReady().then(() => {
   botLink.meta = { version: app.getVersion(), os: process.platform };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
+  botLink.onVideo = (m) => sendMain("video:signal", m);
   // Un ami t'invite dans son vocal : notification dans Hush (et la fenêtre clignote dans la barre des tâches)
   botLink.onInvite = (inv) => { send("friends:invite", inv); if (win && !win.isDestroyed() && !win.isFocused()) win.flashFrame(true); };
   useMode(data.mode);
@@ -438,8 +442,10 @@ app.whenReady().then(() => {
     capturePick = null;
     if (!p) return cb({});
     try {
+      // Wayland : getSources ouvre le sélecteur du système et rend ce que la personne y a choisi
       const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
-      const src = sources.find((s) => s.id === p.id) || { id: p.id, name: "Hush" };
+      const src = p.id === "portal" ? sources[0] : sources.find((s) => s.id === p.id) || { id: p.id, name: "Hush" };
+      if (!src) return cb({});
       // « loopback » : le son du PC (voix Discord, musique…) sous Windows
       cb(p.audio && process.platform === "win32" ? { video: src, audio: "loopback" } : { video: src });
     } catch { cb({}); }
@@ -527,6 +533,8 @@ ipcMain.handle("admin:op", async (_e, op) => {
   try { return { data: await botLink.adminOp(String(op)) }; } catch (e) { return { error: e.message }; }
 });
 ipcMain.on("friends:presence", (_e, voice) => { if (botLink) botLink.presence(voice); });
+ipcMain.on("video:state", (_e, v) => { if (botLink) botLink.video(v); });
+ipcMain.on("video:rtc", (_e, to, data) => { if (botLink && Number.isInteger(to)) botLink.rtc(to, data); });
 ipcMain.handle("chat:send", (_e, text) => chatCall("send", String(text || "").slice(0, 1900)));
 ipcMain.handle("account:delete", async () => {
   try { await botLink.friends("delete"); } catch (e) { return { error: e.message }; }
@@ -626,10 +634,14 @@ ipcMain.on("win:drag", (e, phase, mode) => {
 
 // ——— Partage d'écran et clips ———
 let capturePick = null;
+// Linux sous Wayland (niri, GNOME, KDE…) : aucune appli ne peut lister les fenêtres elle-même ;
+// c'est le sélecteur du système (portail xdg-desktop-portal / PipeWire) qui demande quoi partager
+const WAYLAND_CAPTURE = process.platform === "linux" && !!(process.env.WAYLAND_DISPLAY || process.env.XDG_SESSION_TYPE === "wayland");
 ipcMain.handle("capture:sources", async () => {
+  if (WAYLAND_CAPTURE) return { portal: true, list: [] };
   const own = [win, mini].filter((w) => w && !w.isDestroyed()).map((w) => w.getMediaSourceId());
   const list = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 320, height: 180 } });
-  return list.filter((s) => !own.includes(s.id)).map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith("screen:"), thumb: s.thumbnail.toDataURL() }));
+  return { portal: false, list: list.filter((s) => !own.includes(s.id)).map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith("screen:"), thumb: s.thumbnail.toDataURL() })) };
 });
 // "self" : la fenêtre Hush qui demande (pour un clip) ; sinon l'écran / la fenêtre choisi
 ipcMain.handle("capture:pick", (e, p) => {
