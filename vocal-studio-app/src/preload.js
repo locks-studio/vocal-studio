@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld("studio", {
   },
   bg: {
     pick: () => ipcRenderer.invoke("bg:pick"),
+    wallpaperEngine: () => ipcRenderer.invoke("we:list"),
   },
   lyrics: {
     get: (q) => ipcRenderer.invoke("lyrics:get", q),
@@ -103,6 +104,12 @@ contextBridge.exposeInMainWorld("studio", {
     info: () => ipcRenderer.invoke("linux:info"),
     setMode: (m) => ipcRenderer.invoke("linux:mode", m),
   },
+  // En fond : zone de notification, démarrage avec le PC, pleine vitesse derrière un jeu
+  background: {
+    get: () => ipcRenderer.invoke("bg:get"),
+    set: (patch) => ipcRenderer.invoke("bg:set", patch),
+    onChanged: (fn) => ipcRenderer.on("bg:changed", (_e, c) => fn(c)),
+  },
   win: {
     minimize: () => ipcRenderer.invoke("win:minimize"),
     maximize: () => ipcRenderer.invoke("win:maximize"),
@@ -120,5 +127,8 @@ contextBridge.exposeInMainWorld("studio", {
     overlayEdit: (on) => ipcRenderer.invoke("overlay:edit", on),
     onOverlayMoved: (fn) => ipcRenderer.on("overlay:moved", (_e, place) => fn(place)),
     onOverlayEdit: (fn) => ipcRenderer.on("overlay:edit", (_e, on) => fn(on)),
+    overlayDone: () => ipcRenderer.invoke("overlay:done"),
+    overlayResize: (f) => ipcRenderer.invoke("overlay:resize", f),
+    onMiniEdit: (fn) => ipcRenderer.on("mini:edit", (_e, on) => fn(on)),
   },
 });

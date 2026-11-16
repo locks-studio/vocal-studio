@@ -43,10 +43,21 @@ class SoundLibrary {
     protocol.handle("vsmedia", async (req) => {
       const u = new URL(req.url);
       const bg = u.host === "bg";
-      const file = path.join(bg ? this.bgDir : this.dir, path.basename(decodeURIComponent(u.pathname)));
+      let file, type;
+      if (u.host === "we") {
+        // Fond Wallpaper Engine : vsmedia://we/<clé>/<fichier>, seulement un fichier listé par wallpaper-engine.js
+        const m = /^\/([\w-]+)\/([^/]+)$/.exec(u.pathname);
+        let name = null;
+        try { name = m && decodeURIComponent(m[2]); } catch {}
+        const r = name && this.we && this.we.resolve(m[1], name);
+        if (!r) return new Response("introuvable", { status: 404 });
+        ({ file, type } = r);
+      } else {
+        file = path.join(bg ? this.bgDir : this.dir, path.basename(decodeURIComponent(u.pathname)));
+      }
       let st;
       try { st = fs.statSync(file); } catch { return new Response("introuvable", { status: 404 }); }
-      const type = (bg ? BG_TYPES : TYPES)[path.extname(file).slice(1).toLowerCase()] || "application/octet-stream";
+      type = type || (bg ? BG_TYPES : TYPES)[path.extname(file).slice(1).toLowerCase()] || "application/octet-stream";
       const base = { "Content-Type": type, "Accept-Ranges": "bytes", "Access-Control-Allow-Origin": "*" };
       const m = /bytes=(\d*)-(\d*)/.exec(req.headers.get("range") || "");
       if (!m) {

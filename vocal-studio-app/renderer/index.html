@@ -2,9 +2,10 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: vsmedia: https://cdn.discordapp.com https://media.discordapp.net https://*.discordapp.net https://i.scdn.co https://cdn-images.dzcdn.net https://e-cdns-images.dzcdn.net; media-src 'self' blob: vsmedia: https://cdn.discordapp.com https://media.discordapp.net https://*.discordapp.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: vsmedia: https://cdn.discordapp.com https://media.discordapp.net https://*.discordapp.net https://i.scdn.co https://cdn-images.dzcdn.net https://e-cdns-images.dzcdn.net; media-src 'self' blob: vsmedia: https://cdn.discordapp.com https://media.discordapp.net https://*.discordapp.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'">
 <title>Hush</title>
 <link rel="stylesheet" media="print" id="gfonts" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="cards">
@@ -122,6 +123,7 @@
     </div>
 
     <div class="mini-grip" id="miniGrip" title="Redimensionner" aria-hidden="true"></div>
+    <div class="mini-edit" id="miniEdit" hidden><b>Glisse l'overlay où tu veux</b><small>Molette : plus grand ou plus petit · Échap pour finir</small><button class="ghost" id="miniEditDone" type="button">Terminé</button></div>
     <!-- Partage d'écran affiché dans Hush : fenêtre flottante, déplaçable et redimensionnable -->
     <div class="screen-view glass" id="screenView" hidden>
       <div class="screen-bar" id="screenBar"><i class="live-dot"></i><span id="screenTitle">Écran</span><button class="wb" id="screenStop" title="Arrêter le partage" aria-label="Arrêter le partage"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -137,6 +139,16 @@
       </section>
     </div>
 
+    <!-- Galerie des fonds Wallpaper Engine -->
+    <div class="share-pick" id="wePanel" hidden>
+      <section class="share-card glass" role="dialog" aria-modal="true" aria-labelledby="weTitle">
+        <header><h3 id="weTitle">Tes fonds Wallpaper Engine</h3><button class="wb" id="weClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+        <input type="search" id="weSearch" placeholder="Chercher un fond…" aria-label="Chercher un fond">
+        <div class="share-grid we-grid" id="weGrid"></div>
+        <p class="hint">Les fonds vidéo s'animent dans Hush. Pour les scènes et les fonds web, Hush affiche leur aperçu : leur format est propre à Wallpaper Engine.</p>
+      </section>
+    </div>
+
     <!-- Appel : tu es seul, ça sonne / on attend -->
     <div class="call-banner glass" id="callBanner" hidden><i class="call-dot"></i><div><b id="callTitle"></b><small id="callSub"></small></div></div>
     <!-- Quelqu'un vient de lancer un vocal -->
@@ -149,8 +161,7 @@
     <div class="home" id="home" hidden>
       <button class="home-msg" id="homeMsg" type="button"></button>
       <!-- Sur le côté : tes salons les plus utilisés, et tes favoris -->
-      <aside class="home-side glass" id="homeSide" tabindex="0" aria-label="Top salons et favoris">
-        <svg class="hs-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/></svg>
+      <aside class="home-side" id="homeSide" aria-label="Top salons et favoris">
         <div class="hs-in">
         <nav class="hs-tabs" aria-label="Salons"><button type="button" data-hs="top">Top salons</button><button type="button" data-hs="fav">Favoris</button></nav>
         <div class="hs-list" id="homeSideList"></div>
@@ -232,7 +243,7 @@
       <aside class="set-side">
         <label class="set-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" id="setSearch" placeholder="Rechercher" aria-label="Rechercher dans les paramètres" spellcheck="false" autocomplete="off"></label>
         <nav class="tabs" id="tabs" role="tablist" aria-orientation="vertical">
-          <div class="set-cat">Apparence</div>
+          <div class="set-cat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.5-1.9-.4-1.2.4-2.4 1.7-2.4H17a4 4 0 0 0 4-4c0-5.2-4-9.7-9-9.7z"/><circle cx="7.5" cy="11" r="1.3"/><circle cx="10.5" cy="7" r="1.3"/><circle cx="15.5" cy="7.5" r="1.3"/></svg><span>Apparence</span></div>
           <button role="tab" data-tab="looks">Préréglages</button>
           <button role="tab" data-tab="general">Disposition</button>
           <button role="tab" data-tab="avatars">Avatars et anneau</button>
@@ -240,11 +251,11 @@
           <button role="tab" data-tab="effets">Effets</button>
           <button role="tab" data-tab="fond">Fond</button>
           <button role="tab" data-tab="theme">Thème</button>
-          <div class="set-cat">Audio et vidéo</div>
+          <div class="set-cat"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span>Audio et vidéo</span></div>
           <button role="tab" data-tab="sound">Musique</button>
           <button role="tab" data-tab="video">Vidéo et fenêtre</button>
           <button role="tab" data-tab="overlay">Overlay en jeu</button>
-          <div class="set-cat">Compte</div>
+          <div class="set-cat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c1.4-3.6 4.4-5.5 8-5.5s6.6 1.9 8 5.5"/></svg><span>Compte</span></div>
           <button role="tab" data-tab="account">Compte et langue</button>
         </nav>
       </aside>
@@ -385,6 +396,7 @@
           <div class="group">
             <div class="bg-pick" id="bgSeg"><button data-v="pinkspace" title="Espace rose"><span class="bg-dot"></span><small>Espace rose</small></button><button data-v="space" title="Espace"><span class="bg-dot"></span><small>Espace</small></button><button data-v="solid" title="Uni"><span class="bg-dot"></span><small>Uni</small></button><button data-v="gradient" title="Dégradé"><span class="bg-dot"></span><small>Dégradé</small></button><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="duo" title="Double dégradé"><span class="bg-dot"></span><small>Double dégradé</small></button><button data-v="image" title="Image / GIF"><span class="bg-dot"></span><small>Image / GIF</small></button></div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
+            <button class="ghost" id="wePick" hidden>Choisir dans Wallpaper Engine</button>
             <div class="row" id="bgColorRow" hidden><label for="bgColor" id="bgColorLabel">Couleur du fond</label><input type="color" id="bgColor"></div>
             <div class="row" id="bgColor2Row" hidden><label for="bgColor2">Couleur 2</label><input type="color" id="bgColor2"></div>
             <input type="file" id="bgFile" accept="image/*" hidden>
@@ -451,7 +463,11 @@
               <div class="seg two" id="playerColorSeg"><button data-v="cover">Pochette</button><button data-v="accent">Couleur d'accent</button></div>
               <div class="label">Fond</div>
               <div class="seg two" id="playerBgSeg"><button data-v="mosaic">Mosaïque</button><button data-v="gradient">Dégradé</button></div>
-              <p class="hint">Fais glisser le lecteur pour le déplacer ; l'arc en bas à droite change sa taille.</p>
+              <div class="label">Style</div>
+              <div class="seg two" id="playerStyleSeg"><button data-v="card">Carte</button><button data-v="vinyl">Mini-vinyle</button></div>
+              <div class="label"><label for="playerSize">Taille du lecteur</label><output id="playerSizeOut"></output></div>
+              <input type="range" id="playerSize" min="160" max="600" step="10">
+              <p class="hint">La taille reste celle que tu choisis, même si tu agrandis ou rétrécis la fenêtre. Fais glisser le lecteur pour le déplacer ; l'arc en bas à droite change aussi sa taille.</p>
             </div>
           </div>
         </div>
@@ -465,6 +481,13 @@
             <div class="row"><span>Inclure le son du PC (voix Discord, musique)</span><button class="switch" id="clipAudio" role="switch" aria-label="Inclure le son du PC dans les clips"></button></div>
             <div class="row"><span>Bouton ⏺ de la barre d'appel, ou F9</span><button class="ghost" id="openClips">Ouvrir le dossier</button></div>
             <p class="hint">Enregistre la fenêtre Hush en vidéo (WebM, 60 images/s) dans Vidéos\Hush, 15 minutes au plus.</p>
+          </div>
+          <h4 class="sec">En arrière-plan</h4>
+          <div class="group">
+            <div class="row"><span>Garder Hush en fond quand je ferme la fenêtre</span><button class="switch" id="bgKeep" role="switch" aria-label="Garder Hush en fond quand je ferme la fenêtre"></button></div>
+            <div class="row" id="bgAutoRow"><span>Lancer Hush au démarrage de l'ordinateur</span><button class="switch" id="bgAuto" role="switch" aria-label="Lancer Hush au démarrage de l'ordinateur"></button></div>
+            <div class="row"><span>Ne jamais ralentir derrière un jeu en plein écran</span><button class="switch" id="bgSpeed" role="switch" aria-label="Ne jamais ralentir derrière un jeu en plein écran"></button></div>
+            <p class="hint">En fond, Hush reste dans la zone de notification, près de l'horloge : l'overlay, le bot et tes amis restent actifs. Clic sur l'icône pour rouvrir Hush, clic droit pour l'overlay ou pour quitter. Au démarrage de l'ordinateur, Hush s'ouvre caché, et l'overlay revient s'il était ouvert.</p>
           </div>
           <h4 class="sec">Overlay et fenêtre</h4>
           <div class="group">

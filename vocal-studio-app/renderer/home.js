@@ -376,9 +376,14 @@ function drawSide() {
   if (!list.length) box.append(h("p", "hint", tab === "fav" ? "Touche l'étoile d'un salon pour l'ajouter ici." : "Tes salons apparaîtront ici après quelques vocaux."));
   list.forEach((c, i) => {
     const row = h("div", "hs-row");
-    if (tab === "top") row.append(h("span", "hs-pos", String(i + 1)));
+    // Vignette : un carré coloré (couleur propre au salon) avec son initiale, et son rang dans le top
+    const hu = typeof hue === "function" ? hue(String(c.id)) : (i * 47) % 360;
+    const th = h("div", "hs-thumb", (c.name || "?").replace(/^[^\p{L}\p{N}]+/u, "").charAt(0).toUpperCase() || "#");
+    th.style.background = `linear-gradient(140deg,hsl(${hu} 75% 62%),hsl(${(hu + 50) % 360} 80% 45%))`;
+    if (tab === "top") th.append(h("i", "hs-pos", String(i + 1)));
+    row.append(th);
     const t = h("div", "hm-ptext");
-    t.append(h("b", "", (c.call ? "📞 " : "🔊 ") + c.name), h("small", "", [c.guild, c.ms ? dur(c.ms) : null, c.count ? `${c.count} fois` : null].filter(Boolean).join(" · ")));
+    t.append(h("b", "", (c.call ? "📞 " : "") + c.name), h("small", "", [c.guild, c.ms ? dur(c.ms) : null, c.count ? `${c.count} fois` : null].filter(Boolean).join(" · ")));
     const star = h("button", "hs-star" + (isFav(c.id) ? " on" : ""), isFav(c.id) ? "★" : "☆");
     star.title = isFav(c.id) ? "Retirer des favoris" : "Ajouter aux favoris";
     star.onclick = (e) => { e.stopPropagation(); toggleFav(c); };
@@ -406,25 +411,62 @@ async function drawAdmin(force) {
   if (Admin.error) return box.append(h("p", "hint", Admin.error));
   const s = Admin.stats;
   if (!s) return box.append(h("p", "hint", "Chargement…"));
+  // État du service : un gros voyant, puis la durée et la mémoire
+  const st = h("div", "ad-status " + (s.botOnline ? "ok" : "ko"));
+  const stTxt = h("div", "ad-st-text");
+  stTxt.append(h("b", "", s.botOnline ? "Tout fonctionne" : "Le bot est hors ligne"), h("small", "", `Serveur allumé depuis ${hm(s.uptime)} · ${s.memMB} Mo de mémoire`));
+  const refresh = h("button", "ghost small", "Actualiser");
+  refresh.onclick = () => drawAdmin(true);
+  st.append(h("i", "ad-led"), stTxt, refresh);
+  box.append(st);
+  // Les chiffres clés
   const nums = h("div", "ad-nums");
-  for (const [n, l] of [[s.online.length, "en ligne"], [s.accounts, "comptes"], [s.servers.length, "serveurs"], [s.hours + " h", "de vocal"], [s.reportCount, "erreurs"]]) {
-    const c = h("div", "ad-num");
+  for (const [n, l, k] of [[s.online.length, "en ligne", "on"], [s.accounts, "comptes", ""], [s.servers.length, "serveurs", ""], [s.hours + " h", "de vocal", ""], [s.reportCount, "erreurs", s.reportCount ? "warn" : ""]]) {
+    const c = h("div", "ad-num " + k);
     c.append(h("b", "", String(n)), h("small", "", l));
     nums.append(c);
   }
-  box.append(nums, h("p", "hint", `${s.botOnline ? "Bot en ligne" : "Bot hors ligne"} · serveur allumé depuis ${hm(s.uptime)} · ${s.memMB} Mo de mémoire`));
-  box.append(h("h3", "ad-title", "Connectés maintenant"));
-  if (!s.online.length) box.append(h("p", "hint", "Personne."));
+  box.append(nums);
+  const card = (title, count) => {
+    const c = h("section", "ad-card");
+    const hd = h("header", "ad-head");
+    hd.append(h("h3", "ad-title", title));
+    if (count != null) hd.append(h("span", "ad-count", String(count)));
+    c.append(hd);
+    return c;
+  };
+  const cols = h("div", "ad-cols");
+  // Connectés maintenant
+  const on = card("Connectés maintenant", s.online.length);
+  if (!s.online.length) on.append(h("p", "hint", "Personne pour l'instant."));
   for (const p of s.online) {
-    const row = h("div", "hm-person");
+    const row = h("div", "ad-person");
     const t = h("div", "hm-ptext");
-    t.append(h("b", "", p.name), h("small", "", `Hush ${p.version} · ${p.os}${p.inVoice ? " · en vocal" : ""}`));
+    t.append(h("b", "", p.name));
+    const tags = h("div", "ad-tags");
+    tags.append(h("span", "ad-tag", "Hush " + p.version), h("span", "ad-tag", p.os));
+    if (p.inVoice) tags.append(h("span", "ad-tag live", "en vocal"));
+    t.append(tags);
     row.append(avatarImg(p.avatar), t);
-    box.append(row);
+    on.append(row);
   }
-  box.append(h("h3", "ad-title", "Serveurs"), h("p", "hint", s.servers.map((g) => `${g.name} (${g.members})`).join(" · ") || "Aucun."));
-  const head = h("div", "ad-head");
-  head.append(h("h3", "ad-title", "Erreurs reçues"));
+  // Serveurs, du plus grand au plus petit, avec une barre de taille
+  const sv = card("Serveurs", s.servers.length);
+  const big = Math.max(1, ...s.servers.map((g) => g.members));
+  if (!s.servers.length) sv.append(h("p", "hint", "Aucun."));
+  for (const g of [...s.servers].sort((a, b) => b.members - a.members)) {
+    const row = h("div", "ad-server");
+    const top = h("div", "ad-sv-top");
+    top.append(h("b", "", g.name), h("small", "", `${g.members} membres`));
+    const bar = h("i", "ad-bar");
+    bar.style.setProperty("--w", Math.max(4, Math.round((g.members / big) * 100)) + "%");
+    row.append(top, bar);
+    sv.append(row);
+  }
+  cols.append(on, sv);
+  box.append(cols);
+  // Erreurs reçues
+  const er = card("Erreurs reçues", Admin.reports.length);
   if (Admin.reports.length) {
     const clear = h("button", "ghost small", "Tout effacer");
     clear.onclick = async () => {
@@ -432,20 +474,19 @@ async function drawAdmin(force) {
       await window.studio.admin("clear");
       drawAdmin(true);
     };
-    head.append(clear);
+    er.querySelector(".ad-head").append(clear);
   }
-  box.append(head);
-  if (!Admin.reports.length) box.append(h("p", "hint", "Aucune. Seules les personnes qui ont accepté en envoient."));
+  if (!Admin.reports.length) er.append(h("p", "hint", "Aucune. Seules les personnes qui ont accepté en envoient."));
   for (const r of Admin.reports.slice(0, 30)) {
     const d = document.createElement("details");
     d.className = "ad-err";
     const sum = document.createElement("summary");
-    sum.textContent = `${ago(r.at)} · ${r.where} · ${r.message}`;
+    sum.append(h("small", "ad-when", ago(r.at)), h("span", "ad-tag", r.where), h("span", "ad-msg", r.message));
     d.append(sum, h("pre", "", `${r.user || "Anonyme"} · Hush ${r.version} · ${r.os}\n${r.stack || ""}`));
-    box.append(d);
+    er.append(d);
   }
+  box.append(er);
 }
-
 // — Classement : les plus gros utilisateurs de Hush en vocal (heures comptées par le serveur du bot) —
 const Top = { list: null, at: 0, me: null };
 async function drawTop() {

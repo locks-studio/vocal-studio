@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen, globalShortcut, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, desktopCapturer, screen, globalShortcut, Menu, Tray, nativeImage, Notification } = require("electron");
 // ——— Sécurité : liens externes et pages ———
 // Liens ouverts hors de l'appli : seulement https:// et discord:// (jamais file:, ms-settings:, javascript:…),
 // même si une page ou un serveur piraté essayait d'en faire ouvrir un autre.
@@ -28,6 +28,8 @@ const { VoiceSession } = require("./voice");
 const { BotLink } = require("./botlink");
 const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 const { registerScheme, SoundLibrary } = require("./sounds");
+const { WallpaperEngine } = require("./wallpaper-engine");
+const wallpaperEngine = new WallpaperEngine();
 const { UnixMedia } = require("./media-unix");
 
 registerScheme();
@@ -189,13 +191,17 @@ function ovBounds() {
   const y = row === "t" ? a.y + ovCfg.y : row === "b" ? a.y + a.height - h - ovCfg.y : a.y + (a.height - h) / 2;
   return { x: fit(x, a.x, a.x + a.width - w), y: fit(y, a.y, a.y + a.height - h), width: w, height: h };
 }
+// Marge transparente autour de l'overlay (Windows, Mac, Linux X11) : les lueurs des anneaux débordent sans être coupées
+// par le bord de la fenêtre. La souris passe à travers, la marge ne gêne donc jamais.
+const OV_PAD = 40;
+const padded = (b) => ({ x: b.x - OV_PAD, y: b.y - OV_PAD, width: b.width + 2 * OV_PAD, height: b.height + 2 * OV_PAD });
 // Linux Wayland : l'overlay sur la couche « overlay » du bureau, devant même le plein écran (voir layer-overlay.js)
 const { LayerOverlay, layerSupported } = require("./layer-overlay");
 let layerOv = null;
 const placeMini = () => {
   if (!mini || mini.isDestroyed()) return;
   const b = ovBounds();
-  if (!layerOv) return mini.setBounds(b);
+  if (!layerOv) return mini.setBounds(padded(b));
   mini.setContentSize(b.width, b.height);
   layerOv.place(b, screen.getDisplayMatching(b).bounds);
 };
@@ -211,21 +217,60 @@ ipcMain.handle("overlay:set", (_e, c) => {
 const sendMain = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
 // Mode « Déplacer » (Linux, overlay layer-shell seulement) : l'overlay prend la souris le temps de le placer
 // (glisser) et de régler sa taille (molette). Windows et Mac ne sont pas concernés : le bouton n'y apparaît pas.
-ipcMain.handle("overlay:canEdit", () => !!layerOv);
+ipcMain.handle("overlay:canEdit", () => !!(mini && !mini.isDestroyed()));
 ipcMain.handle("overlay:edit", (_e, on) => {
-  if (!layerOv) return false;
-  layerOv.edit(on);
-  return !!on;
+  if (layerOv) { layerOv.edit(on); return !!on; }
+  return miniEdit(!!on);
+});
+// Windows, Mac, Linux X11 : pendant « Déplacer », l'overlay prend la souris. On le glisse, la molette change sa taille,
+// Échap / clic droit / « Terminé » finit. Sa nouvelle place est ensuite enregistrée dans les réglages.
+let miniEditing = false;
+function miniEdit(on) {
+  if (!mini || mini.isDestroyed()) return false;
+  miniEditing = on;
+  mini.setIgnoreMouseEvents(!on);
+  mini.setFocusable(on);
+  if (on) mini.focus();
+  mini.webContents.send("mini:edit", on);
+  if (!on) {
+    const b = mini.getBounds();
+    const c = { x: b.x + OV_PAD, y: b.y + OV_PAD, width: b.width - 2 * OV_PAD, height: b.height - 2 * OV_PAD };
+    const all = screen.getAllDisplays(), d = screen.getDisplayMatching(c);
+    const i = Math.max(0, all.findIndex((x) => x.id === d.id));
+    const place = { pos: "tl", x: Math.max(0, c.x - d.bounds.x), y: Math.max(0, c.y - d.bounds.y), w: c.width, h: c.height, screen: i };
+    ovCfg = { ...ovCfg, ...place };
+    sendMain("overlay:moved", place);
+    sendMain("overlay:edit", false);
+    placeMini();
+  }
+  return on;
+}
+ipcMain.handle("overlay:done", () => miniEdit(false));
+// Molette pendant « Déplacer » : plus grand / plus petit, autour du centre
+ipcMain.handle("overlay:resize", (_e, f) => {
+  if (!miniEditing || !mini || mini.isDestroyed() || !Number.isFinite(+f)) return;
+  const b = mini.getBounds(), k = Math.max(0.8, Math.min(1.25, +f));
+  const w = Math.round(b.width - 2 * OV_PAD), h = Math.round(b.height - 2 * OV_PAD);
+  const nw = Math.max(120, Math.min(2400, Math.round(w * k))), nh = Math.max(80, Math.min(1600, Math.round(h * k)));
+  mini.setBounds({ x: Math.round(b.x - (nw - w) / 2), y: Math.round(b.y - (nh - h) / 2), width: nw + 2 * OV_PAD, height: nh + 2 * OV_PAD });
 });
 ipcMain.handle("overlay:screens", () => {
   const prim = screen.getPrimaryDisplay().id;
   return screen.getAllDisplays().map((d, i) => ({ i, label: `Écran ${i + 1}${d.id === prim ? " (principal)" : ""} · ${d.size.width}×${d.size.height}` }));
 });
+// Ouverture / fermeture voulue par la personne (bouton, Ctrl+Maj+H, menu de l'icône) : on s'en souvient
+function userToggleMini() {
+  const open = toggleMini();
+  data.overlayOpen = open; persist();
+  send("win:mini", open);
+  refreshTray();
+  return open;
+}
 function toggleMini() {
   if (mini && !mini.isDestroyed()) { mini.close(); return false; }
   if (layerSupported()) { openLayerMini(); return true; }
   mini = new BrowserWindow({
-    ...ovBounds(), show: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
+    ...padded(ovBounds()), show: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
     alwaysOnTop: true, title: "Hush · mini", icon: ICON,
     // Mac : une fenêtre « panneau » flotte aussi au-dessus des jeux et des applis en plein écran
@@ -239,7 +284,7 @@ function toggleMini() {
   if (process.platform !== "win32") mini.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   // Titre fixe « Hush · mini » : sous Linux, les règles des gestionnaires de fenêtres (niri, Hyprland, Sway) le ciblent
   mini.on("page-title-updated", (e) => e.preventDefault());
-  mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1" } });
+  mini.loadFile(path.join(__dirname, "..", "renderer", "index.html"), { query: { mini: "1", pad: String(OV_PAD) } });
   mini.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mini.webContents.on("will-navigate", (e) => e.preventDefault());
   mini.once("ready-to-show", () => {
@@ -249,7 +294,7 @@ function toggleMini() {
     mini.showInactive(); // s'affiche sans voler le clavier au jeu
     placeMini();
   });
-  mini.on("closed", () => { mini = null; niriSticky.stop(); send("win:mini", false); });
+  mini.on("closed", () => { mini = null; miniEditing = false; niriSticky.stop(); send("win:mini", false); sendMain("overlay:edit", false); });
   niriSticky.start();
   return true;
 }
@@ -288,9 +333,12 @@ function openLayerMini() {
 const winOf = (e) => BrowserWindow.fromWebContents(e.sender) || win;
 
 function createWindow() {
+  // Petit écran (ou zoom Windows à 150 %) : la fenêtre ne dépasse jamais de l'écran
+  const wa = screen.getPrimaryDisplay().workAreaSize;
   win = new BrowserWindow({
-    width: 1180,
-    height: 760,
+    width: Math.min(1180, wa.width - 40),
+    height: Math.min(760, wa.height - 40),
+    center: true,
     minWidth: 420,
     minHeight: 520,
     frame: false,
@@ -298,14 +346,29 @@ function createWindow() {
     title: "Hush",
     // Icône de la fenêtre et de la barre des tâches (sinon Windows montre celle d'Electron)
     icon: ICON,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Hush continue à tourner à pleine vitesse quand un jeu en plein écran le recouvre (réglage « Arrière-plan »)
+      backgroundThrottling: !bgCfg().fullSpeed,
     },
   });
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  // Lancé au démarrage du PC : Hush reste dans la zone de notification, la fenêtre ne s'ouvre pas
+  win.once("ready-to-show", () => { if (!START_HIDDEN) win.show(); });
+  // Fermer la fenêtre : Hush continue en fond (overlay, bot, amis), sauf si on quitte vraiment
+  win.on("close", (e) => {
+    if (quitting || !bgCfg().keepRunning) return;
+    e.preventDefault();
+    win.hide();
+    if (!data.bgNoticeShown && Notification.isSupported()) {
+      data.bgNoticeShown = true; persist();
+      new Notification({ title: "Hush continue en fond", body: "L'overlay et tes amis restent actifs. Clique sur l'icône de Hush près de l'horloge pour le rouvrir, ou clic droit › Quitter.", icon: ICON }).show();
+    }
+  });
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://discord.com/") || url.startsWith("https://developer.spotify.com/")) safeOpen(url);
     return { action: "deny" };
@@ -345,10 +408,85 @@ ipcMain.handle("usage:top", async () => {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
-app.on("second-instance", () => {
+app.on("second-instance", (_e, argv) => {
+  if (argv.includes("--cache")) return; // relancé au démarrage alors qu'il tourne déjà : rien à faire
+  showMain();
+});
+
+// ——— En fond : zone de notification, démarrage avec le PC ———
+// Réglages (config.json) : keepRunning = fermer la fenêtre garde Hush en fond ; autostart = lancé avec le PC ;
+// fullSpeed = pas de ralentissement quand un jeu plein écran recouvre la fenêtre.
+const START_HIDDEN = process.argv.includes("--cache") || process.env.HUSH_START_HIDDEN === "1";
+delete process.env.HUSH_START_HIDDEN;
+let quitting = false, tray = null;
+app.on("before-quit", () => { quitting = true; });
+app.on("activate", () => showMain()); // Mac : clic sur l'icône du Dock
+const bgCfg = () => ({ keepRunning: true, autostart: true, fullSpeed: true, ...(data.background || {}) });
+function showMain() {
   if (!win || win.isDestroyed()) return;
   if (win.isMinimized()) win.restore();
   win.show(); win.focus();
+}
+function refreshTray() {
+  if (!tray) return;
+  const c = bgCfg(), ovOpen = !!(mini && !mini.isDestroyed());
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Ouvrir Hush", click: showMain },
+    { label: ovOpen ? "Cacher l'overlay" : "Afficher l'overlay", accelerator: "CommandOrControl+Shift+H", click: () => userToggleMini() },
+    { type: "separator" },
+    { label: "Lancer Hush au démarrage du PC", type: "checkbox", checked: c.autostart, click: (i) => setBg({ autostart: i.checked }) },
+    { label: "Garder Hush en fond quand je ferme la fenêtre", type: "checkbox", checked: c.keepRunning, click: (i) => setBg({ keepRunning: i.checked }) },
+    { type: "separator" },
+    { label: "Quitter Hush", click: () => { quitting = true; app.quit(); } },
+  ]));
+}
+function createTray() {
+  if (tray) return;
+  try {
+    const img = nativeImage.createFromPath(ICON).resize({ width: process.platform === "darwin" ? 18 : 32, height: process.platform === "darwin" ? 18 : 32, quality: "best" });
+    tray = new Tray(img);
+    tray.setToolTip("Hush");
+    tray.on("click", showMain); // clic : ouvre Hush (clic droit : le menu)
+    refreshTray();
+  } catch {}
+}
+// Démarrage avec le PC. Lancé par le launcher 1999 (HUSH_LAUNCHER), c'est lui qu'on démarre : il ouvre toujours
+// la dernière version de Hush et la garde à jour. Sinon, Hush lui-même. Toujours en mode caché (--cache).
+function launcherPath() {
+  const p = process.env.HUSH_LAUNCHER || data.launcherPath;
+  if (process.env.HUSH_LAUNCHER && data.launcherPath !== process.env.HUSH_LAUNCHER) { data.launcherPath = process.env.HUSH_LAUNCHER; persist(); }
+  return p && fs.existsSync(p) ? p : null;
+}
+function applyAutostart() {
+  if (!app.isPackaged) return; // version de développement : jamais au démarrage du PC
+  const on = bgCfg().autostart, l = launcherPath();
+  const exe = l || process.execPath, args = l ? ["--lancer=hush", "--cache"] : ["--cache", ...(process.platform === "linux" ? ["--no-sandbox"] : [])];
+  try {
+    if (process.platform === "linux") {
+      const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "autostart");
+      const f = path.join(dir, "fr.locks.hush.desktop");
+      if (!on) { fs.rmSync(f, { force: true }); return; }
+      fs.mkdirSync(dir, { recursive: true });
+      const q = (x) => `"${x.replace(/(["\\$`])/g, "\\$1")}"`;
+      fs.writeFileSync(f, `[Desktop Entry]\nType=Application\nName=Hush\nExec=${[q(exe), ...args].join(" ")}\nIcon=hush\nX-GNOME-Autostart-enabled=true\nNoDisplay=true\n`);
+    } else {
+      app.setLoginItemSettings({ openAtLogin: on, path: exe, args, name: "Hush" });
+    }
+  } catch {}
+}
+function setBg(patch) {
+  data.background = { ...bgCfg(), ...patch }; persist();
+  if ("autostart" in patch) applyAutostart();
+  if ("fullSpeed" in patch && win && !win.isDestroyed()) win.webContents.setBackgroundThrottling(!data.background.fullSpeed);
+  refreshTray();
+  send("bg:changed", bgCfg());
+}
+ipcMain.handle("bg:get", () => ({ ...bgCfg(), canAutostart: app.isPackaged }));
+ipcMain.handle("bg:set", (_e, patch) => {
+  const ok = {};
+  for (const k of ["keepRunning", "autostart", "fullSpeed"]) if (patch && typeof patch[k] === "boolean") ok[k] = patch[k];
+  setBg(ok);
+  return bgCfg();
 });
 
 // ——— Erreurs ———
@@ -408,7 +546,7 @@ app.whenReady().then(() => {
     Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]));
   }
   // Ctrl+Maj+H : afficher ou cacher l'overlay, même en pleine partie
-  try { globalShortcut.register("CommandOrControl+Shift+H", () => { const open = toggleMini(); if (open) send("win:mini", true); }); } catch {}
+  try { globalShortcut.register("CommandOrControl+Shift+H", () => userToggleMini()); } catch {}
   screen.on("display-metrics-changed", placeMini);
   screen.on("display-removed", placeMini);
   app.on("will-quit", () => globalShortcut.unregisterAll());
@@ -416,6 +554,7 @@ app.whenReady().then(() => {
   loadUsage();
   setInterval(tickUsage, 60_000);
   sounds = new SoundLibrary(path.join(app.getPath("userData"), "sounds"));
+  sounds.we = wallpaperEngine;
   sounds.serve();
   localSession = new VoiceSession(store, (state) => { if (session === localSession) send("voice:state", state); });
   launcherSession();
@@ -451,8 +590,13 @@ app.whenReady().then(() => {
     } catch { cb({}); }
   });
   createWindow();
+  createTray();
+  applyAutostart();
+  if (data.overlayOpen) win.webContents.once("did-finish-load", () => { if (!(mini && !mini.isDestroyed())) { toggleMini(); send("win:mini", true); refreshTray(); } });
 });
 app.on("window-all-closed", () => {
+  // Fenêtre fermée mais Hush gardé en fond : on ne quitte pas (la fenêtre est seulement cachée)
+  if (!quitting && bgCfg().keepRunning && win && !win.isDestroyed()) return;
   if (localSession) localSession.stop();
   if (botLink) botLink.stop();
   stopPcMedia();
@@ -569,6 +713,8 @@ ipcMain.handle("music:volume", (_e, value) => {
 });
 ipcMain.handle("sounds:list", () => sounds.list());
 ipcMain.handle("bg:pick", (e) => sounds.pickBackground(winOf(e)));
+// Fonds Wallpaper Engine déjà téléchargés (Windows) : relus à chaque ouverture de la galerie
+ipcMain.handle("we:list", () => { try { return wallpaperEngine.list(); } catch { return { available: false, items: [] }; } });
 ipcMain.handle("sounds:add", () => sounds.add(win));
 ipcMain.handle("sounds:lrc", (_e, id) => sounds.attachLrc(win, id));
 ipcMain.handle("sounds:remove", (_e, id) => sounds.remove(id));
@@ -599,7 +745,7 @@ ipcMain.handle("open:privacy", () => safeOpen("https://1999.organisationphantom.
 ipcMain.handle("win:reload", (e) => e.sender.reload()); // location.reload est bloqué par la protection will-navigate
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });
-ipcMain.handle("win:mini", () => toggleMini());
+ipcMain.handle("win:mini", () => userToggleMini());
 
 // ——— Linux : quel bureau, et quel mode d'affichage (lu par lancer-hush.sh au démarrage) ———
 const linuxModeFile = () => path.join(app.getPath("userData"), "linux-display");

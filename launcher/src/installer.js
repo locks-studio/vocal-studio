@@ -187,13 +187,14 @@ class Installer {
   }
 
   // Lance le logiciel installé, séparé du launcher (il continue si on ferme le launcher)
-  launch(id, session) {
+  // extra : variables en plus pour le logiciel (ex. Hush lancé caché au démarrage du PC)
+  launch(id, session, extra = {}) {
     const s = this.installed(id);
     if (!s) throw new Error("Pas installé.");
     if (!fs.existsSync(s.exec)) throw new Error("Des fichiers manquent : clique sur Réparer.");
     let child;
     // La session passe par l'environnement du programme : invisible dans la liste des processus, contrairement aux arguments
-    const env = session ? { ...process.env, HUSH_SESSION: session } : process.env;
+    const env = { ...process.env, ...extra, ...(session ? { HUSH_SESSION: session } : {}) };
     // Mac : on lance le programme qui est dans l'appli (Hush.app/Contents/MacOS/Hush). « open » ne transmettrait pas
     // la session, et il faudrait se reconnecter à chaque lancement.
     if (process.platform === "darwin" && s.exec.endsWith(".app")) {
@@ -203,10 +204,34 @@ class Installer {
     }
     // Linux : Ubuntu 24.04+ bloque le bac à sable de Chromium pour les applis non installées par le système,
     // les applis Electron plantent au démarrage sans --no-sandbox
+    else if (process.platform === "win32") return launchWindows(s.exec, env);
     else child = spawn(s.exec, process.platform === "linux" ? linuxArgs() : [], { detached: true, stdio: "ignore", cwd: path.dirname(s.exec), env });
     child.on("error", () => {});
     child.unref();
   }
+}
+
+// Windows : lancement direct. S'il échoue (« spawn UNKNOWN » : un antivirus, Smart App Control ou un fichier bloqué
+// par Windows), on repasse par l'explorateur (« start ») : il sait lancer ce que le lancement direct refuse, et
+// sinon c'est Windows lui-même qui affiche pourquoi il bloque Hush (au lieu d'un message incompréhensible).
+function launchWindows(exe, env) {
+  const viaExplorer = () => {
+    const c = spawn("cmd.exe", ["/d", "/s", "/c", `start "" "${exe}"`], { detached: true, stdio: "ignore", cwd: path.dirname(exe), env, windowsVerbatimArguments: true, windowsHide: true });
+    c.on("error", () => {});
+    c.unref();
+  };
+  // Fichier marqué « venu d'Internet » : Windows peut le bloquer sans rien dire. On enlève la marque (sans risque : Hush
+  // vient du catalogue signé du launcher).
+  try { fs.rmSync(exe + ":Zone.Identifier", { force: true }); } catch {}
+  let child;
+  try {
+    child = spawn(exe, [], { detached: true, stdio: "ignore", cwd: path.dirname(exe), env });
+  } catch (e) {
+    viaExplorer();
+    return;
+  }
+  child.on("error", () => viaExplorer());
+  child.unref();
 }
 
 // Le programme d'une appli Mac : son nom est écrit dans Contents/Info.plist (CFBundleExecutable)

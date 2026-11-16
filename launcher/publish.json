@@ -35,16 +35,16 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Tes amis Hush du salon voient ta caméra et ton partage d'écran, et toi les leurs",
-        "Nouvelle vue stream : la vidéo en grand dans un cadre qui s'allume quand on parle, les avatars dessous",
-        "Linux Wayland : le partage d'écran passe par le sélecteur du système",
-        "Connexion directe même quand le serveur Hush est injoignable",
-        "Sécurité renforcée : Hush refuse de démarrer si son code a été modifié, et ne peut plus être détourné",
-        "Liens et fichiers : seuls les liens sûrs (https, Discord) s'ouvrent, aucun téléchargement imposé",
-        "Lecture des sons plus sûre (fichiers piégés ignorés)",
-        "Menu clic droit toujours à la même taille, même zoomé (désactivable dans Vidéo et fenêtre)",
-        "« Ajouter en ami Hush » bien visible dans le menu clic droit",
-        "Les photos de profil animées (GIF) ne bougent que quand la personne parle, partout"
+        "Hush reste allumé en fond près de l'horloge : l'overlay continue même fenêtre fermée, et Hush peut se lancer au démarrage du PC",
+        "Choisis ton fond parmi tes fonds Wallpaper Engine (Windows) : les vidéos s'animent",
+        "Accueil : tes salons en liste flottante, toujours visibles",
+        "11 nouvelles polices pour les pseudos",
+        "Lecteur musique : taille fixe et style (carte ou mini-vinyle) au choix dans les paramètres",
+        "Overlay : les lueurs ne sont plus coupées, et le bouton « Déplacer » marche sur Windows et Mac",
+        "La molette fait défiler le tchat, l'accueil et les listes au lieu de zoomer",
+        "Paramètres plus lisibles, façon Discord",
+        "Fenêtre étroite ou petit écran : la croix reste toujours visible",
+        "Tableau de bord administrateur refait"
       ],
       "artifacts": {
         "win32-x64": {

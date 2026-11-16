@@ -33,7 +33,12 @@ const { Reports } = require("./reports");
 const reports = new Reports(path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "reports.json"));
 const STARTED = Date.now();
 let reportHits = [];
+// Administrateurs en plus du propriétaire : ADMIN_IDS (.env) et admins.json (liste d'identifiants Discord, hors GitHub)
 const ADMIN_IDS = new Set(String(process.env.ADMIN_IDS || "").split(",").map((x) => x.trim()).filter(Boolean));
+try {
+  const extra = JSON.parse(fs.readFileSync(path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "admins.json"), "utf8"));
+  for (const id of Array.isArray(extra) ? extra : []) if (/^\d{5,25}$/.test(String(id))) ADMIN_IDS.add(String(id));
+} catch {}
 // Toujours décidé ici, d'après le compte vérifié : l'appli ne peut pas se déclarer administrateur
 const isAdmin = (id) => bot.owners.has(id) || ADMIN_IDS.has(id);
 function adminStats() {

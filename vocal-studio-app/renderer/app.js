@@ -22,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Syne", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
@@ -57,7 +57,7 @@ function normS() {
   if (S.ring === "energy") S.ring = "aura";
   // Passage au rose pâle : le lecteur prend la couleur d'accent (une seule fois : « Pochette » reste au choix)
   if (!S.playerPink) { S.playerColor = "accent"; S.playerPink = true; }
-  if (S.pixel) { S.font = "Silkscreen"; S.pixel = false; }
+  if (S.pixel) { S.font = "Minecraft"; S.pixel = false; }
   S.cards = false;
   S.skin = "nuit";
   if (["pulse", "stars", "topo"].includes(S.bg)) S.bg = "space";
@@ -896,7 +896,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     S[key] = b.dataset.v;
@@ -1033,6 +1033,64 @@ async function pickBg() {
 }
 $("#bgPick").onclick = pickBg;
 
+// ——— Wallpaper Engine : la galerie des fonds déjà téléchargés (Windows) ———
+let weItems = [];
+async function weCheck() {
+  if (!window.studio.bg.wallpaperEngine) return;
+  const r = await window.studio.bg.wallpaperEngine().catch(() => null);
+  weItems = (r && r.items) || [];
+  $("#wePick").dataset.ok = r && r.available ? "1" : "";
+  syncWePick();
+}
+function syncWePick() { $("#wePick").hidden = S.bg !== "image" || !$("#wePick").dataset.ok; }
+function weRender() {
+  const q = $("#weSearch").value.trim().toLowerCase();
+  const grid = $("#weGrid");
+  grid.textContent = "";
+  const list = weItems.filter((it) => !q || it.title.toLowerCase().includes(q));
+  if (!list.length) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = weItems.length ? "Aucun fond ne correspond." : "Aucun fond trouvé. Abonne-toi à des fonds dans Wallpaper Engine (Workshop), puis rouvre cette fenêtre.";
+    grid.appendChild(p);
+    return;
+  }
+  for (const it of list) {
+    const b = document.createElement("button");
+    b.className = "share-src" + (S.bgImage === it.url ? " on" : "");
+    b.title = it.title;
+    if (it.preview) {
+      const img = document.createElement("img");
+      img.loading = "lazy"; img.alt = ""; img.src = it.preview;
+      b.appendChild(img);
+    } else {
+      const d = document.createElement("div"); d.className = "we-noprev"; b.appendChild(d);
+    }
+    const badge = document.createElement("i");
+    badge.className = "we-badge" + (it.kind === "video" ? " anim" : "");
+    badge.textContent = it.kind === "video" ? "Vidéo animée" : it.animated ? "Aperçu animé" : "Aperçu";
+    b.appendChild(badge);
+    const t = document.createElement("span"); t.textContent = it.title; b.appendChild(t);
+    b.onclick = () => {
+      S.bgImage = it.url; S.bgKind = it.kind; S.bg = "image";
+      apply();
+      $("#wePanel").hidden = true;
+    };
+    grid.appendChild(b);
+  }
+}
+$("#wePick").onclick = async () => {
+  await weCheck();
+  $("#weSearch").value = "";
+  weRender();
+  $("#wePanel").hidden = false;
+  $("#weSearch").focus();
+};
+$("#weSearch").oninput = weRender;
+$("#weClose").onclick = () => { $("#wePanel").hidden = true; };
+$("#wePanel").onclick = (e) => { if (e.target.id === "wePanel") $("#wePanel").hidden = true; };
+weCheck();
+
 $("#musicPick").onclick = () => $("#musicFile").click();
 $("#musicFile").onchange = (e) => { const f = e.target.files[0]; if (f) readImage(f, 600, (d) => { S.musicCover = d; apply(); }); };
 $("#musicTitleIn").oninput = (e) => { S.musicTitle = e.target.value; apply(); };
@@ -1099,12 +1157,12 @@ addEventListener("resize", () => placeMusic());
     S.playerPos = { r: mainEl.clientWidth - dockW() - drag.left - card.offsetWidth, b: mainEl.clientHeight - drag.top - card.offsetHeight };
     placeMusic();
   });
-  const end = () => { if (!drag) return; drag = null; card.classList.remove("resizing"); grab.classList.remove("active"); save(); };
+  const end = () => { if (!drag) return; drag = null; card.classList.remove("resizing"); grab.classList.remove("active"); save(); syncPlayerSize(); };
   grab.addEventListener("pointerup", end);
   grab.addEventListener("pointercancel", end);
-  grab.addEventListener("dblclick", () => { S.playerW = null; card.style.width = ""; requestAnimationFrame(placeMusic); save(); });
+  grab.addEventListener("dblclick", () => { S.playerW = null; apply(); requestAnimationFrame(placeMusic); });
   // Assez petite, la carte devient un mini-vinyle : la pochette, le disque qui dépasse et le bras, le titre dessous
-  new ResizeObserver(() => { const m = card.offsetWidth > 0 && card.offsetWidth < 240; if (m !== card.classList.contains("mp-mini")) { card.classList.toggle("mp-mini", m); placeMusic(); } }).observe(card);
+  // Carte ou mini-vinyle : c'est le réglage « Style » (Paramètres › Musique), plus la taille de la fenêtre
 
   // Déplacer : glisser la carte (pas ses boutons). Un simple clic reste un clic.
   let move = null;
@@ -1196,18 +1254,24 @@ $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = 
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgColor2").oninput = (e) => { S.bgColor2 = e.target.value; apply(); };
 $("#bgZoom").oninput = (e) => { S.bgZoom = +e.target.value; apply(); };
+// Taille du lecteur musique : fixe (300 px par défaut), quelle que soit la taille de la fenêtre
+const PLAYER_W = 300;
+function syncPlayerSize() { const w = S.playerW || PLAYER_W; $("#playerSize").value = w; $("#playerSizeOut").textContent = w + " px"; }
+$("#playerSize").oninput = (e) => { S.playerW = +e.target.value; apply(); requestAnimationFrame(placeMusic); };
 $("#bgZoomReset").onclick = () => { S.bgZoom = 1; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
 const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "vertical", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView", "menuFixed"];
 // Polices proposées (Google Fonts), chargées à la demande
-const FONTS = ["Syne", "Silkscreen", "Figtree", "Poppins", "Montserrat", "Outfit", "Space Grotesk", "Bebas Neue", "Orbitron", "Righteous", "Press Start 2P", "Permanent Marker", "Pacifico"];
+// Polices des pseudos : livrées avec Hush (assets/fonts), rien à télécharger
+const FONTS = ["Chomsky", "Alhambra", "Super Whales", "Super Mario 256", "Jersey 75", "Tropi Land", "Fat Kat", "Minecraft", "Kiwi Soda", "TypoSlab Irregular", "JoJo"];
 const fontSel = $("#fontSel");
 FONTS.forEach((f) => { const o = document.createElement("option"); o.value = o.textContent = f; o.style.fontFamily = `"${f}"`; fontSel.appendChild(o); });
 fontSel.onchange = () => { S.font = fontSel.value; apply(); };
 function loadFont(f) {
-  // Silkscreen (police pixel) est déjà chargée par la page
-  if (!f || f === "Silkscreen" || document.querySelector(`link[data-font="${f}"]`)) return;
+  // Police livrée avec Hush : déjà déclarée par assets/fonts/fonts.css, on attend juste qu'elle soit prête
+  if (!f || FONTS.includes(f)) { if (f && document.fonts) document.fonts.load(`20px "${f}"`).then(() => requestAnimationFrame(layout)).catch(() => {}); return; }
+  if (document.querySelector(`link[data-font="${f}"]`)) return;
   const l = document.createElement("link");
   l.rel = "stylesheet";
   l.dataset.font = f;
@@ -1216,6 +1280,14 @@ function loadFont(f) {
   l.onload = () => requestAnimationFrame(layout);
 }
 SWITCHES.forEach((k) => ($("#" + k).onclick = () => { S[k] = !S[k]; apply(); }));
+// En arrière-plan : réglages gardés par le programme principal (pas dans S : ils servent avant même l'interface)
+if (!MINI && window.studio.bg) {
+  const BG = { bgKeep: "keepRunning", bgAuto: "autostart", bgSpeed: "fullSpeed" };
+  const showBg = (c) => { for (const [id, k] of Object.entries(BG)) $("#" + id).setAttribute("aria-checked", !!c[k]); };
+  window.studio.background.get().then((c) => { showBg(c); $("#bgAutoRow").hidden = !c.canAutostart; });
+  window.studio.background.onChanged(showBg);
+  for (const [id, k] of Object.entries(BG)) $("#" + id).onclick = async () => showBg(await window.studio.background.set({ [k]: $("#" + id).getAttribute("aria-checked") !== "true" }));
+}
 
 // Couleurs d'origine des anneaux dessinés (vert comme la vidéo pour l'Aura et les Vagues, bleu pour le feu et l'énergie)
 // L'interface (boutons, onglets, interrupteurs) reste lisible avec n'importe quel accent :
@@ -1372,11 +1444,14 @@ function apply() {
   $("#settingsWrap").hidden = !S.panel;
   if (!S.panel) $("#settingsWrap").classList.remove("docked");
   if (!SHAPES[S.shape]) S.shape = "round";
+  if (!FONTS.includes(S.font)) S.font = FONTS[0]; // ancienne police (ou préréglage partagé) : plus proposée
   loadFont(S.font);
   document.body.style.setProperty("--f-user", `"${S.font}"`);
   fontSel.value = S.font;
   b.classList.toggle("hide-me", !S.showMe);
-  $("#music").style.width = S.playerW ? S.playerW + "px" : "";
+  $("#music").style.width = (S.playerW || PLAYER_W) + "px";
+  $("#music").classList.toggle("mp-mini", S.playerStyle === "vinyl");
+  syncPlayerSize();
   syncDock();
   if (!S.autoHide) document.body.classList.remove("hud-hidden");
   document.querySelectorAll("#tabs [data-tab]").forEach((x) => x.setAttribute("aria-selected", x.dataset.tab === S.tab));
@@ -1391,6 +1466,7 @@ function apply() {
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
   $("#bgPick").hidden = S.bg !== "image";
+  if (typeof syncWePick === "function") syncWePick();
   $("#bgColorRow").hidden = !["solid", "gradient", "duo"].includes(S.bg);
   $("#bgColor").value = S.bgColor || "#fcbbdd";
   $("#bgColorLabel").textContent = S.bg === "duo" ? "Couleur 1" : "Couleur du fond";
@@ -1427,7 +1503,7 @@ function apply() {
   b.classList.toggle("name-top", S.namePos !== "bottom");
   b.classList.toggle("name-bottom", S.namePos === "bottom");
   b.style.setProperty("--nk", S.nameSize);
-  b.classList.toggle("font-pixel", S.font === "Silkscreen");
+  b.classList.toggle("font-pixel", S.font === "Minecraft");
   $("#nameSize").value = S.nameSize; $("#nameSizeOut").textContent = Math.round(S.nameSize * 100) + " %";
   colors = null;
   if (typeof ColorWheel !== "undefined") ColorWheel.sync();
@@ -2060,8 +2136,18 @@ function setZoom(z, quiet) {
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
   if (!quiet) showToast(`Zoom ${Math.round(S.zoom * 100)} % · Ctrl+0 pour revenir à 100 %`);
 }
+// La molette ne zoome que sur la scène : dans le tchat, l'accueil, un panneau ou une liste, elle fait défiler
+function wheelScrolls(e) {
+  if (!$("#home").hidden) return true;
+  if (e.target.closest(".screen, .mp, .mp-grab, .chat, .home, .settings, .glass, .umenu, .share-pick, [role=dialog], input, textarea, select")) return true;
+  for (let el = e.target; el && el !== mainEl; el = el.parentElement) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 1) return true;
+  }
+  return false;
+}
 mainEl.addEventListener("wheel", (e) => {
-  if (e.target.closest(".screen, .mp, .mp-grab") || L === "lyrics") return;
+  if (wheelScrolls(e) || L === "lyrics") return;
   e.preventDefault();
   setZoom(S.zoom * (1 - e.deltaY * 0.0012));
 }, { passive: false });
@@ -2359,6 +2445,17 @@ function setupMini() {
   });
   drag($("#app"), "move");
   drag($("#miniGrip"), "size");
+  // Marge transparente autour de l'overlay (pour les lueurs) : la page la laisse vide
+  const pad = Number(new URLSearchParams(location.search).get("pad")) || 0;
+  document.documentElement.style.setProperty("--mpad", pad + "px");
+  // Mode « Déplacer » : glisser pour la place, molette pour la taille, Échap / clic droit / Terminé pour finir
+  const editing = () => document.body.classList.contains("mini-editing");
+  window.studio.win.onMiniEdit((on) => { document.body.classList.toggle("mini-editing", on); $("#miniEdit").hidden = !on; });
+  $("#miniEditDone").addEventListener("pointerdown", (e) => e.stopPropagation());
+  $("#miniEditDone").onclick = () => window.studio.win.overlayDone();
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && editing()) window.studio.win.overlayDone(); });
+  addEventListener("contextmenu", (e) => { if (editing()) { e.preventDefault(); window.studio.win.overlayDone(); } });
+  addEventListener("wheel", (e) => { if (editing()) { e.preventDefault(); window.studio.win.overlayResize(e.deltaY < 0 ? 1.06 : 1 / 1.06); } }, { passive: false });
   $("#miniHome").onclick = () => window.studio.win.focusMain();
   $("#miniClose").onclick = () => window.studio.win.close();
 }
@@ -2550,7 +2647,7 @@ $("#deleteData").onclick = async (e) => {
 if (!MINI) {
   Lens.pill(document.querySelector(".hs-tabs"), "aria-pressed");
   document.querySelectorAll("#homeTabs button").forEach((b) => Lens.apply(b));
-  Lens.apply($("#homeSide"));
+  // (les salons de l'accueil ne sont plus dans un rond de verre)
 }
 $("#gfonts").media = "all"; // polices chargées sans bloquer le premier affichage
 S.panel = false; // les paramètres s'ouvrent avec l'engrenage

@@ -9,7 +9,7 @@ const PRESET_KEYS = ["skin", "accent", "layout", "vertical", "vertNameTop", "fre
   "bg", "bgImage", "bgKind", "bgColor", "bgColor2", "bgZoom", "bgBlur", "blurType",
   "ring", "ringFrom", "ringColor", "ringColor2", "glow", "voiceMin", "avShadow", "avOutline", "avOutlineAuto", "avAnim", "speed", "joinAnim",
   "names", "cards", "hideMuted", "showMe", "namePos", "nameSize", "nameMask", "nameHover", "font", "pixel",
-  "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "musicOn", "playerColor", "playerBg", "playerW", "playerPos"];
+  "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "musicOn", "playerColor", "playerBg", "playerW", "playerPos", "playerStyle"];
 // Applique un préréglage : un réglage absent (préréglage d'une ancienne version) reprend sa valeur de base
 function applyLook(data) {
   for (const k of PRESET_KEYS) {

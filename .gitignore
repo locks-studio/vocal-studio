@@ -20,3 +20,6 @@ cle-signature.pem
 
 # Graphe de code généré par graphify
 graphify-out/
+
+# Administrateurs du bot en plus du propriétaire (identifiants Discord) : pas sur GitHub
+admins.json
