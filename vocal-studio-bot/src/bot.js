@@ -18,6 +18,7 @@ class StudioBot extends EventEmitter {
     this.emptyTimers = new Map();
     this.noContent = false; // « Message Content » pas activé sur le portail : on ne lit pas le texte des messages
     this.webhooks = new Map(); // salon → webhook « Hush » (pour écrire sous le pseudo de la personne)
+    this.hookAvatars = new Map(); // « salon:pseudo » → photo du compte (messages écrits depuis Hush)
     this.lastSend = new Map();
     this.owners = new Set();
     this.makeClient(true);
@@ -197,13 +198,18 @@ class StudioBot extends EventEmitter {
 
   // ——— Tchat du salon vocal : seulement celui où la personne se trouve, avec ses propres droits ———
   chatItem(m) {
+    // Message écrit depuis Hush (webhook) : la photo hébergée par Discord met un moment à exister ;
+    // on donne tout de suite celle du compte de la personne (retenue à l'envoi)
+    const hookAv = m.webhookId && this.hookAvatars.get(m.channelId + ":" + m.author.username);
     return {
       id: m.id, at: m.createdTimestamp,
       name: (m.member && m.member.displayName) || m.author.globalName || m.author.username,
-      avatar: m.author.displayAvatarURL({ size: 64, extension: "png", forceStatic: true }),
+      avatar: hookAv || m.author.displayAvatarURL({ size: 64, extension: "png", forceStatic: true }),
       text: m.content || "",
       images: [...m.attachments.values()].filter((a) => (a.contentType || "").startsWith("image/")).slice(0, 4).map((a) => a.url),
       media: this.chatMedia(m),
+      // Les autres fichiers (pdf, zip, son…) : un lien de téléchargement
+      files: [...m.attachments.values()].filter((a) => !/^(image|video)\//.test(a.contentType || "")).slice(0, 4).map((a) => ({ name: a.name, size: a.size, url: a.url })),
     };
   }
   // Images, GIF et vidéos d'un message : pièces jointes, et GIF du sélecteur de Discord (Tenor, Giphy…).
@@ -242,9 +248,9 @@ class StudioBot extends EventEmitter {
   // Écrit dans le tchat avec un webhook : le message porte le pseudo et la photo de la personne (avec l'étiquette APP).
   // Sans webhook possible, rien n'est envoyé : jamais de message au nom du bot (« **Pseudo** : message »), on explique
   // plutôt comment réparer. Jamais de mention : ni @everyone, ni rôle.
-  async chatSend(userId, text) {
+  async chatSend(userId, text, files) {
     const t = String(text || "").trim().slice(0, 1900);
-    if (!t) throw new Error("Message vide.");
+    if (!t && !(files && files.length)) throw new Error("Message vide.");
     const now = Date.now();
     if (now - (this.lastSend.get(userId) || 0) < 700) throw new Error("Doucement : un message à la fois.");
     this.lastSend.set(userId, now);
@@ -266,7 +272,10 @@ class StudioBot extends EventEmitter {
         }
         this.webhooks.set(channel.id, hook);
       }
-      await hook.send({ content: t, username: member.displayName.slice(0, 80), avatarURL: member.displayAvatarURL({ size: 128, extension: "png", forceStatic: true }), allowedMentions });
+      const username = member.displayName.slice(0, 80), avatarURL = member.displayAvatarURL({ size: 128, extension: "png", forceStatic: true });
+      this.hookAvatars.set(channel.id + ":" + username, member.displayAvatarURL({ size: 64, extension: "png", forceStatic: true }));
+      if (this.hookAvatars.size > 2000) this.hookAvatars.delete(this.hookAvatars.keys().next().value);
+      await hook.send({ content: t || undefined, username, avatarURL, allowedMentions, files: files && files.length ? files : undefined });
       return { as: "webhook" };
     } catch (e) {
       this.webhooks.delete(channel.id);

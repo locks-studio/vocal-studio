@@ -29,6 +29,7 @@ const { BotLink } = require("./botlink");
 const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 const { registerScheme, SoundLibrary } = require("./sounds");
 const { WallpaperEngine } = require("./wallpaper-engine");
+const { DiscordButton } = require("./discord-button");
 const wallpaperEngine = new WallpaperEngine();
 const { UnixMedia } = require("./media-unix");
 
@@ -384,7 +385,7 @@ function createWindow() {
   win.webContents.on("will-navigate", (e) => e.preventDefault());
   win.on("maximize", () => send("win:state", { maximized: true }));
   win.on("unmaximize", () => send("win:state", { maximized: false }));
-  win.on("closed", () => { if (mini && !mini.isDestroyed()) mini.close(); });
+  win.on("closed", () => { if (mini && !mini.isDestroyed()) mini.close(); if (discordBtn) discordBtn.stop(); });
 }
 
 // ——— Temps d'utilisation ———
@@ -427,7 +428,7 @@ app.on("second-instance", (_e, argv) => {
 const START_HIDDEN = process.argv.includes("--cache") || process.env.HUSH_START_HIDDEN === "1";
 delete process.env.HUSH_START_HIDDEN;
 let quitting = false, tray = null;
-app.on("before-quit", () => { quitting = true; });
+app.on("before-quit", () => { quitting = true; if (discordBtn) discordBtn.stop(); });
 app.on("activate", () => showMain()); // Mac : clic sur l'icône du Dock
 const bgCfg = () => ({ keepRunning: true, autostart: true, fullSpeed: true, ...(data.background || {}) });
 function showMain() {
@@ -555,8 +556,7 @@ app.whenReady().then(() => {
   }
   // Ctrl+Maj+H : afficher ou cacher l'overlay, même en pleine partie
   try { globalShortcut.register("CommandOrControl+Shift+H", () => userToggleMini()); } catch {}
-  // Preview : F9 garde les dernières secondes en clip, même en plein jeu (comme Medal)
-  if (PREVIEW) try { globalShortcut.register("F9", () => send("clip:hotkey")); } catch {}
+  // Clips retirés : F9 n'est plus pris à Windows (il reste libre pour les jeux)
   screen.on("display-metrics-changed", placeMini);
   screen.on("display-removed", placeMini);
   app.on("will-quit", () => globalShortcut.unregisterAll());
@@ -602,7 +602,15 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   applyAutostart();
-  if (data.overlayOpen) win.webContents.once("did-finish-load", () => { if (!(mini && !mini.isDestroyed())) { toggleMini(); send("win:mini", true); refreshTray(); } });
+  // Bouton « Hush » sur la fenêtre de Discord (Windows) : activé de base, coupable dans les paramètres
+  discordBtn = new DiscordButton({
+    icon: ICON,
+    onOpen: () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } },
+    getFrac: () => (typeof data.dcBtnFrac === "number" ? data.dcBtnFrac : 0.36),
+    setFrac: (f) => { data.dcBtnFrac = f; clearTimeout(discordBtn.saveT); discordBtn.saveT = setTimeout(persist, 800); },
+  });
+  if (data.discordBtn !== false) discordBtn.start();
+  if (data.overlayOpen !== false) win.webContents.once("did-finish-load", () => { if (!(mini && !mini.isDestroyed())) { toggleMini(); send("win:mini", true); refreshTray(); } });
 });
 app.on("window-all-closed", () => {
   // Fenêtre fermée mais Hush gardé en fond : on ne quitte pas (la fenêtre est seulement cachée)
@@ -683,13 +691,18 @@ ipcMain.handle("friends:op", async (_e, op, arg) => {
   try { return { data: await botLink.friends(String(op), arg) }; } catch (e) { return { error: e.message }; }
 });
 // Vue administrateur : le serveur revérifie à chaque demande
-ipcMain.handle("admin:op", async (_e, op) => {
-  try { return { data: await botLink.adminOp(String(op)) }; } catch (e) { return { error: e.message }; }
+ipcMain.handle("admin:op", async (_e, op, arg) => {
+  try { return { data: await botLink.adminOp(String(op), arg && typeof arg === "object" ? { id: String(arg.id || ""), role: String(arg.role || "") } : undefined) }; } catch (e) { return { error: e.message }; }
 });
 ipcMain.on("friends:presence", (_e, voice) => { if (botLink) botLink.presence(voice); });
 ipcMain.on("video:state", (_e, v) => { if (botLink) botLink.video(v); });
 ipcMain.on("video:rtc", (_e, to, data) => { if (botLink && Number.isInteger(to)) botLink.rtc(to, data); });
 ipcMain.handle("chat:send", (_e, text) => chatCall("send", String(text || "").slice(0, 1900)));
+ipcMain.handle("chat:upload", async (_e, name, bytes, text) => {
+  if (!botLink || !botLink.ws || botLink.ws.readyState !== 1) return { error: "Lie ton compte au bot Hush pour écrire dans le tchat." };
+  if (!(bytes instanceof Uint8Array) || bytes.length > 8 * 1024 * 1024) return { error: "Fichier trop lourd : 8 Mo au plus." };
+  try { return { data: await botLink.upload(String(name || "fichier").slice(0, 100), Buffer.from(bytes), String(text || "").slice(0, 1900)) }; } catch (e) { return { error: e.message }; }
+});
 ipcMain.handle("account:delete", async () => {
   try { await botLink.friends("delete"); } catch (e) { return { error: e.message }; }
   botLink.logout();
@@ -698,7 +711,7 @@ ipcMain.handle("account:delete", async () => {
 ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
 ipcMain.handle("bot:info", async () => {
   const i = await botLink.info();
-  return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1), admin: !!botLink.admin };
+  return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1), admin: !!botLink.admin, role: botLink.role || "standard" };
 });
 ipcMain.handle("discord:channel", (_e, g, c) => { if (/^\d{5,25}$/.test(String(g)) && /^\d{5,25}$/.test(String(c))) safeOpen(`discord://-/channels/${g}/${c}`); });
 ipcMain.handle("discord:user", (_e, id) => { if (/^\d{5,25}$/.test(String(id))) safeOpen(`discord://-/users/${id}`); });
@@ -835,5 +848,12 @@ ipcMain.handle("clip:end", (_e, id) => new Promise((resolve) => {
 ipcMain.handle("clip:show", (_e, file) => {
   const f = path.resolve(String(file || ""));
   if (f.startsWith(clipsDir() + path.sep)) shell.showItemInFolder(f); else shell.openPath(clipsDir());
+});
+let discordBtn = null;
+ipcMain.handle("dcbtn:get", () => ({ supported: process.platform === "win32", on: data.discordBtn !== false }));
+ipcMain.handle("dcbtn:set", (_e, on) => {
+  data.discordBtn = !!on; persist();
+  if (discordBtn) { if (on) discordBtn.start(); else discordBtn.stop(); }
+  return data.discordBtn;
 });
 ipcMain.handle("win:main", () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.focus(); } });

@@ -1,7 +1,7 @@
 /* ——— Notifications : la cloche à côté de la maison ———
    Demandes d'ami (accepter / refuser), amis qui arrivent en vocal et invitations à rejoindre un vocal.
    Les demandes viennent de la liste d'amis (toujours à jour) ; le reste est gardé sur ce PC (les 30 dernières). */
-const Notif = { items: [], seenReq: new Set(), open: false };
+const Notif = { items: [], seenReq: new Set(), open: false, filter: "all" };
 const NOTIF_KEY = "hush-notifs";
 try { const n = JSON.parse(localStorage.getItem(NOTIF_KEY) || "{}"); Notif.items = n.items || []; Notif.seenReq = new Set(n.seenReq || []); } catch {}
 const notifSave = () => { try { localStorage.setItem(NOTIF_KEY, JSON.stringify({ items: Notif.items.slice(0, 30), seenReq: [...Notif.seenReq].slice(-100) })); } catch {} };
@@ -10,6 +10,7 @@ function notifAdd(item) {
   // Pas deux fois la même chose de suite (ex. un ami qui change de salon puis revient)
   const same = Notif.items[0];
   if (same && same.kind === item.kind && same.from.id === item.from.id && same.voice && item.voice && same.voice.channelId === item.voice.channelId && Date.now() - same.at < 60_000) return;
+  if (item.kind === "voice") Notif.items = Notif.items.filter((x) => !(x.kind === "voice" && x.from.id === item.from.id));
   Notif.items.unshift({ ...item, at: Date.now(), read: Notif.open });
   Notif.items = Notif.items.slice(0, 30);
   notifSave();
@@ -45,8 +46,17 @@ function notifDraw() {
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const av = (url) => { const i = el("img", "nt-av"); i.alt = ""; i.src = url || "assets/discord-logo.png"; i.onerror = () => { i.src = "assets/discord-logo.png"; }; return i; };
   const fr = typeof Home !== "undefined" && Home.friends;
-  // Demandes d'ami en attente
-  for (const p of (fr && fr.incoming) || []) {
+  const f = Notif.filter;
+  const reqs = (fr && fr.incoming) || [];
+  // Filtres : avec le nombre dans chaque catégorie
+  const cnt = { all: reqs.length + Notif.items.length, req: reqs.length, invite: Notif.items.filter((x) => x.kind === "invite").length, voice: Notif.items.filter((x) => x.kind !== "invite").length };
+  document.querySelectorAll("#notifFilters [data-nf]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.nf === f));
+    b.dataset.n = cnt[b.dataset.nf] || "";
+  });
+  // Demandes d'ami en attente (toujours en haut)
+  if (f === "all" || f === "req") if (reqs.length) list.append(el("p", "nt-day", "Demandes d'ami"));
+  for (const p of f === "all" || f === "req" ? reqs : []) {
     const row = el("div", "nt-row");
     const t = el("div", "nt-text");
     t.append(el("b", "", p.name), el("span", "", " veut t'ajouter en ami"));
@@ -59,8 +69,14 @@ function notifDraw() {
     row.append(av(p.avatar), t);
     list.append(row);
   }
-  for (const x of Notif.items) {
-    const row = el("div", "nt-row" + (x.read ? "" : " new"));
+  // Le reste, du plus récent au plus ancien, rangé par jour
+  const dayOf = (ms) => { const d = new Date(ms), t = new Date(); const k = Math.floor((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86_400_000); return k <= 0 ? "Aujourd'hui" : k === 1 ? "Hier" : "Plus ancien"; };
+  let lastDay = null;
+  const items = [...Notif.items].sort((a, b) => b.at - a.at).filter((x) => f === "all" || (f === "invite" ? x.kind === "invite" : f === "voice" ? x.kind !== "invite" : false));
+  for (const x of items) {
+    const day = dayOf(x.at);
+    if (day !== lastDay) { list.append(el("p", "nt-day", day)); lastDay = day; }
+    const row = el("div", "nt-row" + (x.read ? "" : " new") + (x.kind === "invite" ? " invite" : ""));
     const t = el("div", "nt-text");
     const v = x.voice || {};
     if (x.kind === "invite") t.append(el("b", "", x.from.name), el("span", "", " t'invite à rejoindre "), el("b", "", "🔊 " + (v.name || "son vocal")));
@@ -77,7 +93,7 @@ function notifDraw() {
     row.append(av(x.from.avatar), t);
     list.append(row);
   }
-  if (!list.children.length) list.append(el("p", "nt-empty", "Rien de nouveau. Les demandes d'ami, les invitations et tes amis qui arrivent en vocal s'affichent ici."));
+  if (!list.children.length) list.append(el("p", "nt-empty", f === "all" ? "Rien de nouveau. Les demandes d'ami, les invitations et tes amis qui arrivent en vocal s'affichent ici." : "Rien dans cette catégorie."));
   $("#notifClear").hidden = !Notif.items.length;
 }
 
@@ -98,7 +114,8 @@ function notifShow(on) {
   } else notifDraw();
 }
 $("#notifBtn").onclick = (e) => { e.stopPropagation(); notifShow(!Notif.open); };
-$("#notifClear").onclick = () => { Notif.items = []; notifSave(); notifDraw(); };
+$("#notifClear").onclick = () => { Notif.items = Notif.filter === "all" || Notif.filter === "req" ? [] : Notif.items.filter((x) => (Notif.filter === "invite" ? x.kind !== "invite" : x.kind === "invite")); notifSave(); notifDraw(); };
+document.querySelectorAll("#notifFilters [data-nf]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); Notif.filter = b.dataset.nf; notifDraw(); }));
 addEventListener("pointerdown", (e) => { if (Notif.open && !e.target.closest("#notifPop, #notifBtn")) notifShow(false); });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && Notif.open) notifShow(false); });
 

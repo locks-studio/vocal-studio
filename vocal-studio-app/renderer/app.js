@@ -22,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, camView: "stream", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "stream", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
@@ -46,7 +46,7 @@ function normS() {
   // L'ancien interrupteur « s'aplatit en rythme » devient le choix d'animation
   if (!S.avAnimMig) { if (S.squash === false) S.avAnim = "off"; S.avAnimMig = true; }
   if (!["db", "rhythm", "off"].includes(S.avAnim)) S.avAnim = "db";
-  if (!["looks", "general", "avatars", "effets", "anim", "fond", "theme", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
+  if (!["looks", "general", "avatars", "names", "effets", "anim", "fond", "theme", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
   // Réglages retirés : on bascule sur ce qui les remplace
   if (S.layout === "lyrics") S.layout = "strip";
   if (S.joinAnim === "glitch") S.joinAnim = "pop"; // arrivée « glitch » retirée
@@ -150,14 +150,78 @@ function avatarDuo(m) {
   avDuos.set(key, p);
   return p;
 }
+// Ambilight : les couleurs tout autour du bord de la photo, pour un anneau qui les prolonge
+const ambiCache = new Map();
+function ambiColors(m) {
+  const key = m.avatar || "";
+  if (ambiCache.has(key)) return ambiCache.get(key);
+  const p = new Promise((res) => {
+    if (!m.avatar) return res(null);
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => {
+      try {
+        const N = 32, c = document.createElement("canvas");
+        c.width = c.height = N;
+        const x = c.getContext("2d", { willReadFrequently: true });
+        x.drawImage(i, 0, 0, N, N);
+        const d = x.getImageData(0, 0, N, N).data;
+        const stops = [];
+        let ar = 0, ag = 0, ab = 0;
+        for (let k = 0; k < 16; k++) {
+          // Angle CSS : 0° en haut, sens des aiguilles d'une montre
+          const ang = (k / 16) * Math.PI * 2;
+          let r = 0, g = 0, b = 0, n = 0;
+          for (const rad of [12.5, 13.5, 14.5]) {
+            const px = Math.round(N / 2 + Math.sin(ang) * rad), py = Math.round(N / 2 - Math.cos(ang) * rad);
+            const o = (Math.max(0, Math.min(N - 1, py)) * N + Math.max(0, Math.min(N - 1, px))) * 4;
+            r += d[o]; g += d[o + 1]; b += d[o + 2]; n++;
+          }
+          r /= n; g /= n; b /= n; ar += r; ag += g; ab += b;
+          // Un peu plus vif, comme une lumière
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b), boost = mx - mn < 30 ? 1 : 1.25;
+          const f = (v) => Math.max(0, Math.min(255, Math.round(mx - (mx - v) * boost + 18)));
+          stops.push(`rgb(${f(r)} ${f(g)} ${f(b)})`);
+        }
+        const hx = (v) => Math.round(v / 16).toString(16).padStart(2, "0");
+        const avg = "#" + hx(ar) + hx(ag) + hx(ab);
+        res({ conic: `conic-gradient(from 0deg, ${stops.join(", ")}, ${stops[0]})`, a: stops[0], b: stops[8], avg });
+      } catch { res(null); }
+    };
+    i.onerror = () => res(null);
+    i.src = m.avatar;
+  });
+  ambiCache.set(key, p);
+  return p;
+}
+const ringVarsOn = (st, a, b) => {
+  st.setProperty("--ring1", a); st.setProperty("--ring2", b);
+  st.setProperty("--aura1", `color-mix(in srgb, ${a} 85%, transparent)`);
+  st.setProperty("--aura2", `color-mix(in srgb, ${b} 60%, transparent)`);
+  st.setProperty("--aura3", `color-mix(in srgb, ${b} 40%, transparent)`);
+};
 // Pose (ou retire) les couleurs de l'anneau propres à chaque membre
 function tileRing(t) {
   const st = t.el.style;
-  if (S.ringFrom !== "avatar") {
-    t.duo = null;
-    for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3"]) st.removeProperty(k);
+  const clear = () => { t.duo = null; for (const k of ["--ring1", "--ring2", "--aura1", "--aura2", "--aura3", "--ring-conic"]) st.removeProperty(k); };
+  if (S.ringFrom === "friends") {
+    clear();
+    const c = (S.friendColors || {})[t.data.id];
+    if (c) { t.duo = { a: c, b: mixWhite(c, 0.45) }; ringVarsOn(st, c, t.duo.b); }
     return;
   }
+  if (S.ringFrom === "ambi") {
+    ambiColors(t.data).then((c) => {
+      if (S.ringFrom !== "ambi" || !t.el.isConnected) return;
+      clear();
+      if (!c) return;
+      t.duo = { a: c.a, b: c.b };
+      ringVarsOn(st, c.a, c.b);
+      st.setProperty("--ring-conic", c.conic);
+    });
+    return;
+  }
+  if (S.ringFrom !== "avatar") return clear();
   avatarDuo(t.data).then((c) => {
     if (S.ringFrom !== "avatar" || !t.el.isConnected) return;
     t.duo = c;
@@ -536,6 +600,8 @@ function setSandbox(on, quiet) {
   }
   document.body.classList.toggle("sandbox", !!sandbox);
   $("#sandboxPill").hidden = !sandbox;
+  $("#sbGuests").hidden = !sandbox;
+  sbGuestsSync();
   syncTiles(); renderChrome();
 }
 function sandboxTick() {
@@ -547,7 +613,8 @@ function sandboxTick() {
   if (!sb.talk) me.speaking = false;
   me.level = me.speaking ? Math.max(0.15, Math.min(1, (me.level || 0.5) + (Math.random() - 0.5) * 0.5)) : 0;
   // Invités fictifs : même petit jeu que le mode démo
-  const want = sb.guests ? Math.max(0, S.players - 1) : 0;
+  // Nombre de personnes : la barre verticale en haut à gauche (propre au mode Personnaliser)
+  const want = Math.max(0, Math.min(23, (S.sbGuests || 1) - 1));
   if (state.members.length - 1 !== want) {
     state.members = [me, ...demoMembers().slice(1, 1 + want)];
     syncTiles(); renderChrome();
@@ -562,7 +629,9 @@ function sandboxTick() {
 }
 $("#sandboxQuit").onclick = () => setSandbox(false);
 $("#sandboxTalk").onclick = () => { sandbox.talk = !sandbox.talk; $("#sandboxTalk").classList.toggle("on", sandbox.talk); };
-$("#sandboxGuests").onclick = () => { sandbox.guests = !sandbox.guests; $("#sandboxGuests").classList.toggle("on", sandbox.guests); };
+// Barre verticale : combien de personnes dans le vocal simulé (toi compris)
+const sbGuestsSync = () => { $("#sbGuestsRange").value = S.sbGuests || 1; $("#sbGuestsOut").textContent = String(S.sbGuests || 1); };
+$("#sbGuestsRange").oninput = (e) => { S.sbGuests = +e.target.value; sbGuestsSync(); save(); };
 
 // Pseudos d'exemple : Locks d'abord (c'est « toi » dans la démo), puis la bande, dans l'ordre de priorité
 const DEMO_ME = "Locks";
@@ -1307,6 +1376,40 @@ $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
 $("#ringColor").oninput = (e) => { S.ringColor = e.target.value; if (S.ringFrom !== "duo") S.ringFrom = "custom"; apply(); };
 $("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
+$("#nameShift").oninput = (e) => { S.nameShift = +e.target.value; apply(); };
+$("#nameShift").ondblclick = () => { S.nameShift = 0; apply(); };
+// Couleur d'anneau choisie pour un ami (mode « Couleur de mes amis »)
+function setFriendColor(id, color) {
+  S.friendColors = { ...(S.friendColors || {}) };
+  if (color) S.friendColors[id] = color; else delete S.friendColors[id];
+  save();
+  for (const t of tiles.values()) if (t.data.id === id) tileRing(t);
+  drawFriendColors();
+}
+// Dans les paramètres : les personnes du salon, chacune avec sa couleur
+function drawFriendColors() {
+  const box = $("#friendColors");
+  box.hidden = S.ringFrom !== "friends";
+  if (box.hidden) return;
+  const meId = state.me && state.me.id;
+  const ppl = (state.members || []).filter((m) => m.id !== meId && !m.ghost);
+  const sig = S.ringFrom + JSON.stringify(ppl.map((m) => m.id)) + JSON.stringify(S.friendColors || {});
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.textContent = "";
+  if (!ppl.length) { box.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "Les personnes de ton vocal s'afficheront ici, avec leur couleur." })); return; }
+  for (const m of ppl.slice(0, 24)) {
+    const row = document.createElement("label");
+    row.className = "row fc-row";
+    const im = Object.assign(document.createElement("img"), { alt: "", src: m.avatar || "assets/discord-logo.png" });
+    const n = Object.assign(document.createElement("span"), { textContent: m.name });
+    const inp = Object.assign(document.createElement("input"), { type: "color", value: (S.friendColors || {})[m.id] || "#ff8cc6" });
+    inp.oninput = () => setFriendColor(m.id, inp.value);
+    row.append(im, n, inp);
+    if ((S.friendColors || {})[m.id]) { const x = Object.assign(document.createElement("button"), { type: "button", className: "linkbtn", textContent: "Retirer" }); x.onclick = (e) => { e.preventDefault(); setFriendColor(m.id, null); }; row.append(x); }
+    box.append(row);
+  }
+}
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
 $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = "duo"; apply(); };
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
@@ -1467,6 +1570,7 @@ function apply() {
   b.style.setProperty("--glow", S.glow / 100);
   b.style.setProperty("--radius", SHAPES[S.shape].r);
   b.style.setProperty("--clip", SHAPES[S.shape].c);
+  b.dataset.shape = S.shape;
   if (S.accent) b.style.setProperty("--accent", S.accent); else b.style.removeProperty("--accent");
   uiColors();
   drawBgPicks();
@@ -1528,7 +1632,12 @@ function apply() {
   $("#zoomRange").value = S.zoom; $("#zoomOut").textContent = Math.round(S.zoom * 100) + " %";
   $("#setPin").setAttribute("aria-checked", pinned);
   b.classList.toggle("ring-solid", S.ring === "solid");
-  b.classList.toggle("ring-two", S.ringFrom === "avatar" || S.ringFrom === "duo"); // anneau plein en dégradé de deux couleurs
+  b.classList.toggle("ring-two", S.ringFrom === "avatar" || S.ringFrom === "duo");
+  b.classList.toggle("ring-ambi", S.ringFrom === "ambi");
+  b.style.setProperty("--name-shift", String(S.nameShift || 0));
+  $("#nameShift").value = S.nameShift || 0;
+  $("#nameShiftOut").textContent = (S.nameShift > 0 ? "+" : "") + (S.nameShift || 0) + " px";
+  drawFriendColors(); // anneau plein en dégradé de deux couleurs
   b.classList.toggle("ring-aura", S.ring === "aura");
   b.classList.toggle("ring-canvas", Rings.TYPES.includes(S.ring));
   $("#togglePanel").classList.toggle("on", S.panel);
@@ -2167,7 +2276,7 @@ function showToast(msg) {
 }
 
 mainEl.addEventListener("pointerdown", (e) => {
-  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen, .chat")) return;
+  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen, .chat, .home, .sandbox-pill, .call-banner, .incoming")) return;
   const tileEl = e.target.closest(".tile");
   if (e.ctrlKey || e.metaKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
@@ -2533,13 +2642,25 @@ function setupMini() {
 }
 const openMini = async () => {
   const open = await window.studio.win.mini();
+  syncOvBtn(open);
   $("#miniBtn").classList.toggle("on", open);
   $("#setMini").textContent = open ? "Fermer" : "Ouvrir";
 };
 $("#miniBtn").onclick = openMini;
 $("#showHidden").onclick = () => { S.hiddenUsers = []; save(); syncTiles(); };
 $("#setMini").onclick = openMini;
-window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; });
+const syncOvBtn = (open) => { $("#homeOverlay").setAttribute("aria-checked", String(!!open)); $("#homeOverlay").querySelector("span").textContent = open ? "Overlay activé" : "Overlay désactivé"; };
+window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; syncOvBtn(open); });
+$("#homeOverlay").onclick = async () => { await openMini(); syncOvBtn($("#miniBtn").classList.contains("on")); };
+$("#homeDiscord").onclick = () => window.open("discord://-/channels/@me");
+// Bouton « Hush » accroché à Discord (Windows) : on/off dans Vidéo et fenêtre
+if (!MINI) window.studio.win.discordBtn().then((c) => {
+  if (!c || !c.supported) return;
+  $("#discordBtnRow").hidden = false;
+  $("#discordBtn").setAttribute("aria-checked", String(c.on));
+  $("#discordBtn").onclick = async () => { const on = await window.studio.win.discordBtn($("#discordBtn").getAttribute("aria-checked") !== "true"); $("#discordBtn").setAttribute("aria-checked", String(on)); };
+}).catch(() => {});
+syncOvBtn(false);
 
 /* ——— Linux (overlay layer-shell) : déplacer l'overlay à la souris, glisser pour la place, molette pour la taille.
    Le bouton n'apparaît que dans ce mode : rien ne change sous Windows et Mac. ——— */
@@ -2718,7 +2839,7 @@ $("#deleteData").onclick = async (e) => {
 };
 if (!MINI) {
   Lens.pill(document.querySelector(".hs-tabs"), "aria-pressed");
-  document.querySelectorAll("#homeTabs button").forEach((b) => Lens.apply(b));
+  // (les onglets du bas sont maintenant du texte, sans rond de verre)
   // (les salons de l'accueil ne sont plus dans un rond de verre)
 }
 $("#gfonts").media = "all"; // polices chargées sans bloquer le premier affichage

@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld("studio", {
     consent: (on) => ipcRenderer.send("report:consent", on),
     copy: () => ipcRenderer.invoke("report:copy"),
   },
-  admin: (op) => ipcRenderer.invoke("admin:op", op),
+  admin: (op, arg) => ipcRenderer.invoke("admin:op", op, arg),
   account: {
     remove: () => ipcRenderer.invoke("account:delete"),
     privacy: () => ipcRenderer.invoke("open:privacy"),
@@ -97,6 +97,7 @@ contextBridge.exposeInMainWorld("studio", {
   chat: {
     history: () => ipcRenderer.invoke("chat:history"),
     send: (text) => ipcRenderer.invoke("chat:send", text),
+    upload: (name, bytes, text) => ipcRenderer.invoke("chat:upload", name, bytes, text),
     onMessage: (fn) => ipcRenderer.on("chat:message", (_e, m) => fn(m)),
   },
   usage: {
@@ -123,6 +124,7 @@ contextBridge.exposeInMainWorld("studio", {
     mini: () => ipcRenderer.invoke("win:mini"),
     drag: (phase, mode) => ipcRenderer.send("win:drag", phase, mode),
     focusMain: () => ipcRenderer.invoke("win:main"),
+    discordBtn: (on) => (on === undefined ? ipcRenderer.invoke("dcbtn:get") : ipcRenderer.invoke("dcbtn:set", on)),
     onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
     overlay: (cfg) => ipcRenderer.invoke("overlay:set", cfg),
     screens: () => ipcRenderer.invoke("overlay:screens"),

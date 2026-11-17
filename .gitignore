@@ -8,6 +8,7 @@ site-test/
 usage.json
 friends.json
 reports.json
+roles.json
 
 # Identifiants FTP de publication (launcher/tools/publish-ftp.js)
 ftp.env

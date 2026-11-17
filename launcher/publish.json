@@ -35,14 +35,13 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Accueil : tes salons montrent les photos de ceux qui y étaient (favoris : qui y est en ce moment), et une barre règle l'opacité du fond",
-        "Fonds rangés en Espace, Couleurs et Personnalisé ; Wallpaper Engine a son propre rond, et sa galerie s'ouvre à gauche des paramètres",
-        "Caméras côte à côte, clique sur une pour la verrouiller en grand ; seulement les caméras quand tout le salon a la sienne",
-        "Nouveau : les caméras dans le mode Cinéma 3D, et le choix de la caméra si tu en as plusieurs",
-        "Partage d'écran façon Discord : Applications ou Écrans, résolution et images/s",
-        "Tchat : plus jamais de message au nom du bot, Hush explique comment réparer",
-        "Le mini-vinyle apparaît en taille moyenne, en bas à droite",
-        "Les clips quittent Hush le temps d'être refaits (ils reviennent bientôt)"
+        "Accueil : Top (13 salons), Favoris (30), Amis en vocal et Historique dans la liste de gauche, qui se soulève au survol",
+        "Les gens en vocal en ronds façon Discord (+N au-delà de 4), salon vide en glitch noir et blanc, et tes stats au clic droit",
+        "Gros interrupteur Overlay (activé de base) et bouton « Aller sur Discord » ; pastille « Hush » sur la fenêtre de Discord",
+        "Tableau de bord admin complet, avec les rôles (Phantom, Premium, Limitless, Testeur, Collaborateur, Streamer…)",
+        "Tchat : photos et fichiers (trombone, Ctrl+V, glisser), et les photos de profil arrivent tout de suite",
+        "Paramètres : onglet Pseudos avec leur hauteur, anneaux Couleur de chaque photo, Couleur de mes amis et Ambilight",
+        "Bords des avatars lissés, barre du bas en relief, notifications triées, « Tu es seul » qui se ferme, clips retirés"
       ],
       "artifacts": {
         "win32-x64": {
