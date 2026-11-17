@@ -1,5 +1,5 @@
 // Bouton « Hush » accroché à la fenêtre de Discord (Windows) : une petite pastille posée sur la barre de titre de
-// Discord, visible seulement quand Discord est au premier plan. Un clic ouvre Hush ; on peut la glisser de gauche à
+// Discord, attachée à elle (jamais par-dessus une autre fenêtre). Un clic ouvre Hush ; on peut la glisser de gauche à
 // droite pour la placer où elle gêne le moins (sa place est gardée).
 // La position de Discord est lue par un petit PowerShell qui tourne en fond (pas de module natif à compiler).
 const { BrowserWindow, screen } = require("electron");
@@ -34,7 +34,7 @@ while ($true) {
     $r = New-Object HushW+R
     [HushW]::GetWindowRect($h, [ref]$r) | Out-Null
     $fg = [HushW]::GetForegroundWindow() -eq $h
-    [Console]::Out.WriteLine("$($r.L) $($r.T) $($r.Ri) $($r.B) $([int]$fg) $([int][HushW]::IsIconic($h)) $([int][HushW]::IsZoomed($h))")
+    [Console]::Out.WriteLine("$($r.L) $($r.T) $($r.Ri) $($r.B) $([int]$fg) $([int][HushW]::IsIconic($h)) $([int][HushW]::IsZoomed($h)) $([int64]$h)")
   }
   [Console]::Out.Flush()
   Start-Sleep -Milliseconds 250
@@ -49,6 +49,27 @@ class DiscordButton {
     if (process.platform !== "win32" || this.on) return;
     this.on = true;
     this.spawn();
+  }
+  // Met la fenêtre de Discord au premier plan (elle s'ouvre si elle était réduite)
+  focusDiscord() {
+    if (process.platform !== "win32") return Promise.resolve(false);
+    const ps = `$ErrorActionPreference='SilentlyContinue'
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class HushF { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h); }
+"@
+$p = Get-Process Discord,DiscordPTB,DiscordCanary | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+if ($p) { if ([HushF]::IsIconic($p.MainWindowHandle)) { [HushF]::ShowWindow($p.MainWindowHandle, 9) | Out-Null }; [HushF]::SetForegroundWindow($p.MainWindowHandle) | Out-Null; 'ok' } else { 'none' }`;
+    // Répond true si la fenêtre de Discord a été trouvée
+    return new Promise((res) => {
+      let out = "";
+      try {
+        const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Buffer.from(ps, "utf16le").toString("base64")], { windowsHide: true });
+        p.stdout.on("data", (d) => (out += d));
+        p.on("exit", () => res(/ok/.test(out)));
+        p.on("error", () => res(false));
+      } catch { res(false); }
+    });
   }
   stop() {
     this.on = false;
@@ -74,10 +95,15 @@ class DiscordButton {
 
   line(l) {
     if (!l || l === "none") return this.hide();
-    let [L, T, R, B, fg, min, zoomed] = l.split(" ").map(Number);
+    let [L, T, R, B, fg, min, zoomed, hwnd] = l.split(" ").map(Number);
     // Fenêtre agrandie : Windows la fait dépasser de 8 px de chaque côté, hors de l'écran
     if (zoomed) { L += 8; T += 8; R -= 8; B -= 8; }
-    if (!fg || min || R - L < 300) return this.hide();
+    // La pastille est « possédée » par la fenêtre de Discord : elle reste juste au-dessus de Discord, et toute
+    // autre fenêtre posée sur Discord la recouvre aussi. Cachée seulement quand Discord est réduit.
+    if (min || R - L < 300) return this.hide();
+    this.lastHwnd = hwnd;
+    if (hwnd && this.win && this.owner !== hwnd) this.setOwner(hwnd);
+    void fg;
     this.dw = (R - L) / (screen.getPrimaryDisplay().scaleFactor || 1);
     // Pixels réels → pixels de l'écran d'Electron
     let r = { x: L, y: T, width: R - L, height: B - T };
@@ -92,10 +118,9 @@ class DiscordButton {
     if (this.win && !this.win.isDestroyed()) return this.win;
     const win = new BrowserWindow({
       width: W, height: H, show: false, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
-      skipTaskbar: true, alwaysOnTop: true, hasShadow: false, backgroundColor: "#00000000", icon: this.o.icon,
+      skipTaskbar: true, alwaysOnTop: false, hasShadow: false, backgroundColor: "#00000000", icon: this.o.icon,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
-    win.setAlwaysOnTop(true, "pop-up-menu");
     win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(PAGE));
     // Un clic : on ouvre Hush. Glisser : on déplace la pastille le long de la barre de titre
     win.webContents.on("console-message", (_e, _lvl, msg) => {
@@ -112,17 +137,29 @@ class DiscordButton {
     return win;
   }
 
+  // Windows : notre fenêtre devient une fenêtre « possédée » par celle de Discord (même place dans la pile)
+  setOwner(hwnd) {
+    this.owner = hwnd;
+    let mine;
+    try { const b = this.win.getNativeWindowHandle(); mine = b.length >= 8 ? b.readBigInt64LE(0) : BigInt(b.readInt32LE(0)); } catch { return; }
+    const ps = `Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class HushO { [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW")] public static extern IntPtr SetOwner(IntPtr h, int i, IntPtr v); }
+"@
+[HushO]::SetOwner([IntPtr]${mine}, -8, [IntPtr]${hwnd}) | Out-Null`;
+    try { spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Buffer.from(ps, "utf16le").toString("base64")], { windowsHide: true }).on("error", () => {}); } catch {}
+  }
   show(p) {
     clearTimeout(this.hideT);
     const win = this.ensure();
     if (!this.last || this.last.x !== p.x || this.last.y !== p.y) win.setBounds({ x: p.x, y: p.y, width: W, height: H });
     this.last = p;
-    if (!win.isVisible()) win.showInactive();
+    if (!win.isVisible()) { win.showInactive(); if (this.lastHwnd) this.setOwner(this.lastHwnd); }
   }
   hide() {
     // Petit délai : un clic sur la pastille rend Discord « pas au premier plan » une fraction de seconde
     clearTimeout(this.hideT);
-    this.hideT = setTimeout(() => { if (this.win && !this.win.isDestroyed() && this.win.isVisible()) this.win.hide(); this.last = null; }, 400);
+    this.hideT = setTimeout(() => { if (this.win && !this.win.isDestroyed() && this.win.isVisible()) this.win.hide(); this.last = null; }, 150);
   }
 }
 

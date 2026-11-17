@@ -35,13 +35,13 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Accueil : Top (13 salons), Favoris (30), Amis en vocal et Historique dans la liste de gauche, qui se soulève au survol",
-        "Les gens en vocal en ronds façon Discord (+N au-delà de 4), salon vide en glitch noir et blanc, et tes stats au clic droit",
-        "Gros interrupteur Overlay (activé de base) et bouton « Aller sur Discord » ; pastille « Hush » sur la fenêtre de Discord",
-        "Tableau de bord admin complet, avec les rôles (Phantom, Premium, Limitless, Testeur, Collaborateur, Streamer…)",
-        "Tchat : photos et fichiers (trombone, Ctrl+V, glisser), et les photos de profil arrivent tout de suite",
-        "Paramètres : onglet Pseudos avec leur hauteur, anneaux Couleur de chaque photo, Couleur de mes amis et Ambilight",
-        "Bords des avatars lissés, barre du bas en relief, notifications triées, « Tu es seul » qui se ferme, clips retirés"
+        "Accueil : Top, Favoris, Amis et Historique à gauche ; ronds façon Discord, salon vide en glitch, stats au clic droit",
+        "Accueil : fondu ou flou réglable sur toute la fenêtre ; avatars en fond façon vieille télé, un clic dessus ramène au vocal",
+        "Nouveaux panneaux Connexion, Mes amis et Classement (podium), et tout Hush en verre fumé (réglable dans Thème)",
+        "Overlay activé de base, « Aller sur Discord » et pastille « Hush » accrochée à la fenêtre de Discord",
+        "Dashboard admin complet avec les rôles ; retour automatique sur Hush après connexion ou invitation du bot",
+        "Tchat : photos et fichiers ; pseudos : hauteur et taille adaptée ; anneaux Photo, Mes amis et Ambilight",
+        "Fond vidéo, filtres Wallpaper Engine, lecteur de musique refait, clips retirés"
       ],
       "artifacts": {
         "win32-x64": {

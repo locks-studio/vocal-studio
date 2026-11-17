@@ -77,7 +77,11 @@ class SoundLibrary {
     const r = await dialog.showOpenDialog(win, {
       title: "Choisir un fond",
       properties: ["openFile"],
-      filters: [{ name: "Images, GIF et vidéos", extensions: Object.keys(BG_TYPES) }],
+      filters: [
+        { name: "Images, GIF et vidéos", extensions: Object.keys(BG_TYPES) },
+        { name: "Vidéos (MP4, WebM, MOV)", extensions: ["mp4", "webm", "mov"] },
+        { name: "Images et GIF", extensions: ["jpg", "jpeg", "png", "webp", "gif", "avif"] },
+      ],
     });
     if (r.canceled || !r.filePaths[0]) return null;
     fs.mkdirSync(this.bgDir, { recursive: true });

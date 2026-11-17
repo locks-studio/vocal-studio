@@ -124,6 +124,8 @@ contextBridge.exposeInMainWorld("studio", {
     mini: () => ipcRenderer.invoke("win:mini"),
     drag: (phase, mode) => ipcRenderer.send("win:drag", phase, mode),
     focusMain: () => ipcRenderer.invoke("win:main"),
+    goDiscord: () => ipcRenderer.invoke("discord:go"),
+    inviteBot: (url) => ipcRenderer.invoke("bot:invite", url),
     discordBtn: (on) => (on === undefined ? ipcRenderer.invoke("dcbtn:get") : ipcRenderer.invoke("dcbtn:set", on)),
     onMini: (fn) => ipcRenderer.on("win:mini", (_e, open) => fn(open)),
     overlay: (cfg) => ipcRenderer.invoke("overlay:set", cfg),

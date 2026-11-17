@@ -99,7 +99,7 @@ class BotLink {
       try {
         const r = await fetch(`${this.server()}/auth/poll?state=${state}`).then((x) => x.json());
         misses = 0;
-        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.start(); }
+        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.loggedInAt = Date.now(); this.start(); }
         else if (r.error) { clearInterval(this.loginTimer); this.set(this.blank("needs-login", r.error)); }
       } catch {
         // Serveur injoignable plusieurs fois de suite : il a été fermé pendant la connexion

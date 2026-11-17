@@ -90,7 +90,8 @@ function plainError(msg) {
 function homeMessage() {
   const isBot = state.mode === "bot";
   const info = Home.info;
-  if (state.channel && state.status === "ready") return { text: `Vous êtes dans ${chanLabel(state.channel)}`, act: () => { Home.forced = false; renderHome(); } };
+  // En vocal : plus de nom au milieu, on clique directement sur les avatars en fond pour y retourner
+  if (state.channel && state.status === "ready") return { text: "" };
   if (isBot && (state.status === "disconnected" || (info && (info.unreachable || info.online === false)))) return { text: "Hush est en maintenance" };
   if (isBot && state.status === "needs-login") return { text: "Connectez-vous au bot", act: () => window.studio.bot.login() };
   if (!isBot && state.status === "disconnected") return { text: "Ouvrez Discord" };
@@ -101,6 +102,7 @@ function drawHome() {
   if ($("#home").hidden) return;
   const m = homeMessage(), b = $("#homeMsg");
   if (b.dataset.msg !== m.text) { b.dataset.msg = m.text; b.textContent = m.text; b.classList.remove("in"); void b.offsetWidth; b.classList.add("in"); }
+  b.hidden = !m.text;
   $("#homeHint").hidden = !(state.mode === "bot" && state.status === "ready" && !state.channel);
   b.classList.toggle("act", !!m.act);
   b.disabled = !m.act;
@@ -112,6 +114,11 @@ function drawHome() {
   // Onglets : seul celui qui est ouvert est dessiné
   document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => t.setAttribute("aria-pressed", t.dataset.ht === Home.tab));
   $("#homePanel").hidden = !Home.tab;
+  // Panneaux du bas (sauf l'admin) : sans boîte, dans l'écriture de la liste de gauche ; rejoue l'entrée à chaque onglet
+  const hp = $("#homePanel");
+  hp.classList.toggle("hp-free", !!Home.tab && Home.tab !== "admin");
+  hp.classList.toggle("glass", !hp.classList.contains("hp-free"));
+  if (hp.dataset.tab !== (Home.tab || "")) { hp.dataset.tab = Home.tab || ""; hp.classList.remove("hp-in"); void hp.offsetWidth; hp.classList.add("hp-in"); }
   document.querySelectorAll(".home-pane").forEach((p) => (p.hidden = p.dataset.ht !== Home.tab));
   if (Home.tab === "account") drawAccount();
   if (Home.tab === "people") drawPeople();
@@ -126,46 +133,82 @@ function drawHome() {
   drawSide();
 }
 $("#homeStudio").onclick = () => setSandbox(true);
+// Accueil ouvert pendant un vocal : un clic sur un avatar en fond ramène dans le vocal
+const tileUnder = (x, y) => document.elementsFromPoint(x, y).find((el) => el.closest && el.closest("#stage .tile"));
+let homeHoverTile = null;
+$("#home").addEventListener("pointermove", (e) => {
+  const ok = e.target === $("#home") && state.channel && state.status === "ready";
+  const t = ok ? tileUnder(e.clientX, e.clientY) : null;
+  const tile = t && t.closest(".tile");
+  if (tile === homeHoverTile) return;
+  if (homeHoverTile) homeHoverTile.classList.remove("home-hover");
+  homeHoverTile = tile;
+  if (tile) tile.classList.add("home-hover");
+  $("#home").classList.toggle("over-av", !!tile);
+  $("#home").title = tile ? "Retourner dans le vocal" : "";
+});
+$("#home").addEventListener("click", (e) => {
+  if (e.target !== $("#home") || !state.channel || state.status !== "ready") return;
+  if (!tileUnder(e.clientX, e.clientY)) return;
+  if (homeHoverTile) homeHoverTile.classList.remove("home-hover");
+  homeHoverTile = null; $("#home").classList.remove("over-av"); $("#home").title = "";
+  Home.forced = false; renderHome();
+});
 document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => (t.onclick = () => { Home.tab = Home.tab === t.dataset.ht ? null : t.dataset.ht; drawHome(); }));
 
-// — Connexion : ton compte, comment Hush est connecté, et l'état du bot —
+// — Connexion : ton compte en grand, des pastilles d'état, puis les actions en lignes (comme la liste de gauche) —
+const hpIcon = (d) => { const i = document.createElementNS("http://www.w3.org/2000/svg", "svg"); i.setAttribute("viewBox", "0 0 24 24"); i.innerHTML = d; i.classList.add("hp-ico"); return i; };
+const HP_ICONS = {
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  bot: '<rect x="4" y="8" width="16" height="11" rx="4"/><path d="M12 4v4M9 13h.01M15 13h.01"/>',
+  invite: '<circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+};
+function hpAction(label, sub, icon, fn, hot) {
+  const r = h("button", "hp-act" + (hot ? " hot" : ""));
+  r.type = "button";
+  const t = h("div", "hp-act-t");
+  t.append(h("b", "", label));
+  if (sub) t.append(h("small", "", sub));
+  r.append(hpIcon(HP_ICONS[icon] || ""), t, h("i", "hp-chev", "›"));
+  r.onclick = fn;
+  return r;
+}
 function drawAccount() {
   const isBot = state.mode === "bot";
   const info = Home.info;
   const acc = $("#homeAccount");
   acc.textContent = "";
   const me = state.me;
-  const top = h("div", "hm-me");
-  top.append(avatarImg(me && me.avatar, "hm-av big"));
-  const who = h("div");
-  who.append(h("h2", "", me ? me.name : "Pas connecté"));
-  const lines = h("div", "hm-status");
-  const line = (ok, text) => { const p = h("p", "hm-line " + (ok === true ? "ok" : ok === false ? "err" : "warn")); p.append(h("i", "dot"), text); lines.append(p); };
-  if (isBot) line(state.status === "ready", state.status === "ready" ? "Connecté avec le bot Hush" : state.status === "needs-login" ? "Compte Discord pas encore lié au bot" : (STATUS[state.status] || STATUS.idle)[1]);
-  else line(state.status === "ready", state.status === "ready" ? "Connexion directe à Discord" : (STATUS[state.status] || STATUS.idle)[1]);
-  if (!info || info.unreachable) line(false, "Serveur du bot injoignable");
-  else line(info.online, info.online ? `Bot ${info.name || ""} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
-  who.append(lines);
-  top.append(who);
-  acc.append(top);
-  const btns = h("div", "hm-actions");
-  const b = (label, cls, fn) => { const x = h("button", cls, label); x.onclick = fn; btns.append(x); };
-  if (isBot && state.status === "needs-login") b("Lier mon compte", "cta small", () => window.studio.bot.login());
-  // Connexion directe : lier aussi le bot permet « Ajouter le bot à la voc », Mes amis et le classement
-  if (!isBot && info && !info.unreachable && !info.linked) b("Lier au bot", "ghost small", () => window.studio.bot.login());
+  const head = h("div", "hp-hero");
+  const av = h("div", "hp-hero-av" + (state.status === "ready" ? " on" : ""));
+  av.append(avatarImg(me && me.avatar, "hp-hero-img"));
+  const who = h("div", "hp-hero-t");
+  who.append(h("small", "hp-kicker", "Connexion"), h("h2", "hp-name", me ? me.name : "Pas connecté"));
+  const chips = h("div", "hp-chips");
+  const chip = (ok, text) => { const c = h("span", "hp-chip " + (ok === true ? "ok" : ok === false ? "err" : "warn")); c.append(h("i"), text); chips.append(c); };
+  if (isBot) chip(state.status === "ready", state.status === "ready" ? "Avec le bot Hush" : state.status === "needs-login" ? "Compte pas encore lié" : (STATUS[state.status] || STATUS.idle)[1]);
+  else chip(state.status === "ready", state.status === "ready" ? "Connexion directe à Discord" : (STATUS[state.status] || STATUS.idle)[1]);
+  if (!info || info.unreachable) chip(false, "Serveur du bot injoignable");
+  else chip(info.online, info.online ? `${info.name || "Bot"} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
+  who.append(chips);
+  head.append(av, who);
+  acc.append(head);
+  const list = h("div", "hp-list");
+  if (isBot && state.status === "needs-login") list.append(hpAction("Lier mon compte", "Une page Discord s'ouvre, puis tu reviens ici tout seul", "link", () => window.studio.bot.login(), true));
+  if (!isBot && info && !info.unreachable && !info.linked) list.append(hpAction("Lier au bot", "Pour « Ajouter le bot à la voc », Mes amis et le classement", "link", () => window.studio.bot.login()));
   if (state.channel && state.status === "ready" && !state.channel.call) {
-    b("Ajouter le bot à la voc", "cta small", async (e) => {
+    list.append(hpAction("Ajouter le bot à la voc", "Il rejoint ton vocal en cours", "bot", async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
       const r = await window.studio.voice.summon();
       btn.disabled = false;
       showToast(r && r.ok ? "Le bot arrive dans ton vocal…" : (r && r.error) || "Le bot n'a pas pu venir.");
-    });
-  } else if (state.channel && state.channel.call) line(null, "Le bot ne peut pas rejoindre un appel privé (seulement les salons de serveur)");
-  if (isBot && !state.channel) line(null, "Rejoins un vocal, puis « Ajouter le bot à la voc »");
-  if (info && info.invite) b(`Inviter ${info.name || "le bot"}`, "ghost small", () => window.open(info.invite));
-  b("Modifier la connexion", "ghost small", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); });
-  acc.append(btns);
+    }, true));
+  } else if (state.channel && state.channel.call) list.append(h("p", "hint", "Le bot ne peut pas rejoindre un appel privé (seulement les salons de serveur)."));
+  if (info && info.invite) list.append(hpAction(`Inviter ${info.name || "le bot"}`, "Sur un serveur que tu gères · retour à Hush ensuite", "invite", () => window.studio.win.inviteBot(info.invite)));
+  list.append(hpAction("Modifier la connexion", "Bot Hush ou connexion directe", "edit", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); }));
+  acc.append(list);
 }
 
 // — Sur Hush : les membres de tes serveurs qui ont Hush (en ligne, en vocal) —
@@ -309,7 +352,7 @@ $("#frHide").onchange = (e) => friendOp("hide", e.target.checked);
 $("#frRank").onchange = (e) => friendOp("rank", e.target.checked);
 // Inviter le bot : le geste qui ouvre Hush à tout un serveur
 const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1566055526444568669&scope=bot%20applications.commands&permissions=970001408";
-$("#homeInvite").onclick = () => window.open((Home.info && Home.info.invite) || INVITE_URL);
+$("#homeInvite").onclick = () => window.studio.win.inviteBot((Home.info && Home.info.invite) || INVITE_URL);
 // Annonce le vocal où tu es à tes amis (aussi en connexion directe). Le nom personnalisé d'un salon reste chez toi.
 let frKey = "";
 function friendsOnState(s) {
@@ -682,7 +725,7 @@ async function drawAdmin(force) {
   box.append(er);
   $("#homePanel").scrollTop = keepScroll;
 }
-// — Classement : les plus gros utilisateurs de Hush en vocal (heures comptées par le serveur du bot) —
+// — Classement : un podium pour les 3 premiers, puis les autres en lignes —
 const Top = { list: null, at: 0, me: null };
 async function drawTop() {
   const box = $("#homeTop");
@@ -692,18 +735,37 @@ async function drawTop() {
   }
   if (Home.tab !== "top") return;
   box.textContent = "";
-  if (Top.me) box.append(h("p", "hint", `Toi : ${(Top.me.voiceMinutes / 60).toFixed(1)} h en vocal avec Hush, ${(Top.me.appMinutes / 60).toFixed(1)} h en tout (sur ce PC).`));
+  const head = h("div", "hp-head");
+  head.append(h("h2", "hp-title", "Classement"));
+  if (Top.me) head.append(h("span", "hp-badge", `Toi : ${(Top.me.voiceMinutes / 60).toFixed(1).replace(".", ",")} h en vocal`));
+  box.append(head);
   if (!Top.list) { box.append(h("p", "hint", "Classement indisponible : le serveur du bot ne répond pas.")); return; }
   if (!Top.list.length) { box.append(h("p", "hint", "Personne pour l'instant : chaque minute en vocal avec Hush compte.")); return; }
   const meId = state.me && state.me.id;
-  Top.list.forEach((p, i) => {
-    const row = h("div", "hm-person hm-rank" + (p.id === meId ? " me" : ""));
-    row.append(h("span", "hm-pos" + (i < 3 ? " p" + (i + 1) : ""), String(i + 1)), avatarImg(p.avatar));
-    const t = h("div", "hm-ptext");
-    t.append(h("b", "", p.name), h("small", "", `${String(p.hours).replace(".", ",")} h en vocal`));
-    row.append(t);
-    box.append(row);
+  const hours = (p) => `${String(p.hours).replace(".", ",")} h`;
+  // Podium : 2e, 1er, 3e
+  const podium = h("div", "hp-podium");
+  [1, 0, 2].forEach((i) => {
+    const p = Top.list[i];
+    if (!p) return;
+    const c = h("div", "hp-pod p" + (i + 1) + (p.id === meId ? " me" : ""));
+    const avw = h("div", "hp-pod-av");
+    avw.append(avatarImg(p.avatar, "hp-pod-img"), h("b", "hp-pod-n", String(i + 1)));
+    c.append(avw, h("b", "hp-pod-name", p.name), h("small", "", hours(p)), h("i", "hp-pod-step"));
+    podium.append(c);
   });
+  box.append(podium);
+  const list = h("div", "hp-list");
+  Top.list.slice(3).forEach((p, k) => {
+    const row = h("div", "hp-row" + (p.id === meId ? " me" : ""));
+    row.style.setProperty("--i", k);
+    row.append(h("span", "hp-rank", String(k + 4)), avatarImg(p.avatar, "hp-av"));
+    const t = h("div", "hp-row-t");
+    t.append(h("b", "", p.name), h("small", "", hours(p) + " en vocal"));
+    row.append(t);
+    list.append(row);
+  });
+  box.append(list);
 }
 
 /* — Historique des vocaux, arrivées / départs, écran d'appel — */

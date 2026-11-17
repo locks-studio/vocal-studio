@@ -22,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "stream", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, homeVeilMode: "fade", bgFade: 0, uiDa: "home", nameFit: false, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "stream", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
@@ -627,6 +627,9 @@ function sandboxTick() {
     m.level = m.speaking ? Math.max(0.1, Math.min(1, (m.level || 0.5) + (Math.random() - 0.5) * 0.5)) : 0;
   }
 }
+// La barre du mode Personnaliser passe au-dessus des paramètres (même ouverts au centre) : « Quitter » ne tombe
+// plus sur le fond des paramètres, qui les fermait
+if (!MINI) document.body.append($("#sandboxPill"), $("#sbGuests"));
 $("#sandboxQuit").onclick = () => setSandbox(false);
 $("#sandboxTalk").onclick = () => { sandbox.talk = !sandbox.talk; $("#sandboxTalk").classList.toggle("on", sandbox.talk); };
 // Barre verticale : combien de personnes dans le vocal simulé (toi compris)
@@ -1008,7 +1011,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"], ["#uiDaSeg", "uiDa"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     if (key === "bg" && b.dataset.v === "we") return openWe();
@@ -1159,11 +1162,19 @@ async function weCheck() {
   syncWePick();
 }
 function syncWePick() { $("#bgWe").hidden = !$("#wePick").dataset.ok; $("#wePick").hidden = !isWeBg() || !$("#wePick").dataset.ok; }
+// Filtres de la galerie : type, provenance, ordre
+const weF = { type: "all", src: "all", sort: "video" };
+const weType = (it) => (it.kind === "video" ? "video" : ["scene", "web"].includes(String(it.type || "").toLowerCase()) ? String(it.type).toLowerCase() : "other");
+document.querySelectorAll("#weFilters .we-chips").forEach((g) => g.querySelectorAll("button").forEach((b) => (b.onclick = () => { weF[g.dataset.f] = b.dataset.v; weRender(); })));
 function weRender() {
   const q = $("#weSearch").value.trim().toLowerCase();
   const grid = $("#weGrid");
   grid.textContent = "";
-  const list = weItems.filter((it) => !q || it.title.toLowerCase().includes(q));
+  document.querySelectorAll("#weFilters .we-chips").forEach((g) => g.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(weF[g.dataset.f] === b.dataset.v))));
+  const list = weItems.filter((it) => (!q || it.title.toLowerCase().includes(q))
+    && (weF.type === "all" || weType(it) === weF.type)
+    && (weF.src === "all" || (weF.src === "workshop" ? it.source === "workshop" : it.source !== "workshop")))
+    .sort((a, b) => (weF.sort === "video" ? (b.kind === "video") - (a.kind === "video") : 0) || a.title.localeCompare(b.title, "fr"));
   if (!list.length) {
     const p = document.createElement("p");
     p.className = "hint";
@@ -1378,6 +1389,25 @@ $("#ringColor").oninput = (e) => { S.ringColor = e.target.value; if (S.ringFrom 
 $("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
 $("#nameShift").oninput = (e) => { S.nameShift = +e.target.value; apply(); };
 $("#nameShift").ondblclick = () => { S.nameShift = 0; apply(); };
+// « Adapter » : chaque pseudo prend la taille qu'il faut pour tenir en entier sous (ou sur) son avatar
+
+function fitNames() {
+  const on = !!S.nameFit;
+  document.body.classList.toggle("name-fit", on);
+  for (const t of tiles.values()) {
+    const name = t.el.querySelector(".name"), span = name && name.querySelector("span");
+    if (!name || !span) continue;
+    if (!on) { name.style.removeProperty("--nfit"); continue; }
+    // Largeur réelle affichée, ramenée à la taille « pleine » (sans l'ajustement déjà posé)
+    const cur = parseFloat(name.style.getPropertyValue("--nfit")) || 1;
+    const full = Math.max(name.getBoundingClientRect().width, span.getBoundingClientRect().width, span.scrollWidth * (S.nameSize || 1) * cur) / cur;
+    const av = t.el.querySelector(".av-wrap");
+    const room = Math.max(50, (av ? av.getBoundingClientRect().width : 100) * 1.2);
+    const fit = Math.max(0.38, Math.min(1, room / Math.max(1, full)));
+    name.style.setProperty("--nfit", fit.toFixed(3));
+  }
+}
+setInterval(() => { if (S.nameFit || document.body.classList.contains("name-fit")) fitNames(); }, 700);
 // Couleur d'anneau choisie pour un ami (mode « Couleur de mes amis »)
 function setFriendColor(id, color) {
   S.friendColors = { ...(S.friendColors || {}) };
@@ -1417,6 +1447,9 @@ $("#bgColor2").oninput = (e) => { S.bgColor2 = e.target.value; apply(); };
 $("#bgZoom").oninput = (e) => { S.bgZoom = +e.target.value; apply(); };
 // Accueil : opacité du fond (1 = fond bien visible, 0 = fond caché derrière un voile)
 $("#homeVeil").oninput = (e) => { S.homeBg = +e.target.value; apply(); };
+// Clic sur le logo de la barre : fondu ↔ flou
+$("#homeVeilMode").onclick = () => { S.homeVeilMode = S.homeVeilMode === "blur" ? "fade" : "blur"; apply(); };
+$("#bgFade").oninput = (e) => { S.bgFade = +e.target.value; apply(); };
 // Taille du lecteur musique : fixe (300 px par défaut), quelle que soit la taille de la fenêtre
 const PLAYER_W = 300;
 // Mini-vinyle : taille moyenne par défaut ; carte : 300 px
@@ -1426,7 +1459,7 @@ $("#playerSize").oninput = (e) => { S.playerW = +e.target.value; apply(); reques
 $("#bgZoomReset").onclick = () => { S.bgZoom = 1; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView", "menuFixed"];
+const SWITCHES = ["nameFit", "camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView", "menuFixed"];
 // Polices proposées (Google Fonts), chargées à la demande
 // Polices des pseudos : livrées avec Hush (assets/fonts), rien à télécharger
 const FONTS = ["Chomsky", "Alhambra", "Super Whales", "Super Mario 256", "Jersey 75", "Tropi Land", "Fat Kat", "Minecraft", "Kiwi Soda", "TypoSlab Irregular", "JoJo"];
@@ -1479,6 +1512,7 @@ function uiColors() {
   const white = (k) => base.map((v) => Math.round(v + (255 - v) * k)).join(",");
   const set = (k, v) => b.style.setProperty(k, v);
   b.classList.toggle("glass-dark", !light);
+  b.classList.toggle("da-home", S.uiDa !== "glass");
   set("--tint", base.join(","));
   set("--tint-l", white(light ? 0.55 : 0.14));
   set("--sh", hslRgb(h.h, Math.min(sat, 60), 25).join(","));
@@ -1650,8 +1684,26 @@ function apply() {
   $("#bgColor2").value = S.bgColor2 || "#9b7bff";
   // Zoom de l'image de fond (image fixe : rendu net, sans le lent zoom automatique qui la floutait)
   $("#bgZoomGroup").hidden = S.bg !== "image" || !S.bgImage;
+  $("#bgRes").hidden = S.bg !== "image" || isWeBg();
   $("#homeVeil").value = S.homeBg ?? 1;
-  document.body.style.setProperty("--home-veil", String(1 - (S.homeBg ?? 1)));
+  // Accueil : la barre va de « fond net » (droite) à « fond effacé » (gauche), en fondu ou en flou
+  const hv = 1 - (S.homeBg ?? 1), blurMode = S.homeVeilMode === "blur";
+  document.body.style.setProperty("--home-veil", String(blurMode ? 0 : hv));
+  document.body.style.setProperty("--home-blur", (blurMode ? Math.round(hv * 36) : 0) + "px");
+  // Les avatars du vocal en fond suivent la même barre, mais plus vite que le fond
+  // … plafonnés à 25 % : on les voit toujours bien (et on peut cliquer dessus)
+  const fast = Math.min(0.25, hv * 1.7);
+  document.body.style.setProperty("--st-blur", (blurMode ? (fast * 26).toFixed(1) : 0) + "px");
+  document.body.style.setProperty("--st-op", String(blurMode ? 1 : 1 - fast));
+  // La barre du haut suit, mais moins vite (courbe plus douce)
+  document.body.style.setProperty("--tb-veil-home", String(blurMode ? 0 : Math.pow(hv, 1.8) * 0.85));
+  document.body.classList.toggle("hv-blur-mode", blurMode);
+  $("#homeVeilLabel").textContent = blurMode ? "Flou" : "Fondu";
+  // En vocal : fondu du fond (Paramètres › Fond)
+  const bf = S.bgFade || 0;
+  document.body.style.setProperty("--bg-fade", String(bf));
+  document.body.style.setProperty("--tb-veil", String(Math.pow(bf, 1.8) * 0.85));
+  $("#bgFade").value = bf; $("#bgFadeOut").textContent = bf ? Math.round(bf * 100) + " %" : "aucun";
   $("#bgZoom").value = S.bgZoom; $("#bgZoomOut").textContent = Math.round(S.bgZoom * 100) + " %";
   $("#bgMedia").style.setProperty("--bg-zoom", S.bgZoom);
   $("#freeHint").hidden = S.layout !== "free";
@@ -2276,7 +2328,11 @@ function showToast(msg) {
 }
 
 mainEl.addEventListener("pointerdown", (e) => {
-  if ((!camLayout() && L !== "free") || e.button !== 0 || e.target.closest(".dock, .mp, .mp-grab, .screen, .chat, .home, .sandbox-pill, .call-banner, .incoming")) return;
+  if ((!camLayout() && L !== "free") || e.button !== 0) return;
+  // Seulement en saisissant la scène elle-même (ou le fond vide) : jamais un bouton, une barre ou un panneau posé
+  // par-dessus. Liste « autorisée » plutôt qu'« interdite » : un nouveau réglage ne peut plus faire bouger le fond.
+  if (!(e.target === mainEl || e.target.closest("#stage"))) return;
+  if (e.target.closest("button, input, select, textarea, label, a, [role=slider], .glass")) return;
   const tileEl = e.target.closest(".tile");
   if (e.ctrlKey || e.metaKey) {
     const t = tileEl && [...tiles.values()].find((x) => x.el === tileEl);
@@ -2652,7 +2708,7 @@ $("#setMini").onclick = openMini;
 const syncOvBtn = (open) => { $("#homeOverlay").setAttribute("aria-checked", String(!!open)); $("#homeOverlay").querySelector("span").textContent = open ? "Overlay activé" : "Overlay désactivé"; };
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; syncOvBtn(open); });
 $("#homeOverlay").onclick = async () => { await openMini(); syncOvBtn($("#miniBtn").classList.contains("on")); };
-$("#homeDiscord").onclick = () => window.open("discord://-/channels/@me");
+$("#homeDiscord").onclick = () => window.studio.win.goDiscord();
 // Bouton « Hush » accroché à Discord (Windows) : on/off dans Vidéo et fenêtre
 if (!MINI) window.studio.win.discordBtn().then((c) => {
   if (!c || !c.supported) return;
