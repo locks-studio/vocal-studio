@@ -35,13 +35,10 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Accueil : Top, Favoris, Amis et Historique à gauche ; ronds façon Discord, salon vide en glitch, stats au clic droit",
-        "Accueil : fondu ou flou réglable sur toute la fenêtre ; avatars en fond façon vieille télé, un clic dessus ramène au vocal",
-        "Nouveaux panneaux Connexion, Mes amis et Classement (podium), et tout Hush en verre fumé (réglable dans Thème)",
-        "Overlay activé de base, « Aller sur Discord » et pastille « Hush » accrochée à la fenêtre de Discord",
-        "Dashboard admin complet avec les rôles ; retour automatique sur Hush après connexion ou invitation du bot",
-        "Tchat : photos et fichiers ; pseudos : hauteur et taille adaptée ; anneaux Photo, Mes amis et Ambilight",
-        "Fond vidéo, filtres Wallpaper Engine, lecteur de musique refait, clips retirés"
+        "Panel admin : le menu pour changer le rôle de quelqu'un ne se referme plus tout seul",
+        "Panel admin : la recherche ne perd plus le curseur pendant que tu tapes",
+        "Accueil : les onglets du bas ne bougent plus sous la souris, avec une zone de clic plus grande ; leur nom s'affiche en bulle",
+        "Boutons, menus et lignes de l'accueil et du panel admin plus faciles à cliquer"
       ],
       "artifacts": {
         "win32-x64": {
