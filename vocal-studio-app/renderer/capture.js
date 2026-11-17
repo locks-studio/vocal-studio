@@ -38,7 +38,10 @@ function attachLocalMedia() {
   $("#shareBtn").classList.toggle("on", !!Cap.screen);
   // Une vidéo apparaît ou disparaît : la vue « stream » se met en place
   const f = featureSource(), k = f ? `${f.id}|${f.kind}` : "";
-  if (k !== featKey || (f && f.stream !== $("#featureVideo").srcObject)) requestAnimationFrame(layout);
+  // (aussi quand le nombre de vidéos change sans changer celle en grand : la grille de caméras doit apparaître)
+  const lk = feeds().map((x) => `${x.id}|${x.kind}`).join(",");
+  if (k !== featKey || lk !== attachLocalMedia.feeds || (f && f.stream !== $("#featureVideo").srcObject)) requestAnimationFrame(layout);
+  attachLocalMedia.feeds = lk;
   // Mon partage d'écran : en grand dans la vue stream, sinon dans la petite fenêtre flottante
   $("#screenView").hidden = !Cap.screen || !!(f && f.kind === "screen" && f.id === meTileId());
 }
