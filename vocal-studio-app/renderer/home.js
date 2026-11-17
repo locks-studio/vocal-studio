@@ -563,6 +563,13 @@ async function drawAdmin(force) {
   }
   if (Home.tab !== "admin") return;
   const box = $("#homeAdmin");
+  // Menu de rôle ouvert ou recherche en cours : on ne redessine pas sous la souris (sinon le menu se referme
+  // tout seul à chaque rafraîchissement de l'accueil) ; on le fera dès que le champ perd le focus
+  const busy = document.activeElement;
+  if (!force && busy && box.contains(busy) && busy.matches("select, input")) {
+    if (!Admin.waiting) { Admin.waiting = true; busy.addEventListener("blur", () => { Admin.waiting = false; setTimeout(() => drawAdmin(), 0); }, { once: true }); }
+    return;
+  }
   const keepScroll = $("#homePanel").scrollTop;
   box.textContent = "";
   if (Admin.error) return box.append(h("p", "hint", Admin.error));
