@@ -283,7 +283,7 @@ app.whenReady().then(() => {
   shortcuts.forLauncher();
   for (const id of Object.keys(installer.state)) shortcuts.forApp(appEntry(id), installer.installed(id));
   if (startLancer) {
-    if (launchApp(startLancer)) quietExit();
+    if (launchApp(startLancer, process.argv.includes("--cache"))) quietExit();
     else showWin(); // pas encore installé : on montre le launcher
   }
 });
@@ -293,14 +293,19 @@ function appEntry(id) {
   return { id, name: id.charAt(0).toUpperCase() + id.slice(1) };
 }
 // Ouvre un logiciel installé (Hush reprend le compte du launcher). false s'il n'est pas installé.
-function launchApp(id) {
+// hidden : lancé au démarrage du PC (--cache), le logiciel s'ouvre caché dans la zone de notification
+function launchApp(id, hidden = false) {
   if (!installer.installed(id)) return false;
-  try { installer.launch(id, id === "hush" ? account.token() : null); return true; } catch (e) { logError("lancement " + id, e); return false; }
+  try { installer.launch(id, id === "hush" ? account.token() : null, launchEnv(hidden)); return true; } catch (e) { logError("lancement " + id, e); return false; }
+}
+// Hush apprend où est le launcher : son démarrage avec le PC passe par lui (toujours la dernière version, à jour)
+function launchEnv(hidden) {
+  return { ...(app.isPackaged ? { HUSH_LAUNCHER: process.execPath } : {}), ...(hidden ? { HUSH_START_HIDDEN: "1" } : {}) };
 }
 function showWin() { if (!win) return; quietUntil = 0; if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
 app.on("second-instance", (_e, argv) => {
   const id = lancerArg(argv);
-  if (id && launchApp(id)) return; // raccourci Hush pendant que 1999 tourne : on ouvre Hush, rien d'autre
+  if (id && launchApp(id, argv.includes("--cache"))) return; // raccourci Hush pendant que 1999 tourne : on ouvre Hush, rien d'autre
   showWin();
 });
 // Lancé par un raccourci : le launcher reste caché, fait ses mises à jour, puis se ferme quand il n'a plus rien à faire
@@ -372,7 +377,7 @@ ipcMain.handle("account:cancel", () => account.cancel());
 ipcMain.handle("account:logout", () => account.logout());
 ipcMain.handle("app:launch", (_e, id) => {
   // Hush reprend le compte du launcher : pas de deuxième connexion
-  installer.launch(id, id === "hush" ? account.token() : null);
+  installer.launch(id, id === "hush" ? account.token() : null, launchEnv(false));
   // Réglage « au lancement d'un logiciel » : rester ouvert, se réduire, ou se fermer
   if (settings.onLaunch === "minimize") setTimeout(() => win && win.minimize(), 600);
   if (settings.onLaunch === "close") setTimeout(() => app.quit(), 1500);
