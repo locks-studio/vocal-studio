@@ -1937,3 +1937,30 @@ body.home-on:not(.calling) .stage .tile .av-wrap::after{content:"";position:abso
   -webkit-mask-image:radial-gradient(closest-side circle,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side circle,#000 78%,transparent 100%);
   animation:vhsSnow .18s steps(3) infinite}
 @keyframes vhsSnow{0%{background-position:0 0,0 0}33%{background-position:0 0,-37px 21px}66%{background-position:0 0,23px -41px}}
+/* — Accueil : des boutons faciles à cliquer —
+   Avant, trois choses bougeaient sous la souris : la barre se redressait, le bouton montait et grossissait,
+   et son nom s'élargissait en poussant les voisins. Maintenant rien ne bouge : la barre garde sa pose,
+   la zone de clic est plus grande (et couvre l'espace entre les boutons), le nom apparaît en bulle au-dessus */
+.home-tabs,.home-tabs:hover{gap:4px;transform:perspective(700px) rotateX(6deg);transition:none}
+.home-tabs button,.home-tabs button.studio{position:relative;padding:12px 13px;cursor:pointer}
+.home-tabs button::before{content:"";position:absolute;inset:-6px -2px}
+.home-tabs button:hover{transform:none}
+.home-tabs button:active{transform:scale(.94)}
+.home-tabs svg{width:24px;height:24px}
+.home-tabs button:not([aria-pressed="true"]) span,.home-tabs button:not([aria-pressed="true"]):focus-visible span{
+  position:absolute;bottom:calc(100% + 6px);left:50%;display:block;max-width:none;margin:0;padding:5px 11px;border-radius:999px;
+  background:rgba(10,8,20,.72);color:#fff;font-size:12.5px;text-shadow:none;pointer-events:none;
+  opacity:0;transform:translate(-50%,4px);transition:opacity .15s,transform .15s}
+.home-tabs button:not([aria-pressed="true"]):hover span,.home-tabs button:not([aria-pressed="true"]):focus-visible span{opacity:1;transform:translate(-50%,0)}
+.home-tabs button[aria-pressed="true"] span{transition:none}
+/* Onglets du côté (Top, Favoris…) : la zone de clic déborde un peu du texte */
+.home-side .hs-tabs button{padding:6px 4px;margin:-6px -4px;cursor:pointer}
+/* Lignes des panneaux : elles glissent moins au survol, pour ne plus sortir de sous la souris */
+.home-panel.hp-free :is(.hp-act,.hp-row,.hm-person,.hm-hist):hover{transform:translateX(3px)}
+/* Panel admin : boutons, menus de rôle et erreurs plus grands */
+#homeAdmin .ghost.small{padding:9px 15px;font-size:13.5px;border-radius:11px}
+#homeAdmin .ad-role-tools .field{min-height:40px}
+#homeAdmin .ad-role-sel{padding:8px 12px;font-size:13px;min-height:36px;cursor:pointer}
+#homeAdmin .ad-person{padding:8px}
+#homeAdmin .ad-err summary{padding:4px 0;min-height:28px}
+@media (prefers-reduced-motion:reduce){.home-tabs span{transition:none}}
