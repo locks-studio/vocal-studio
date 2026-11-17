@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
 contextBridge.exposeInMainWorld("studio", {
+  // Hush Preview (version de test) : fonctions en essai comme les clips
+  preview: ipcRenderer.sendSync("app:preview"),
   // Zoom de la page (Ctrl + / Ctrl −) : le menu clic droit le compense pour garder sa taille
   pageZoom: () => webFrame.getZoomFactor(),
   config: {
@@ -74,6 +76,7 @@ contextBridge.exposeInMainWorld("studio", {
     chunk: (id, buf) => ipcRenderer.invoke("clip:chunk", id, buf),
     end: (id) => ipcRenderer.invoke("clip:end", id),
     show: (file) => ipcRenderer.invoke("clip:show", file),
+    onHotkey: (fn) => ipcRenderer.on("clip:hotkey", () => fn()),
   },
   report: {
     error: (r) => ipcRenderer.send("report:error", r),

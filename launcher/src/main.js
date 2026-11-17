@@ -296,7 +296,7 @@ function appEntry(id) {
 // hidden : lancé au démarrage du PC (--cache), le logiciel s'ouvre caché dans la zone de notification
 function launchApp(id, hidden = false) {
   if (!installer.installed(id)) return false;
-  try { installer.launch(id, id === "hush" ? account.token() : null, launchEnv(hidden)); return true; } catch (e) { logError("lancement " + id, e); return false; }
+  try { installer.launch(id, (id === "hush" || id === "hush-preview") ? account.token() : null, launchEnv(hidden)); return true; } catch (e) { logError("lancement " + id, e); return false; }
 }
 // Hush apprend où est le launcher : son démarrage avec le PC passe par lui (toujours la dernière version, à jour)
 function launchEnv(hidden) {
@@ -377,7 +377,7 @@ ipcMain.handle("account:cancel", () => account.cancel());
 ipcMain.handle("account:logout", () => account.logout());
 ipcMain.handle("app:launch", (_e, id) => {
   // Hush reprend le compte du launcher : pas de deuxième connexion
-  installer.launch(id, id === "hush" ? account.token() : null, launchEnv(false));
+  installer.launch(id, (id === "hush" || id === "hush-preview") ? account.token() : null, launchEnv(false));
   // Réglage « au lancement d'un logiciel » : rester ouvert, se réduire, ou se fermer
   if (settings.onLaunch === "minimize") setTimeout(() => win && win.minimize(), 600);
   if (settings.onLaunch === "close") setTimeout(() => app.quit(), 1500);

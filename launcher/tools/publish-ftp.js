@@ -2,6 +2,9 @@
 //   node tools/publish-ftp.js            → envoie ce qui a changé (les gros fichiers sur GitHub), le catalogue en dernier, puis vérifie en ligne
 //   node tools/publish-ftp.js --test     → teste seulement la connexion (rien n'est envoyé)
 //   node tools/publish-ftp.js --essai    → montre ce qui serait envoyé, sans rien envoyer
+//   node tools/publish-ftp.js --dossier=prive-…  → envoie seulement ce dossier secret (Hush Preview), rien d'autre
+// Après l'envoi : les dossiers secrets d'une ancienne clé (clé changée) sont supprimés du serveur, pour que l'ancienne
+// clé ne donne plus accès à rien. Seuls ceux qui ne contiennent que des logiciels gérés par cette publication.
 // Les identifiants FTP sont dans launcher/ftp.env (jamais sur GitHub) : FTP_HOST, FTP_USER, FTP_PASS, et FTP_DIR (facultatif).
 // Ils passent à curl par son entrée standard : ils n'apparaissent ni à l'écran ni dans la liste des processus.
 const fs = require("fs");
@@ -15,6 +18,10 @@ const site = path.join(root, "site", "1999");
 const envFile = path.join(root, "ftp.env");
 const args = process.argv.slice(2);
 const TEST = args.includes("--test"), DRY = args.includes("--essai");
+const SITE_URL = "https://1999.organisationphantom.fr";
+const ONLY = (args.find((x) => x.startsWith("--dossier=")) || "").slice(10) || null;
+const privateKey = require("../src/private-key");
+if (ONLY && !privateKey.isFolder(ONLY)) { console.error("--dossier= doit être un dossier secret (prive-…)."); process.exit(1); }
 
 function readEnv() {
   if (!fs.existsSync(envFile)) fail(`Fichier ${envFile} introuvable : remplis-le d'abord (voir ftp.env.exemple).`);
@@ -99,7 +106,8 @@ function get(url) {
 }
 
 (async () => {
-  if (!fs.existsSync(path.join(site, "catalog.json"))) fail("site/1999 n'est pas prêt : lance d'abord node tools/make-catalog.js.");
+  const CAT = ONLY ? `${ONLY}/catalog.json` : "catalog.json";
+  if (!fs.existsSync(path.join(site, CAT))) fail(ONLY ? `${CAT} manque : lance d'abord node tools/make-preview.js.` : "site/1999 n'est pas prêt : lance d'abord node tools/make-catalog.js.");
   console.log(`Connexion à ${env.FTP_HOST}…`);
   const dir = findDir();
   console.log(`Dossier du site : /${dir || "(racine du compte FTP)"}`);
@@ -107,10 +115,10 @@ function get(url) {
 
   // Les gros fichiers sur GitHub d'abord (voir publish-github.js) : le catalogue ne doit pas annoncer un lien vide
   console.log("");
-  await require("./publish-github").publish(path.join(site, "catalog.json"), { dry: DRY });
+  if (!ONLY) await require("./publish-github").publish(path.join(site, "catalog.json"), { dry: DRY });
 
   // Ce qu'il faut envoyer : les petits fichiers du site à chaque fois, les gros seulement s'ils manquent ou ont changé
-  const files = walk(site).filter((f) => !/\.zip$/.test(f) || f.split("/").length > 1).filter((f) => f !== "catalog.json");
+  const files = walk(site).filter((f) => !/\.zip$/.test(f) || f.split("/").length > 1).filter((f) => f !== CAT).filter((f) => !ONLY || f.startsWith(ONLY + "/"));
   const todo = [];
   for (const rel of files) {
     const size = fs.statSync(path.join(site, rel)).size;
@@ -118,8 +126,8 @@ function get(url) {
     if (remoteSize(dir, rel) !== size) todo.push(rel);
   }
   const big = todo.filter((r) => fs.statSync(path.join(site, r)).size >= 2e6);
-  console.log(`\nÀ envoyer : ${todo.length} fichiers (dont ${big.length} gros : ${big.join(", ") || "aucun"}), puis catalog.json.`);
-  if (DRY) return console.log("\nEssai seulement : rien n'a été envoyé.");
+  console.log(`\nÀ envoyer : ${todo.length} fichiers (dont ${big.length} gros : ${big.join(", ") || "aucun"}), puis ${CAT}.`);
+  if (DRY) { cleanup(dir, true); return console.log("\nEssai seulement : rien n'a été envoyé."); }
 
   // Les gros d'abord, le site ensuite, le catalogue tout à la fin : il n'annonce une version que quand ses fichiers sont là
   const order = [...big, ...todo.filter((r) => !big.includes(r))];
@@ -129,15 +137,15 @@ function get(url) {
     upload(dir, rel);
     console.log("ok");
   });
-  process.stdout.write("  catalog.json… ");
-  upload(dir, "catalog.json");
+  process.stdout.write(`  ${CAT}… `);
+  upload(dir, CAT);
   console.log("ok");
 
   // Vérification en ligne : le catalogue publié, et chaque gros fichier envoyé retéléchargé et comparé
   console.log("\nVérification sur https://1999.organisationphantom.fr …");
-  const cat = JSON.parse(fs.readFileSync(path.join(site, "catalog.json"), "utf8"));
-  const online = await get(`${cat.launcher && cat.launcher.page ? cat.launcher.page.replace(/\/$/, "") : "https://1999.organisationphantom.fr"}/catalog.json?v=${Date.now()}`);
-  if (online.status !== 200 || online.body.toString() !== fs.readFileSync(path.join(site, "catalog.json"), "utf8")) fail("le catalogue en ligne n'est pas celui qu'on vient d'envoyer.");
+  const cat = JSON.parse(fs.readFileSync(path.join(site, CAT), "utf8"));
+  const online = await get(`${SITE_URL}/${CAT}?v=${Date.now()}`);
+  if (online.status !== 200 || online.body.toString() !== fs.readFileSync(path.join(site, CAT), "utf8")) fail("le catalogue en ligne n'est pas celui qu'on vient d'envoyer.");
   console.log("  catalogue : ok");
   // Tous les fichiers du catalogue : téléchargements du launcher (.exe, .dmg…), ses mises à jour (.zip Mac…) et les logiciels
   const all = [...Object.values((cat.launcher && cat.launcher.downloads) || {}), ...Object.values((cat.launcher && cat.launcher.updates) || {}), ...cat.apps.flatMap((a) => Object.values(a.downloads))];
@@ -151,5 +159,37 @@ function get(url) {
     console.log(`  ${rel} : ${ok ? "ok" : "ABÎMÉ"}`);
     if (!ok) fail(`${rel} en ligne ne correspond pas. Relance la publication.`);
   }
+  await cleanup(dir, false);
   console.log("\nPublié et vérifié.");
 })().catch((e) => fail(e.message));
+
+// ——— Dossiers secrets d'une ancienne clé ———
+// Un dossier prive-… sur le serveur qui n'est plus préparé ici, et qui ne contient QUE des logiciels gérés par cette
+// publication (Hush Studio pour la publication normale, Hush Preview pour --dossier=) : son ancienne clé ne doit
+// plus rien débloquer, il est supprimé. Un dossier inconnu ou illisible n'est jamais touché.
+async function cleanup(dir, dry) {
+  // Clés privées inconnues ici (publication à la main sans cles-privees.env) : on ne sait pas quels dossiers sont à jour, on ne touche à rien
+  if (!ONLY && !process.env.CLES_PRIVEES && !fs.existsSync(path.join(root, "cles-privees.env"))) return;
+  const managed = ONLY ? ["hush-preview"] : JSON.parse(fs.readFileSync(path.join(root, "publish.json"), "utf8")).apps.filter((a) => a.private).map((a) => a.id);
+  const keep = new Set(ONLY ? [ONLY] : fs.readdirSync(site).filter(privateKey.isFolder));
+  const r = curl([], base(dir), ["--list-only"]);
+  if (!r.ok) return;
+  for (const f of r.out.split(/\r?\n/).map((x) => x.trim()).filter(privateKey.isFolder)) {
+    if (keep.has(f)) continue;
+    let ids = null;
+    try { const c = await get(`${SITE_URL}/${f}/catalog.json?v=${Date.now()}`); if (c.status === 200) ids = JSON.parse(c.body.toString()).apps.map((a) => a.id); } catch {}
+    if (!ids || !ids.length || !ids.every((id) => managed.includes(id))) continue;
+    console.log(`  Ancienne clé (${ids.join(", ")}) : ${dry ? "son dossier serait supprimé" : "dossier supprimé"} (${f.slice(0, 14)}…)`);
+    if (!dry) removeTree(dir, f);
+  }
+}
+function removeTree(dir, rel) {
+  const full = (x) => (dir ? dir + "/" : "") + x;
+  const r = curl([], base(dir) + rel.split("/").map(encodeURIComponent).join("/") + "/", ["--list-only"]);
+  for (const n of (r.out || "").split(/\r?\n/).map((x) => x.trim()).filter((x) => x && x !== "." && x !== "..")) {
+    const child = `${rel}/${n}`;
+    // Un fichier : DELE suffit ; sinon c'est un dossier, vidé d'abord
+    if (!curl([], base(dir), ["--list-only", "-Q", `DELE ${full(child)}`]).ok) removeTree(dir, child);
+  }
+  curl([], base(dir), ["--list-only", "-Q", `RMD ${full(rel)}`]);
+}

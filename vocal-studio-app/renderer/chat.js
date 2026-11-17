@@ -83,7 +83,8 @@ $("#chatForm").onsubmit = async (e) => {
   if (!text) return;
   input.value = "";
   const r = await window.studio.chat.send(text);
-  if (r.error) { input.value = text; showToast(r.error); }
+  // Non envoyé (droits du bot sur ce serveur…) : le texte reste dans la case et la raison reste affichée sous le tchat
+  if (r.error) { input.value = text; showToast(r.error); if (/^Message non envoyé/.test(r.error)) chatNote(r.error); }
   // Envoyé sous le nom du bot au lieu de ton pseudo et ta photo : on dit pourquoi (une fois par salon)
   else if (r.data && r.data.as === "bot" && r.data.why && Chat.warned !== Chat.channel) {
     Chat.warned = Chat.channel;
