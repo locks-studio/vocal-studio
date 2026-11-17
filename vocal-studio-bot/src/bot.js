@@ -240,7 +240,8 @@ class StudioBot extends EventEmitter {
     return { channel: { id: channel.id, name: channel.name }, canSend, noContent: this.noContent, messages: [...list.values()].reverse().map((m) => this.chatItem(m)) };
   }
   // Écrit dans le tchat avec un webhook : le message porte le pseudo et la photo de la personne (avec l'étiquette APP).
-  // Sans le droit « Gérer les webhooks », le bot écrit lui-même « **Pseudo** : message ». Jamais de mention : ni @everyone, ni rôle.
+  // Sans webhook possible, rien n'est envoyé : jamais de message au nom du bot (« **Pseudo** : message »), on explique
+  // plutôt comment réparer. Jamais de mention : ni @everyone, ni rôle.
   async chatSend(userId, text) {
     const t = String(text || "").trim().slice(0, 1900);
     if (!t) throw new Error("Message vide.");
@@ -270,11 +271,11 @@ class StudioBot extends EventEmitter {
     } catch (e) {
       this.webhooks.delete(channel.id);
       console.warn(`Tchat : webhook impossible dans #${channel.name} (${channel.guild.name}) : ${e.code || ""} ${e.message}`);
-      await channel.send({ content: `**${member.displayName}** : ${t}`, allowedMentions });
       const why = e.code === 50013 || /Missing Permissions/i.test(e.message)
-        ? `le bot n'a pas la permission « Gérer les webhooks » dans ce salon (ou sur ${channel.guild.name})`
-        : e.code === 30007 ? "ce salon a déjà trop de webhooks (15 maximum)" : `Discord a refusé le webhook (${e.message})`;
-      return { as: "bot", why };
+        ? `Message non envoyé : sur ${channel.guild.name}, le bot n'a pas le droit « Gérer les webhooks » (il en a besoin pour écrire sous ton pseudo et ta photo). Un admin du serveur peut le lui donner, ou réinviter le bot depuis l'accueil de Hush (« Inviter le bot »).`
+        : e.code === 30007 ? "Message non envoyé : ce salon a déjà 15 webhooks, le maximum de Discord. Un admin peut en supprimer un (Paramètres du salon › Intégrations)."
+        : `Message non envoyé : Discord a refusé (${e.message}).`;
+      throw new Error(why);
     }
   }
 

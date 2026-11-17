@@ -50,6 +50,8 @@
           <div class="feature-tag"><img id="featureAv" alt=""><span id="featureName"></span><b class="feature-live" id="featureLive">LIVE</b></div>
           <button class="feature-full" id="featureFull" title="Plein écran (double-clic)" aria-label="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
+        <!-- Plusieurs caméras : côte à côte ; un clic en verrouille une en grand -->
+        <div class="feature-grid" id="featureGrid" hidden></div>
         <div class="feature-pick" id="featurePick" role="tablist" aria-label="Flux affiché"></div>
       </div>
       <div class="orbit-ring" id="ring"></div>
@@ -132,9 +134,15 @@
     <!-- Choix de l'écran ou de la fenêtre à partager -->
     <div class="share-pick" id="sharePick" hidden>
       <section class="share-card glass" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
-        <header><h3 id="shareTitle">Que veux-tu montrer ?</h3><button class="wb" id="sharePickClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+        <header><h3 id="shareTitle">Partage d'écran</h3><button class="wb" id="sharePickClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+        <nav class="share-tabs" id="shareTabs" role="tablist"><button type="button" role="tab" data-st="apps" aria-selected="true">Applications</button><button type="button" role="tab" data-st="screens" aria-selected="false">Écrans</button></nav>
         <div class="share-grid" id="shareGrid"></div>
-        <div class="row"><span>Garder le son du PC (pour les clips)</span><button class="switch" id="shareAudio" role="switch" aria-checked="false" aria-label="Garder le son du PC"></button></div>
+        <footer class="share-foot">
+          <div class="share-q"><span>Résolution</span><div class="seg" id="shareRes"><button data-v="720">720p</button><button data-v="1080">1080p</button><button data-v="source">Source</button></div></div>
+          <div class="share-q"><span>Images/s</span><div class="seg" id="shareFps"><button data-v="30">30</button><button data-v="60">60</button></div></div>
+          <label class="share-snd"><button class="switch" id="shareAudio" role="switch" aria-checked="false" aria-label="Partager le son du PC"></button><span>Son du PC</span></label>
+          <button class="cta" id="shareGo" disabled>Lancer le stream</button>
+        </footer>
         <p class="hint">Ceux qui ont Hush dans ton salon voient ton partage. Pour les autres membres, lance aussi le partage d'écran dans Discord : aucune appli ne peut le faire à sa place.</p>
       </section>
     </div>
@@ -183,6 +191,7 @@
         <div class="home-pane" data-ht="top" id="homeTop"></div>
         <div class="home-pane" data-ht="admin" id="homeAdmin"></div>
       </section>
+      <label class="home-veil" title="Opacité du fond de l'accueil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/></svg><input type="range" id="homeVeil" min="0" max="1" step="0.05" aria-label="Opacité du fond de l'accueil"></label>
       <nav class="home-tabs" id="homeTabs" aria-label="Accueil">
         <button type="button" id="homeInvite" class="invite" title="Il faut le droit de gérer le serveur pour inviter le bot."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg><span>Inviter le bot</span></button>
         <button type="button" data-ht="account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Connexion</span></button>
@@ -293,6 +302,9 @@
             <div class="seg" id="layoutSeg"><button data-v="strip">Bande</button><button data-v="film">Cinéma 3D</button><button data-v="cinema">Dynamique</button><button data-v="free">Libre</button><button data-v="grid">Grille</button><button data-v="orbit">Orbite</button><button data-v="scene">Scène</button><button data-v="discord">Discord</button></div>
             <div class="row"><span>Vertical (format portrait)</span><button class="switch" id="vertical" role="switch" aria-label="Disposition verticale"></button></div>
             <div class="row" id="vertNameRow"><span>Pseudo au-dessus de l'avatar</span><button class="switch" id="vertNameTop" role="switch" aria-label="Pseudo au-dessus en vertical"></button></div>
+            <div class="label">Quand des caméras sont allumées</div>
+            <div class="seg two" id="camViewSeg"><button data-v="stream">Vue stream</button><button data-v="film">Cinéma 3D</button></div>
+            <p class="hint">« Vue stream » : les caméras côte à côte en grand (clique sur une pour la verrouiller), et seulement elles quand tout le salon a sa caméra. « Cinéma 3D » : chaque caméra prend la place de l'avatar dans la scène 3D.</p>
             <p class="hint">Bande, Cinéma 3D, Dynamique, Grille et Discord se mettent en hauteur : pratique pour un stream ou une vidéo en format vertical.</p>
             <p class="hint" id="freeHint" hidden>Libre : fais glisser les membres où tu veux. La caméra 3D va vers celui qui parle (désactivable). <button class="linkbtn" id="freeReset" type="button">Les replacer en grille</button></p>
           </div>
@@ -394,9 +406,13 @@
         <div class="tab-panel" data-tab="fond" role="tabpanel">
           <h4 class="sec">Fond</h4>
           <div class="group">
-            <div class="bg-pick" id="bgSeg"><button data-v="pinkspace" title="Espace rose"><span class="bg-dot"></span><small>Espace rose</small></button><button data-v="space" title="Espace"><span class="bg-dot"></span><small>Espace</small></button><button data-v="solid" title="Uni"><span class="bg-dot"></span><small>Uni</small></button><button data-v="gradient" title="Dégradé"><span class="bg-dot"></span><small>Dégradé</small></button><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="duo" title="Double dégradé"><span class="bg-dot"></span><small>Double dégradé</small></button><button data-v="image" title="Image / GIF"><span class="bg-dot"></span><small>Image / GIF</small></button></div>
+            <div class="bg-groups" id="bgSeg">
+              <div class="bg-grp"><small class="bg-grp-t">Espace</small><div class="bg-pick"><button data-v="space" title="Espace"><span class="bg-dot"></span><small>Espace</small></button><button data-v="pinkspace" title="Espace rose"><span class="bg-dot"></span><small>Espace rose</small></button></div></div>
+              <div class="bg-grp"><small class="bg-grp-t">Couleurs</small><div class="bg-pick"><button data-v="solid" title="Uni"><span class="bg-dot"></span><small>Uni</small></button><button data-v="gradient" title="Dégradé"><span class="bg-dot"></span><small>Dégradé</small></button><button data-v="duo" title="Double dégradé"><span class="bg-dot"></span><small>Double dégradé</small></button></div></div>
+              <div class="bg-grp"><small class="bg-grp-t">Personnalisé</small><div class="bg-pick"><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="image" title="Image / GIF"><span class="bg-dot"></span><small>Image / GIF</small></button><button data-v="we" id="bgWe" title="Wallpaper Engine" hidden><span class="bg-dot"></span><small>Wallpaper Engine</small></button></div></div>
+            </div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
-            <button class="ghost" id="wePick" hidden>Choisir dans Wallpaper Engine</button>
+            <button class="ghost" id="wePick" hidden>Changer de fond Wallpaper Engine</button>
             <div class="row" id="bgColorRow" hidden><label for="bgColor" id="bgColorLabel">Couleur du fond</label><input type="color" id="bgColor"></div>
             <div class="row" id="bgColor2Row" hidden><label for="bgColor2">Couleur 2</label><input type="color" id="bgColor2"></div>
             <input type="file" id="bgFile" accept="image/*" hidden>
@@ -476,11 +492,20 @@
         <div class="tab-panel" data-tab="video" role="tabpanel">
           <h4 class="sec">Caméra et partage d'écran</h4>
           <p class="hint">Les boutons caméra et écran de la barre d'appel les affichent en grand dans Hush, et tes amis qui ont Hush dans le même salon les voient aussi (et toi les leurs). Pour les membres sans Hush, allume-les aussi dans Discord : Discord ne laisse aucune appli toucher à la vidéo d'un appel.</p>
-          <h4 class="sec">Clips</h4>
           <div class="group">
-            <div class="row"><span>Inclure le son du PC (voix Discord, musique)</span><button class="switch" id="clipAudio" role="switch" aria-label="Inclure le son du PC dans les clips"></button></div>
-            <div class="row"><span>Bouton ⏺ de la barre d'appel, ou F9</span><button class="ghost" id="openClips">Ouvrir le dossier</button></div>
-            <p class="hint">Enregistre la fenêtre Hush en vidéo (WebM, 60 images/s) dans Vidéos\Hush, 15 minutes au plus.</p>
+            <div class="row"><label for="camDevice">Caméra utilisée</label><select id="camDevice" class="field"></select></div>
+          </div>
+          <h4 class="sec clips-only">Clips (Preview)</h4>
+          <div class="group clips-only">
+            <div class="row"><span>Replay : enregistrer en continu</span><button class="switch" id="replayOn" role="switch" aria-label="Replay en continu"></button></div>
+            <div class="row"><span>Lancer le replay avec Hush</span><button class="switch" id="replayAuto" role="switch" aria-label="Lancer le replay avec Hush"></button></div>
+            <div class="label">Durée d'un clip</div>
+            <div class="seg" id="clipLenSeg"><button data-v="15">15 s</button><button data-v="30">30 s</button><button data-v="60">1 min</button><button data-v="120">2 min</button></div>
+            <div class="label">Ce qui est filmé</div>
+            <div class="seg two" id="clipSrcSeg"><button data-v="screen">Tout l'écran (le jeu)</button><button data-v="hush">La fenêtre Hush</button></div>
+            <div class="row"><span>Inclure le son du PC (voix Discord, musique, jeu)</span><button class="switch" id="clipAudio" role="switch" aria-label="Inclure le son du PC dans les clips"></button></div>
+            <div class="row"><span>F9 (même en jeu) ou le bouton ⏺</span><button class="ghost" id="openClips">Ouvrir le dossier</button></div>
+            <p class="hint">Comme Medal : Hush garde en mémoire les dernières secondes, et F9 les enregistre en clip dans Vidéos\Hush. Rien n'est écrit sur le disque tant que tu n'appuies pas.</p>
           </div>
           <h4 class="sec">En arrière-plan</h4>
           <div class="group">

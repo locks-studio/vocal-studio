@@ -1,0 +1,114 @@
+# Publie Hush Preview tout seul : à chaque push sur une branche de travail (pas main) qui touche Hush.
+# Hush Preview = le code de la branche, sous le nom « Hush Preview » (s'installe à côté de Hush). Seuls ceux qui ont
+# sa clé dans 1999 (Paramètres › Code d'accès) la voient et la reçoivent : elle va dans le dossier secret de la clé
+# sur Hostinger, jamais sur les Releases GitHub (publiques).
+# Secret à créer (Settings › Secrets and variables › Actions) : CLE_PREVIEW = la clé d'accès de Hush Preview.
+# Sans lui, rien n'est publié. Secrets déjà là : CATALOG_SIGNING_KEY, FTP_HOST, FTP_USER, FTP_PASS.
+# Version publiée : celle de Hush + « -preview.<numéro de publication> » (ex. 0.5.9-preview.14).
+name: Hush Preview
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "vocal-studio-app/**"
+      - ".github/workflows/preview.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: hush-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      ok: ${{ steps.v.outputs.ok }}
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          CLE_PREVIEW: ${{ secrets.CLE_PREVIEW }}
+        run: |
+          H=$(node -p "require('./vocal-studio-app/package.json').version")
+          V="$H-preview.${{ github.run_number }}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [ -z "$CLE_PREVIEW" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "Pas de secret CLE_PREVIEW : Hush Preview n'est pas publiée." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "Hush Preview $V (branche ${{ github.ref_name }})" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.ok == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Hush Preview
+        working-directory: vocal-studio-app
+        shell: bash
+        env:
+          PREVIEW_VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          npm ci
+          node tools/build-preview.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 3
+          path: vocal-studio-app/dist/Hush-Preview-*.zip
+
+  publish:
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: preview-*
+          merge-multiple: true
+          path: vocal-studio-app/dist
+      - name: Catalogue secret
+        id: cat
+        working-directory: launcher
+        env:
+          CLE_PREVIEW: ${{ secrets.CLE_PREVIEW }}
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+          PREVIEW_VERSION: ${{ needs.plan.outputs.version }}
+          PREVIEW_NOTE: ${{ github.event.head_commit.message }}
+        run: |
+          node tools/make-preview.js | tee preview.log
+          echo "dossier=$(grep '^DOSSIER=' preview.log | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+          rm -f preview.log
+      - name: Hostinger
+        working-directory: launcher
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: |
+          umask 077
+          printf 'FTP_HOST=%s\nFTP_USER=%s\nFTP_PASS=%s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASS" > ftp.env
+          node tools/publish-ftp.js --dossier=${{ steps.cat.outputs.dossier }}
+          rm -f ftp.env
+          echo "Hush Preview ${{ needs.plan.outputs.version }} publiée pour ceux qui ont la clé." >> "$GITHUB_STEP_SUMMARY"

@@ -35,16 +35,14 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Hush reste allumé en fond près de l'horloge : l'overlay continue même fenêtre fermée, et Hush peut se lancer au démarrage du PC",
-        "Choisis ton fond parmi tes fonds Wallpaper Engine (Windows) : les vidéos s'animent",
-        "Accueil : tes salons en liste flottante, toujours visibles",
-        "11 nouvelles polices pour les pseudos",
-        "Lecteur musique : taille fixe et style (carte ou mini-vinyle) au choix dans les paramètres",
-        "Overlay : les lueurs ne sont plus coupées, et le bouton « Déplacer » marche sur Windows et Mac",
-        "La molette fait défiler le tchat, l'accueil et les listes au lieu de zoomer",
-        "Paramètres plus lisibles, façon Discord",
-        "Fenêtre étroite ou petit écran : la croix reste toujours visible",
-        "Tableau de bord administrateur refait"
+        "Accueil : tes salons montrent les photos de ceux qui y étaient (favoris : qui y est en ce moment), et une barre règle l'opacité du fond",
+        "Fonds rangés en Espace, Couleurs et Personnalisé ; Wallpaper Engine a son propre rond, et sa galerie s'ouvre à gauche des paramètres",
+        "Caméras côte à côte, clique sur une pour la verrouiller en grand ; seulement les caméras quand tout le salon a la sienne",
+        "Nouveau : les caméras dans le mode Cinéma 3D, et le choix de la caméra si tu en as plusieurs",
+        "Partage d'écran façon Discord : Applications ou Écrans, résolution et images/s",
+        "Tchat : plus jamais de message au nom du bot, Hush explique comment réparer",
+        "Le mini-vinyle apparaît en taille moyenne, en bas à droite",
+        "Les clips quittent Hush le temps d'être refaits (ils reviennent bientôt)"
       ],
       "artifacts": {
         "win32-x64": {

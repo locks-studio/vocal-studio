@@ -1,7 +1,7 @@
 {
   "name": "vocal-studio",
   "productName": "Hush",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Interface d'appel vocal Discord personnalisable",
   "main": "src/main.js",
   "private": true,
@@ -9,7 +9,8 @@
     "start": "electron .",
     "dist:win": "electron-builder --win zip --x64",
     "dist:linux": "electron-builder --linux zip --x64",
-    "dist:mac": "electron-builder --mac zip --x64 --arm64"
+    "dist:mac": "electron-builder --mac zip --x64 --arm64",
+    "dist:preview": "node tools/build-preview.js"
   },
   "devDependencies": {
     "@electron/fuses": "1.8.0",
@@ -35,7 +36,8 @@
       "src/**/*",
       "renderer/**/*",
       "package.json",
-      "build/icon.png"
+      "build/icon.png",
+      "build/icon-preview.png"
     ],
     "artifactName": "Hush-${version}-${os}-${arch}.${ext}",
     "win": {

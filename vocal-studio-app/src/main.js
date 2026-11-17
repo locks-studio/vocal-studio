@@ -33,16 +33,24 @@ const wallpaperEngine = new WallpaperEngine();
 const { UnixMedia } = require("./media-unix");
 
 registerScheme();
-const ICON = path.join(__dirname, "..", "build", "icon.png");
+// Hush Preview : la version de test (réservée à ceux qui ont sa clé dans 1999), avec ses propres réglages, son icône
+// et les fonctions encore en essai (clips). Le code lancé directement (npm start, « Tester la preview.bat ») l'est aussi.
+const PREVIEW = !!require("../package.json").hushPreview || !app.isPackaged;
+const APP_NAME = PREVIEW ? "Hush Preview" : "Hush";
+const ICON = path.join(__dirname, "..", "build", PREVIEW && app.isPackaged ? "icon-preview.png" : "icon.png");
+ipcMain.on("app:preview", (e) => { e.returnValue = PREVIEW; });
+// Hush Preview compilée : ses propres réglages et son propre « une seule fenêtre à la fois », à côté du vrai Hush
+if (PREVIEW && app.isPackaged) { app.setName(APP_NAME); app.setPath("userData", path.join(app.getPath("appData"), APP_NAME)); }
 // Windows regroupe les fenêtres sous cet identifiant (et sous l'icône de Hush) dans la barre des tâches
-if (process.platform === "win32") app.setAppUserModelId("fr.locks.hush");
+if (process.platform === "win32") app.setAppUserModelId(PREVIEW && app.isPackaged ? "fr.locks.hush.preview" : "fr.locks.hush");
 let sounds;
 
 // Le logiciel s'appelait « Vocal Studio » : si son dossier existe, Hush continue de l'utiliser
 // (réglages, sons importés, connexions), sinon tout serait perdu avec le changement de nom
 try {
   const oldDir = path.join(app.getPath("appData"), "vocal-studio");
-  if (fs.existsSync(oldDir) && !process.argv.some((a) => a.startsWith("--user-data-dir="))) app.setPath("userData", oldDir);
+  // (pas pour Hush Preview compilée : elle garde ses propres réglages, sinon elle se prendrait pour un 2e Hush et se fermerait)
+  if (fs.existsSync(oldDir) && !(PREVIEW && app.isPackaged) && !process.argv.some((a) => a.startsWith("--user-data-dir="))) app.setPath("userData", oldDir);
 } catch {}
 
 // ——— Réglages enregistrés (le secret et le jeton sont chiffrés par Windows quand c'est possible) ———
@@ -343,7 +351,7 @@ function createWindow() {
     minHeight: 520,
     frame: false,
     backgroundColor: "#0d0b1a",
-    title: "Hush",
+    title: APP_NAME,
     // Icône de la fenêtre et de la barre des tâches (sinon Windows montre celle d'Electron)
     icon: ICON,
     show: false,
@@ -445,7 +453,7 @@ function createTray() {
   try {
     const img = nativeImage.createFromPath(ICON).resize({ width: process.platform === "darwin" ? 18 : 32, height: process.platform === "darwin" ? 18 : 32, quality: "best" });
     tray = new Tray(img);
-    tray.setToolTip("Hush");
+    tray.setToolTip(APP_NAME);
     tray.on("click", showMain); // clic : ouvre Hush (clic droit : le menu)
     refreshTray();
   } catch {}
@@ -460,17 +468,17 @@ function launcherPath() {
 function applyAutostart() {
   if (!app.isPackaged) return; // version de développement : jamais au démarrage du PC
   const on = bgCfg().autostart, l = launcherPath();
-  const exe = l || process.execPath, args = l ? ["--lancer=hush", "--cache"] : ["--cache", ...(process.platform === "linux" ? ["--no-sandbox"] : [])];
+  const exe = l || process.execPath, args = l ? [`--lancer=${PREVIEW ? "hush-preview" : "hush"}`, "--cache"] : ["--cache", ...(process.platform === "linux" ? ["--no-sandbox"] : [])];
   try {
     if (process.platform === "linux") {
       const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "autostart");
-      const f = path.join(dir, "fr.locks.hush.desktop");
+      const f = path.join(dir, PREVIEW ? "fr.locks.hush.preview.desktop" : "fr.locks.hush.desktop");
       if (!on) { fs.rmSync(f, { force: true }); return; }
       fs.mkdirSync(dir, { recursive: true });
       const q = (x) => `"${x.replace(/(["\\$`])/g, "\\$1")}"`;
       fs.writeFileSync(f, `[Desktop Entry]\nType=Application\nName=Hush\nExec=${[q(exe), ...args].join(" ")}\nIcon=hush\nX-GNOME-Autostart-enabled=true\nNoDisplay=true\n`);
     } else {
-      app.setLoginItemSettings({ openAtLogin: on, path: exe, args, name: "Hush" });
+      app.setLoginItemSettings({ openAtLogin: on, path: exe, args, name: APP_NAME });
     }
   } catch {}
 }
@@ -547,6 +555,8 @@ app.whenReady().then(() => {
   }
   // Ctrl+Maj+H : afficher ou cacher l'overlay, même en pleine partie
   try { globalShortcut.register("CommandOrControl+Shift+H", () => userToggleMini()); } catch {}
+  // Preview : F9 garde les dernières secondes en clip, même en plein jeu (comme Medal)
+  if (PREVIEW) try { globalShortcut.register("F9", () => send("clip:hotkey")); } catch {}
   screen.on("display-metrics-changed", placeMini);
   screen.on("display-removed", placeMini);
   app.on("will-quit", () => globalShortcut.unregisterAll());
@@ -786,8 +796,9 @@ const WAYLAND_CAPTURE = process.platform === "linux" && !!(process.env.WAYLAND_D
 ipcMain.handle("capture:sources", async () => {
   if (WAYLAND_CAPTURE) return { portal: true, list: [] };
   const own = [win, mini].filter((w) => w && !w.isDestroyed()).map((w) => w.getMediaSourceId());
-  const list = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 320, height: 180 } });
-  return { portal: false, list: list.filter((s) => !own.includes(s.id)).map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith("screen:"), thumb: s.thumbnail.toDataURL() })) };
+  // Grandes vignettes nettes et icône de chaque appli, comme le sélecteur de Discord
+  const list = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 480, height: 270 }, fetchWindowIcons: true });
+  return { portal: false, list: list.filter((s) => !own.includes(s.id) && !s.thumbnail.isEmpty()).map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith("screen:"), thumb: s.thumbnail.toDataURL(), icon: s.appIcon && !s.appIcon.isEmpty() ? s.appIcon.resize({ width: 32, height: 32 }).toDataURL() : null })) };
 });
 // "self" : la fenêtre Hush qui demande (pour un clip) ; sinon l'écran / la fenêtre choisi
 ipcMain.handle("capture:pick", (e, p) => {
@@ -811,7 +822,15 @@ ipcMain.handle("clip:end", (_e, id) => new Promise((resolve) => {
   const c = clips.get(id);
   if (!c) return resolve(null);
   clips.delete(id);
-  c.stream.end(() => resolve(c.file));
+  c.stream.end(() => {
+    // Clip pris en plein jeu (fenêtre de Hush pas au premier plan) : une notification Windows le confirme
+    if (!(win && !win.isDestroyed() && win.isFocused()) && Notification.isSupported()) {
+      const n = new Notification({ title: "Clip enregistré", body: path.basename(c.file) + " · clique pour l'ouvrir", icon: ICON, silent: true });
+      n.on("click", () => shell.showItemInFolder(c.file));
+      n.show();
+    }
+    resolve(c.file);
+  });
 }));
 ipcMain.handle("clip:show", (_e, file) => {
   const f = path.resolve(String(file || ""));

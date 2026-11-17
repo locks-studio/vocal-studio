@@ -365,6 +365,17 @@ function toggleFav(c) {
   save();
   drawSide();
 }
+// Les personnes dans un salon en ce moment (données du bot, rafraîchies toutes les 10 s)
+function liveFaces(id) {
+  const r = Home.data && (Home.data.rooms || []).find((x) => x.channel && x.channel.id === id);
+  return r ? r.members.filter((m) => !m.ghost) : [];
+}
+// Ceux avec qui tu as été dans ce salon (historique des vocaux), les plus récents d'abord
+function pastFaces(id) {
+  const seen = new Map();
+  for (const v of S.history) if (v.id === id) for (const m of v.members || []) if (m && m.name && !seen.has(m.name)) seen.set(m.name, m);
+  return [...seen.values()];
+}
 function drawSide() {
   const tab = S.homeSide === "fav" ? "fav" : "top";
   document.querySelectorAll("#homeSide [data-hs]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.hs === tab));
@@ -376,10 +387,13 @@ function drawSide() {
   if (!list.length) box.append(h("p", "hint", tab === "fav" ? "Touche l'étoile d'un salon pour l'ajouter ici." : "Tes salons apparaîtront ici après quelques vocaux."));
   list.forEach((c, i) => {
     const row = h("div", "hs-row");
-    // Vignette : un carré coloré (couleur propre au salon) avec son initiale, et son rang dans le top
-    const hu = typeof hue === "function" ? hue(String(c.id)) : (i * 47) % 360;
-    const th = h("div", "hs-thumb", (c.name || "?").replace(/^[^\p{L}\p{N}]+/u, "").charAt(0).toUpperCase() || "#");
-    th.style.background = `linear-gradient(140deg,hsl(${hu} 75% 62%),hsl(${(hu + 50) % 360} 80% 45%))`;
+    // Vignette : Favoris → qui est dans le salon en ce moment ; Top → ceux avec qui tu y as été.
+    // Personne : l'image « salon vide » avec 0 par-dessus.
+    const faces = tab === "fav" ? liveFaces(c.id) : pastFaces(c.id);
+    const th = h("div", "hs-thumb" + (faces.length ? " n" + Math.min(4, faces.length) : " empty"));
+    if (faces.length) for (const m of faces.slice(0, 4)) { const im = avatarImg(m.avatar, "hs-face"); im.title = m.name || ""; th.append(im); }
+    else th.append(h("b", "hs-zero", "0"));
+    if (tab === "fav" && faces.length) th.append(h("i", "hs-live", String(faces.length)));
     if (tab === "top") th.append(h("i", "hs-pos", String(i + 1)));
     row.append(th);
     const t = h("div", "hm-ptext");
