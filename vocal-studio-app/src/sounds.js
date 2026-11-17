@@ -73,15 +73,13 @@ class SoundLibrary {
   }
 
   // Choisir un fond : copié tel quel (aucune perte de qualité, les GIF restent animés). On garde les 12 derniers.
-  async pickBackground(win) {
+  async pickBackground(win, kind) {
+    const vids = { name: "Vidéos (MP4, WebM, MOV)", extensions: ["mp4", "webm", "mov"] };
+    const imgs = { name: "Images et GIF", extensions: ["jpg", "jpeg", "png", "webp", "gif", "avif"] };
     const r = await dialog.showOpenDialog(win, {
-      title: "Choisir un fond",
+      title: kind === "video" ? "Choisir une vidéo de fond" : kind === "image" ? "Choisir une image ou un GIF de fond" : "Choisir un fond",
       properties: ["openFile"],
-      filters: [
-        { name: "Images, GIF et vidéos", extensions: Object.keys(BG_TYPES) },
-        { name: "Vidéos (MP4, WebM, MOV)", extensions: ["mp4", "webm", "mov"] },
-        { name: "Images et GIF", extensions: ["jpg", "jpeg", "png", "webp", "gif", "avif"] },
-      ],
+      filters: kind === "video" ? [vids] : kind === "image" ? [imgs] : [{ name: "Images, GIF et vidéos", extensions: Object.keys(BG_TYPES) }, vids, imgs],
     });
     if (r.canceled || !r.filePaths[0]) return null;
     fs.mkdirSync(this.bgDir, { recursive: true });

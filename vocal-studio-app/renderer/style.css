@@ -1743,6 +1743,7 @@ body.home-on .home-fx{display:block}
 .home-fx i{position:absolute;inset:0}
 .hfx-blur{-webkit-backdrop-filter:blur(var(--home-blur,0px));backdrop-filter:blur(var(--home-blur,0px))}
 .hfx-veil{background:var(--bg);opacity:var(--home-veil,0);transition:opacity .25s}
+body.hfx-noblur .hfx-blur{display:none}
 .home::before,.home-blur{display:none!important}
 /* La barre du haut garde le fondu même cachée : c'est le calque dessous qui le porte ; elle n'ajoute plus le sien à l'accueil */
 body.home-on .titlebar{background:transparent}
@@ -1755,6 +1756,10 @@ body.home-on .stage .tile.home-hover .av-wrap{scale:1.08}
 .home-msg[hidden]{display:none}
 /* Pseudos « Adapter » : la taille suit la longueur, le pseudo n'est plus coupé */
 body.name-fit .stage .name{zoom:calc(var(--nk,1) * var(--nfit,1))}
+body.name-fit .stage .name.nm-cut span:first-child{display:inline-block;max-width:var(--nmax);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+/* Pseudos jamais minuscules, même quand les avatars sont petits */
+.stage.strip .name{font-size:max(12px,calc(var(--ctile) * .16))}
+.stage.free .name{font-size:max(12px,calc(var(--ctile) * .15))}
 body.name-fit .stage .name span{overflow:visible;text-overflow:clip;max-width:none}
 
 /* ——— 0.6.2 : panneaux du bas de l'accueil (Connexion, Mes amis, Classement), dans l'écriture de la liste de gauche ———
@@ -1775,11 +1780,11 @@ body.name-fit .stage .name span{overflow:visible;text-overflow:clip;max-width:no
 .home-panel.hp-free.hp-in .home-pane > :nth-child(3){animation-delay:.1s}
 .home-panel.hp-free.hp-in .home-pane > :nth-child(4){animation-delay:.15s}
 .home-panel.hp-free.hp-in .home-pane > :nth-child(n+5){animation-delay:.2s}
-.hp-list > *,#frList > *{animation:hpIn .4s cubic-bezier(.2,.9,.3,1.15) both}
-.hp-list > :nth-child(2),#frList > :nth-child(2){animation-delay:.04s}
-.hp-list > :nth-child(3),#frList > :nth-child(3){animation-delay:.08s}
-.hp-list > :nth-child(4),#frList > :nth-child(4){animation-delay:.12s}
-.hp-list > :nth-child(n+5),#frList > :nth-child(n+5){animation-delay:.16s}
+.hp-in :is(.hp-list,#frList) > *{animation:hpIn .4s cubic-bezier(.2,.9,.3,1.15) both}
+.hp-in :is(.hp-list,#frList) > :nth-child(2){animation-delay:.04s}
+.hp-in :is(.hp-list,#frList) > :nth-child(3){animation-delay:.08s}
+.hp-in :is(.hp-list,#frList) > :nth-child(4){animation-delay:.12s}
+.hp-in :is(.hp-list,#frList) > :nth-child(n+5){animation-delay:.16s}
 /* Titres comme « Top salons » */
 .hp-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .hp-title{margin:0;flex:1;font:800 26px/1.1 var(--f-display);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.45)}
@@ -1851,7 +1856,7 @@ body.name-fit .stage .name span{overflow:visible;text-overflow:clip;max-width:no
 .hp-pod-step{display:block;width:100%;border-radius:12px 12px 4px 4px;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(10,8,20,.25));margin-top:6px;height:26px}
 .hp-pod.p1 .hp-pod-step{height:44px;background:linear-gradient(180deg,rgba(255,211,77,.35),rgba(10,8,20,.25))}
 .hp-pod.p3 .hp-pod-step{height:16px}
-.hp-pod{animation:hpIn .5s cubic-bezier(.2,.9,.3,1.2) both}
+.hp-in .hp-pod{animation:hpIn .5s cubic-bezier(.2,.9,.3,1.2) both}
 .hp-pod.p1{animation-delay:.08s}.hp-pod.p3{animation-delay:.16s}
 .hp-pod.me .hp-pod-name,.hp-row.me b{color:#ff8cc6}
 .hp-rank{width:22px;text-align:center;font:800 14px var(--f-display);opacity:.7;flex:none}
@@ -1861,11 +1866,11 @@ body.name-fit .stage .name span{overflow:visible;text-overflow:clip;max-width:no
 body.sandbox .call-banner{display:none!important}
 /* Accueil : les avatars du vocal en fond, en noir et blanc, avec un glitch par à-coups.
    Le noir et blanc est posé sur l'image (pas sur le rond) et le rond garde sa découpe pendant le glitch. */
-body.home-on .stage .tile .av{background:#111;clip-path:inset(0 round var(--radius,50%))}
-body.home-on .stage .tile .av img{filter:grayscale(1) contrast(1.2) brightness(.95);animation:avGlitch 3.4s steps(1) infinite}
-body.home-on .stage .tile:nth-child(2n) .av img{animation-duration:4.1s;animation-delay:-1.7s}
-body.home-on .stage .tile:nth-child(3n) .av img{animation-duration:2.9s;animation-delay:-.9s}
-body.home-on .stage .tile .av-wrap{animation:avShake 3.4s steps(1) infinite}
+:is(body.home-on,body.fx-tv) .stage .tile .av{background:#111;clip-path:inset(0 round var(--radius,50%))}
+:is(body.home-on,body.fx-tv) .stage .tile .av img{filter:grayscale(1) contrast(1.2) brightness(.95);animation:avGlitch 3.4s steps(1) infinite}
+:is(body.home-on,body.fx-tv) .stage .tile:nth-child(2n) .av img{animation-duration:4.1s;animation-delay:-1.7s}
+:is(body.home-on,body.fx-tv) .stage .tile:nth-child(3n) .av img{animation-duration:2.9s;animation-delay:-.9s}
+:is(body.home-on,body.fx-tv) .stage .tile .av-wrap{animation:avShake 3.4s steps(1) infinite}
 @keyframes avGlitch{
   0%,58%,100%{clip-path:none;transform:none;filter:grayscale(1) contrast(1.2) brightness(.95)}
   60%{clip-path:inset(0 0 62% 0);transform:translateX(-6%)}
@@ -1877,15 +1882,15 @@ body.home-on .stage .tile .av-wrap{animation:avShake 3.4s steps(1) infinite}
   86%{clip-path:inset(46% 0 40% 0);transform:translateX(-5%)}
   88%{clip-path:none;transform:none}}
 @keyframes avShake{0%,59%,71%,100%{translate:0 0}61%{translate:-3px 0}65%{translate:3px 1px}69%{translate:-1px 0}87%{translate:2px 0}}
-@media (prefers-reduced-motion:reduce){body.home-on .stage .tile .av img,body.home-on .stage .tile .av-wrap{animation:none}}
+@media (prefers-reduced-motion:reduce){:is(body.home-on,body.fx-tv) .stage .tile .av img,:is(body.home-on,body.fx-tv) .stage .tile .av-wrap{animation:none}}
 /* Accueil : effet VHS sur les avatars en fond (lignes, bande qui défile, couleurs qui bavent, grain, petits sauts) */
-body.home-on .stage .tile .av::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+:is(body.home-on,body.fx-tv) .stage .tile .av::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
   background:
     linear-gradient(180deg,transparent 0 44%,rgba(255,255,255,.22) 47%,rgba(255,255,255,.06) 50%,transparent 53%) 0 0/100% 260% no-repeat,
     repeating-linear-gradient(180deg,rgba(0,0,0,.32) 0 1px,transparent 1px 3px),
     radial-gradient(circle at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%);
   mix-blend-mode:screen;animation:vhsRoll 4.6s linear infinite}
-body.home-on .stage .tile .av::before{content:"";position:absolute;inset:-50%;z-index:2;pointer-events:none;opacity:.16;
+:is(body.home-on,body.fx-tv) .stage .tile .av::before{content:"";position:absolute;inset:-50%;z-index:2;pointer-events:none;opacity:.16;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
   animation:vhsGrain .5s steps(4) infinite}
 @keyframes vhsRoll{from{background-position:0 120%,0 0,0 0}to{background-position:0 -20%,0 0,0 0}}
@@ -1903,21 +1908,21 @@ body.home-on .stage .tile .av::before{content:"";position:absolute;inset:-50%;z-
   70%{clip-path:none;transform:none;filter:grayscale(1) contrast(1.25) brightness(.95) blur(.4px) drop-shadow(4px 0 rgba(255,30,90,.6)) drop-shadow(-4px 0 rgba(30,200,255,.6))}
   86%{clip-path:inset(46% 0 40% 0);transform:translateX(-5%)}
   88%{clip-path:none;transform:none}}
-body.home-on .stage .tile .av img{animation-name:avGlitchVhs}
-@media (prefers-reduced-motion:reduce){body.home-on .stage .tile .av::after,body.home-on .stage .tile .av::before{animation:none}}
+:is(body.home-on,body.fx-tv) .stage .tile .av img{animation-name:avGlitchVhs}
+@media (prefers-reduced-motion:reduce){:is(body.home-on,body.fx-tv) .stage .tile .av::after,:is(body.home-on,body.fx-tv) .stage .tile .av::before{animation:none}}
 /* VHS plus marqué */
-body.home-on .stage .tile .av::after{mix-blend-mode:normal;
+:is(body.home-on,body.fx-tv) .stage .tile .av::after{mix-blend-mode:normal;
   background:
     linear-gradient(180deg,transparent 0 42%,rgba(255,255,255,.35) 46%,rgba(255,255,255,.1) 50%,transparent 55%) 0 0/100% 260% no-repeat,
     repeating-linear-gradient(180deg,rgba(0,0,0,.45) 0 1.5px,transparent 1.5px 4px),
     radial-gradient(circle at 50% 50%,transparent 50%,rgba(0,0,0,.55) 100%)}
-body.home-on .stage .tile .av::before{opacity:.28}
+:is(body.home-on,body.fx-tv) .stage .tile .av::before{opacity:.28}
 /* Vieille télé : neige en continu, glitch rare et léger (le dernier @keyframes du même nom l'emporte) */
-body.home-on .stage .tile .av::before{opacity:.32;mix-blend-mode:screen;animation:vhsGrain .18s steps(3) infinite}
-body.home-on .stage .tile .av img{animation-duration:7s}
-body.home-on .stage .tile:nth-child(2n) .av img{animation-duration:8.3s}
-body.home-on .stage .tile:nth-child(3n) .av img{animation-duration:6.4s}
-body.home-on .stage .tile .av-wrap{animation-duration:7s}
+:is(body.home-on,body.fx-tv) .stage .tile .av::before{opacity:.32;mix-blend-mode:screen;animation:vhsGrain .18s steps(3) infinite}
+:is(body.home-on,body.fx-tv) .stage .tile .av img{animation-duration:7s}
+:is(body.home-on,body.fx-tv) .stage .tile:nth-child(2n) .av img{animation-duration:8.3s}
+:is(body.home-on,body.fx-tv) .stage .tile:nth-child(3n) .av img{animation-duration:6.4s}
+:is(body.home-on,body.fx-tv) .stage .tile .av-wrap{animation-duration:7s}
 @keyframes avGlitchVhs{
   0%,78%,100%{clip-path:none;transform:none;filter:grayscale(1) contrast(1.2) brightness(.95) blur(.45px) drop-shadow(2px 0 rgba(255,30,90,.4)) drop-shadow(-2px 0 rgba(30,200,255,.4))}
   40%{transform:translateY(-1%)}
@@ -1928,8 +1933,7 @@ body.home-on .stage .tile .av-wrap{animation-duration:7s}
   83%{filter:grayscale(1) contrast(1.2) brightness(.95) blur(.45px) drop-shadow(2px 0 rgba(255,30,90,.4)) drop-shadow(-2px 0 rgba(30,200,255,.4))}}
 @keyframes avShake{0%,79%,83%,100%{translate:0 0}80%{translate:-2px 0}81.5%{translate:2px 0}}
 /* L'anneau aussi : tout le bloc avatar + anneau en noir et blanc, et les lignes + la neige débordent jusqu'à l'anneau */
-body.home-on .stage .tile .av-wrap{filter:grayscale(1) contrast(1.15)!important}
-body.home-on:not(.calling) .stage .tile .av-wrap::after{content:"";position:absolute;inset:-14%;z-index:4;pointer-events:none;border-radius:50%;
+:is(body.home-on,body.fx-tv):not(.calling) .stage .tile .av-wrap::after{content:"";position:absolute;inset:-14%;z-index:4;pointer-events:none;border-radius:50%;
   background:
     repeating-linear-gradient(180deg,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px 4px),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E") 0 0/120px 120px;
@@ -1964,3 +1968,134 @@ body.home-on:not(.calling) .stage .tile .av-wrap::after{content:"";position:abso
 #homeAdmin .ad-person{padding:8px}
 #homeAdmin .ad-err summary{padding:4px 0;min-height:28px}
 @media (prefers-reduced-motion:reduce){.home-tabs span{transition:none}}
+
+/* ——— 0.6.2 ———
+   Hors vocal : plus d'avatar ni de pseudo en fond de l'accueil */
+body.home-solo .stage{visibility:hidden;opacity:0!important}
+/* Avatars en fond sans flou : pas de calque de filtre (coûteux sur un fond vidéo) */
+body.hfx-noblur.home-on .stage{filter:none}
+/* Molette : les listes défilent sans barre visible */
+.home-side .hs-list{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.home-side .hs-in{min-height:0}
+/* Fond vidéo : son propre calque, décodé par la carte graphique, sans zoom animé */
+.bg-media video{will-change:transform;backface-visibility:hidden}
+/* ——— Texte noir sur fond clair, blanc sur fond sombre ———
+   Hush mesure la clarté du fond derrière chaque zone (liste de gauche, milieu, bas, barre du haut) */
+body.ink-left .home-side{--ink:#15111d}
+body.ink-left .home-side :is(.hs-tabs button[aria-pressed="true"],.hm-ptext b,.hs-row .hm-ptext b,.hint){color:#15111d!important;text-shadow:0 1px 6px rgba(255,255,255,.45)!important}
+body.ink-left .home-side :is(.hs-tabs button:not([aria-pressed="true"]),.hm-ptext small,.hs-row .hm-ptext small){color:rgba(21,17,29,.62)!important;text-shadow:none!important}
+body.ink-left .home-side .hs-row{background:rgba(255,255,255,.34);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+body.ink-left .home-side .hs-row:hover{background:rgba(255,255,255,.6)}
+body.ink-center :is(.home-msg,.home-msg:disabled,.home-why,.home-hint){color:#15111d;text-shadow:0 1px 8px rgba(255,255,255,.5)}
+body.ink-bottom .home-panel.hp-free{color:#15111d;--fg:#15111d;--muted:rgba(21,17,29,.62)}
+body.ink-bottom .home-panel.hp-free :is(.hp-title,.hp-name,.hp-kicker,b,h2,.hp-pod-name,.hm-ptext b,.hp-act,.hp-row,.hm-person,.hp-chip,.hp-badge,.hp-code,.hp-tog span){color:#15111d!important;text-shadow:none!important}
+body.ink-bottom .home-panel.hp-free :is(small,.hint){color:rgba(21,17,29,.62)!important;text-shadow:none!important}
+body.ink-bottom .home-panel.hp-free :is(.hp-act,.hp-row,.hm-person,.hm-hist,.hp-chip,.hp-badge,.hp-code,.hp-add,.hp-tog span){background:rgba(255,255,255,.4);border-color:rgba(21,17,29,.12)}
+body.ink-bottom .home-panel.hp-free :is(.hp-act,.hp-row,.hm-person,.hm-hist):hover{background:rgba(255,255,255,.65)}
+body.ink-bottom .home-panel.hp-free .hp-act .hp-ico{stroke:#15111d;background:rgba(21,17,29,.08)}
+body.ink-bottom .home-panel.hp-free .hp-act.hot .hp-ico{stroke:#fff}
+body.ink-bottom .home-panel.hp-free .hp-tog input:checked + span{background:#15111d;color:#fff!important}
+body.ink-bottom .home-panel.hp-free .hp-add .field{color:#15111d!important}
+body.ink-bottom .home-panel.hp-free .hp-add .field::placeholder{color:rgba(21,17,29,.5)}
+body.ink-bottom :is(.home-tabs button,.home-veil,.home-quick button){color:#15111d!important;text-shadow:none!important}
+body.ink-bottom .home-tabs button[aria-pressed="true"]::after{background:#15111d;box-shadow:none}
+body.ink-bottom .home-tabs button:not([aria-pressed="true"]) span{color:#fff}
+body.ink-top.home-on .titlebar{color:#15111d;text-shadow:none}
+body.ink-bottom .home-veil :is(b,button,svg){color:#15111d!important;filter:none}
+
+/* ——— 0.6.2 : Paramètres ——— */
+.gone{display:none!important}
+/* Plus de barre de défilement sous « Compte et langue » */
+#tabs{overflow-x:hidden;scrollbar-width:none}
+#tabs::-webkit-scrollbar{display:none}
+/* Sélections dans le style Hush : des pastilles, comme les onglets et les interrupteurs de l'accueil */
+body.da-home .settings .seg{display:flex!important;flex-wrap:wrap;gap:6px;padding:0;background:none!important;border:0!important;grid-template-columns:none!important}
+body.da-home .settings .seg button{flex:0 1 auto;padding:7px 14px;border-radius:999px;font:600 12.5px var(--f-body);color:rgba(255,255,255,.78)!important;
+  background:rgba(10,8,20,.35)!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:none!important;cursor:pointer;
+  transition:background .15s,color .15s,transform .25s cubic-bezier(.3,1.5,.5,1),box-shadow .2s}
+body.da-home .settings .seg button:hover{background:rgba(255,255,255,.14)!important;color:#fff!important;transform:translateY(-2px)}
+body.da-home .settings .seg button:active{transform:scale(.95)}
+body.da-home .settings .seg button[aria-pressed="true"]{background:#fff!important;color:#1a1026!important;border-color:#fff!important;box-shadow:0 6px 18px rgba(0,0,0,.35),0 0 14px rgba(255,255,255,.25)!important}
+body.da-home .settings select.field{appearance:none;border-radius:999px!important;padding:8px 34px 8px 14px!important;background:rgba(10,8,20,.35) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center/14px!important;
+  border:1px solid rgba(255,255,255,.14)!important;color:#fff!important;cursor:pointer}
+body.da-home .settings select.field option{background:#1a1026;color:#fff}
+/* Gros bouton : importer un .hush, déplacement libre de l'overlay */
+.hush-drop{display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;margin:4px 0 10px;padding:14px 16px;border-radius:16px;cursor:pointer;text-align:left;color:#fff;font:inherit;
+  background:linear-gradient(135deg,rgba(255,79,163,.22),rgba(163,92,255,.18));border:1.5px dashed rgba(255,255,255,.35);
+  transition:background .2s,border-color .2s,transform .25s cubic-bezier(.3,1.5,.5,1)}
+.hush-drop:hover{background:linear-gradient(135deg,rgba(255,79,163,.36),rgba(163,92,255,.3));border-color:#fff;transform:translateY(-2px)}
+.hush-drop svg{width:40px;height:40px;flex:none;padding:9px;box-sizing:border-box;border-radius:50%;background:linear-gradient(135deg,#ff4fa3,#a35cff);fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;box-shadow:0 6px 16px rgba(255,79,163,.4)}
+.hush-drop span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hush-drop b{font-size:14.5px}
+.hush-drop small{font-size:12px;opacity:.72}
+.hush-drop.ov-free{border-style:solid}
+.hush-drop.ov-free.on{background:#fff;color:#1a1026;border-color:#fff}
+.hush-drop.ov-free.on svg{background:#1a1026;box-shadow:none}
+.settings.hush-dragging{outline:3px dashed #ff4fa3;outline-offset:-8px}
+.settings.hush-dragging .hush-drop{background:linear-gradient(135deg,rgba(255,79,163,.5),rgba(163,92,255,.45));border-color:#fff}
+/* Curseurs */
+.cur-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;margin-bottom:10px}
+.cur-grid button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px 9px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(10,8,20,.35);color:rgba(255,255,255,.8);cursor:pointer;transition:background .15s,transform .25s cubic-bezier(.3,1.5,.5,1)}
+.cur-grid button:hover{background:rgba(255,255,255,.12);transform:translateY(-2px)}
+.cur-grid button[aria-pressed="true"]{background:#fff;color:#1a1026;border-color:#fff}
+.cur-prev{width:40px;height:40px;border-radius:12px;background:rgba(0,0,0,.35) center/28px no-repeat;display:block}
+.cur-grid button[aria-pressed="true"] .cur-prev{background-color:#2a1d3a}
+.cur-grid [data-v="system"] .cur-prev{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M8 4v21l5.5-5 3.6 8 3.2-1.4-3.6-7.8H24z' fill='white' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.cur-grid .cur-prev.empty::before{content:"+";display:grid;place-items:center;height:100%;font:700 22px var(--f-body);color:rgba(255,255,255,.7)}
+.cur-grid button[aria-pressed="true"] .cur-prev.empty::before{color:#fff}
+body.cur-on,body.cur-on *{cursor:var(--cur),auto!important}
+/* Caméras en cartes */
+.cam-list{display:flex;flex-direction:column;gap:6px}
+.cam-card{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(10,8,20,.35);color:#fff;text-align:left;cursor:pointer;font:inherit;
+  transition:background .15s,transform .25s cubic-bezier(.3,1.5,.5,1)}
+.cam-card:hover{background:rgba(255,255,255,.12);transform:translateX(4px)}
+.cam-card svg{width:34px;height:34px;flex:none;padding:7px;box-sizing:border-box;border-radius:50%;background:rgba(255,255,255,.12);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.cam-card span{display:flex;flex-direction:column;min-width:0}
+.cam-card b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cam-card small{font-size:11.5px;opacity:.65}
+.cam-card[aria-checked="true"]{background:#fff;color:#1a1026;border-color:#fff}
+.cam-card[aria-checked="true"] svg{background:linear-gradient(135deg,#ff4fa3,#a35cff);stroke:#fff}
+/* Ronds de fond : Wallpaper Engine sans fond appliqué = « ? » blanc sur noir ; Vidéo = triangle de lecture */
+.bg-dot.we-none{background:#000!important;display:grid;place-items:center}
+.bg-dot.we-none::before{content:"?";font:800 26px/1 var(--f-display);color:#fff}
+.bg-dot.vid{background:linear-gradient(135deg,#2a1d3a,#120c1c)!important;display:grid;place-items:center}
+.bg-dot.vid::before{content:"";width:0;height:0;border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px}
+/* Contour : couleur au choix */
+body.av-outline-custom .av::after{box-shadow:inset 0 0 0 max(2px,calc(var(--ctile, var(--tile, 120px)) * .035)) var(--oc-custom,#ff4fa3)}
+/* Ombre portée : un halo aux couleurs du bord de la photo, comme l'Ambilight */
+body.av-shadow .av-drop{box-shadow:none;background:var(--drop-conic,rgba(0,0,0,.55));border-radius:50%;inset:2%;
+  filter:blur(calc(var(--ctile, var(--tile, 120px)) * .09)) saturate(1.3);opacity:.9;translate:0 calc(var(--ctile, var(--tile, 120px)) * .06);scale:1.06}
+/* Caméra « dans ma disposition » : un peu plus grande que les avatars, dans les dispositions qui ont de la place */
+body.cam-tile .stage:is(.strip,.cinema,.free,.orbit,.scene) .tile.video .av-wrap{scale:1.22;z-index:2}
+/* Lecteur : la mosaïque se voit aussi en Limitless */
+body.da-home .mp.bg-mosaic .mp-mosaic{opacity:.92;filter:none;transform:none}
+body.da-home .mp.bg-mosaic{background:rgba(10,8,20,.5)}
+/* Liste de gauche : effet tambour pendant le défilement */
+.home-side .hs-list .hs-row{rotate:x calc(var(--drum,0) * -16deg);opacity:calc(.62 - var(--drum2,0) * .3);transform-origin:left center}
+.home-side .hs-list .hs-row:hover{opacity:1}
+
+/* ——— 0.6.2 : accueil ———
+   Anneau blanc / gris à l'accueil, quel que soit le réglage (en vocal, chacun retrouve ses couleurs) */
+body.home-on .stage .tile .av-wrap > :is(.ring,.aura){filter:grayscale(1) brightness(1.45) contrast(1.05)!important}
+body.home-on.ring-ambi .stage .tile .ring{filter:blur(3px) grayscale(1) brightness(1.45)!important}
+/* ... et le halo autour aussi : blanc et gris */
+body.home-on .stage .tile .av-wrap{--ring1:#fff!important;--ring2:#a8a8a8!important;--ring-conic:conic-gradient(#fff,#a8a8a8,#fff,#a8a8a8,#fff)!important}
+/* Ombre portée noire à l'accueil */
+body.home-on .stage .av-drop{background:rgba(0,0,0,.75)!important}
+/* Entrée et sortie de l'accueil : l'ancien écran recule et s'efface, le nouveau arrive en douceur */
+::view-transition-group(root){animation-duration:.5s}
+html.vt-home-in::view-transition-old(root){animation:vtHomeOldIn .5s cubic-bezier(.4,0,.2,1) both}
+html.vt-home-in::view-transition-new(root){animation:vtHomeNewIn .5s cubic-bezier(.2,.8,.2,1) both}
+html.vt-home-out::view-transition-old(root){animation:vtHomeOldOut .45s cubic-bezier(.4,0,.2,1) both}
+html.vt-home-out::view-transition-new(root){animation:vtHomeNewOut .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes vtHomeOldIn{to{opacity:0;transform:scale(.94);filter:blur(10px)}}
+@keyframes vtHomeNewIn{from{opacity:0;transform:scale(1.06);filter:blur(12px)}}
+@keyframes vtHomeOldOut{to{opacity:0;transform:scale(1.06);filter:blur(12px)}}
+@keyframes vtHomeNewOut{from{opacity:0;transform:scale(.94);filter:blur(10px)}}
+/* Classement : les pseudos aux couleurs de leur rang (or, argent, bronze, puis le top 10) */
+.hp-pod .hp-pod-name{color:var(--pc)}
+.hp-row.top10 .hp-row-t b{color:#c9a6ff}
+.hp-row.top10 .hp-rank{color:#c9a6ff;opacity:1}
+.hp-pod.me .hp-pod-name{color:var(--pc)}
+body.ink-bottom .home-panel.hp-free .hp-pod .hp-pod-name{color:color-mix(in srgb,var(--pc) 70%,#15111d)!important}
+body.ink-bottom .home-panel.hp-free .hp-row.top10 .hp-row-t b{color:#6b3fb8!important}

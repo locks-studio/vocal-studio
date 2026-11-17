@@ -22,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, homeVeilMode: "fade", bgFade: 0, uiDa: "home", nameFit: false, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "stream", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, homeVeilMode: "fade", bgFade: 0, uiDa: "home", nameFit: false, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "tile", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true, fxTv: false, avOutlineColor: "black", avOutlineCustom: "#ff4fa3", cursor: "system", cursorColor: "#ffffff", cursorSize: 24, cursorImg: null, richPresence: true,
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
@@ -46,7 +46,16 @@ function normS() {
   // L'ancien interrupteur « s'aplatit en rythme » devient le choix d'animation
   if (!S.avAnimMig) { if (S.squash === false) S.avAnim = "off"; S.avAnimMig = true; }
   if (!["db", "rhythm", "off"].includes(S.avAnim)) S.avAnim = "db";
-  if (!["looks", "general", "avatars", "names", "effets", "anim", "fond", "theme", "sound", "video", "overlay", "account"].includes(S.tab)) S.tab = "general";
+  if (!["looks", "general", "avatars", "names", "effets", "anim", "fond", "theme", "cursor", "sound", "video", "window", "overlay", "account"].includes(S.tab)) S.tab = "general";
+  // 0.6.2 : flammes, glitch, neige télé, Spotify et le menu à taille variable retirés
+  if (S.ring === "flame") S.ring = "aura";
+  if (S.ov && S.ov.ring === "flame") S.ov = { ...S.ov, ring: "aura" };
+  if (S.nameMask === "snow" || S.nameMask === "glitch") S.nameMask = "none";
+  S.glitch = "off";
+  if (S.musicSource === "spotify") S.musicSource = "pc";
+  S.menuFixed = true;
+  if (!S.avOcMig) { S.avOutlineColor = S.avOutlineAuto ? "auto" : "black"; S.avOcMig = true; }
+  if (!S.camTileMig) { if (S.camView === "stream") S.camView = "tile"; S.camTileMig = true; }
   // Réglages retirés : on bascule sur ce qui les remplace
   if (S.layout === "lyrics") S.layout = "strip";
   if (S.joinAnim === "glitch") S.joinAnim = "pop"; // arrivée « glitch » retirée
@@ -232,6 +241,13 @@ function tileRing(t) {
   });
 }
 
+// Ombre portée : un halo flou aux couleurs du bord de la photo (comme l'Ambilight), quel que soit le mode d'anneau
+function tileDrop(t) {
+  if (!S.avShadow || !t.data || !t.data.avatar || t.dropFor === t.data.avatar) return;
+  t.dropFor = t.data.avatar;
+  ambiColors(t.data).then((c) => { if (c && t.el.isConnected) t.el.style.setProperty("--drop-conic", c.conic); });
+}
+
 // Couleur dominante d'une photo de profil (la plus vive), pour le contour « couleur de l'avatar »
 const avColors = new Map();
 function avatarColor(url) {
@@ -288,6 +304,7 @@ function updateTile(t, m) {
     else t.el.style.setProperty("--oc-auto", `hsl(${hue(m.id)} 62% 54%)`);
     t.data = { ...t.data, id: m.id, avatar: m.avatar };
     tileRing(t);
+    tileDrop(t);
   }
   t.chips.innerHTML = m.deaf ? `<span class="chip">Sourdine</span>` : m.muted ? `<span class="chip">Muet</span>` : "";
   t.el.classList.toggle("muted", m.muted || m.deaf);
@@ -795,8 +812,8 @@ let L = "strip"; // disposition affichée (la choisie, ou « stream » quand une
 function layout() {
   const feat = featureSource();
   L = feat ? "stream" : camsIn3D() && !MINI ? "film" : S.layout;
-  const vert = !!S.vertical && ["strip", "film", "cinema", "grid", "discord"].includes(L);
-  stage.className = "stage " + (L === "film" ? "cinema film" : L) + (vert ? " vertical" : "");
+  const vert = !!S.vertical && ["strip", "film", "plunge", "cinema", "grid", "discord"].includes(L);
+  stage.className = "stage " + (L === "film" ? "cinema film" : L === "plunge" ? "cinema film plunge" : L) + (vert ? " vertical" : "");
   renderFeature(feat);
   mainEl.classList.toggle("cam-move", camLayout());
   if (!camLayout()) { view.lock = null; view.y = 0; }
@@ -830,7 +847,7 @@ function layout() {
   // Les dispositions animées (bande, cinéma, libre) placent les avatars à chaque image : on ne les remet
   // à zéro que si la disposition change, sinon ils se retrouveraient empilés le temps d'une image
   // (c'était le chevauchement pendant qu'on modifie un réglage)
-  const moving = ["strip", "cinema", "film", "free"].includes(L);
+  const moving = ["strip", "cinema", "film", "plunge", "free"].includes(L);
   const fresh = L !== lastL;
   lastL = L;
   for (const t of tiles.values()) {
@@ -841,7 +858,7 @@ function layout() {
   placeMusic();
   $("#lyricsScene").hidden = L !== "lyrics";
   if (fresh || !moving) for (const t of tiles.values()) { t.el.style.filter = t.el.style.zIndex = t.el.style.opacity = t.el.style.visibility = ""; t.vis = 1; }
-  if (L === "cinema" || L === "film") {
+  if (L === "cinema" || L === "film" || L === "plunge") {
     // En vertical, on échange largeur et hauteur : les avatars s'alignent en hauteur
     const [a, b] = vert ? [W, H] : [H, W];
     const c = Math.round(Math.max(40, Math.min(a * (n <= 2 ? 0.62 : n <= 4 ? 0.52 : 0.45), b * (n <= 2 ? 0.3 : 0.24), 420) * S.zoom));
@@ -899,9 +916,11 @@ function feeds() {
 }
 let featPin = ""; // « id|kind » choisi à la main dans le sélecteur
 const camsIn3D = () => S.camView === "film" && feeds().some((f) => f.kind === "cam");
+// Caméras gardées dans les avatars (Cinéma 3D, ou « Dans ma disposition ») : pas de vue stream pour elles
+const camInTile = (f) => f.kind === "cam" && (S.camView === "film" || S.camView === "tile");
 function featureSource() {
   if (MINI || ["discord", "lyrics"].includes(S.layout)) return null;
-  const list = feeds().filter((f) => !(S.camView === "film" && f.kind === "cam"));
+  const list = feeds().filter((f) => !camInTile(f));
   // Ordre : le flux choisi, l'écran d'un ami, le mien, la caméra d'un ami, la mienne
   return list.find((f) => `${f.id}|${f.kind}` === featPin) || list.find((f) => f.kind === "screen" && !f.mine)
     || list.find((f) => f.kind === "screen") || list.find((f) => !f.mine) || list[0] || null;
@@ -940,7 +959,7 @@ function renderCamGrid(all) {
 function renderFeature(f) {
   const box = $("#feature");
   box.hidden = !f;
-  const all = f ? feeds().filter((x) => !(S.camView === "film" && x.kind === "cam")) : [];
+  const all = f ? feeds().filter((x) => !camInTile(x)) : [];
   const grid = !!f && camGrid(all);
   stage.classList.toggle("cams-only", grid && allCams(all));
   $("#featureGrid").hidden = !grid;
@@ -1011,17 +1030,25 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"], ["#uiDaSeg", "uiDa"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"], ["#uiDaSeg", "uiDa"], ["#avOutlineColorSeg", "avOutlineColor"], ["#cursorSeg", "cursor"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     if (key === "bg" && b.dataset.v === "we") return openWe();
+    if (key === "bg" && (b.dataset.v === "image" || b.dataset.v === "video")) {
+      const want = b.dataset.v === "video" ? "video" : "image";
+      const own = S.bgImage && !isWeBg.of(S.bgImage) && (S.bgKind === "video") === (want === "video");
+      // Déjà choisi (2e clic) ou rien de ce type : on ouvre le choix du fichier
+      if (!own || b.getAttribute("aria-pressed") === "true") return pickBg(want);
+      S.bg = "image"; return apply();
+    }
+    if (key === "cursor" && b.dataset.v === "custom" && !S.cursorImg) return $("#cursorFile").click();
     // Changer de style de lecteur : il revient à sa taille par défaut, en bas à droite
     if (key === "playerStyle" && S.playerStyle !== b.dataset.v) { S.playerW = null; S.playerPos = null; requestAnimationFrame(() => placeMusic()); }
     S[key] = b.dataset.v;
     apply();
-    if (key === "bg" && S.bg === "image" && (!S.bgImage || isWeBg())) pickBg();
   })));
-const isWeBg = () => S.bg === "image" && /^vsmedia:\/\/we\//.test(S.bgImage || "");
+const isWeBg = () => S.bg === "image" && isWeBg.of(S.bgImage);
+isWeBg.of = (u) => /^vsmedia:\/\/we\//.test(u || "");
 
 /* ——— Musique en cours : Ce PC (Deezer…), compte Spotify ou saisie à la main ——— */
 let music = { status: "off", error: null, track: null }, sentSource = null;
@@ -1138,14 +1165,21 @@ function loadBgImg() {
   if (!src) return;
   const video = S.bgKind === "video";
   const m = document.createElement(video ? "video" : "img");
-  if (video) Object.assign(m, { muted: true, loop: true, autoplay: true, playsInline: true });
+  if (video) Object.assign(m, { muted: true, loop: true, autoplay: true, playsInline: true, preload: "auto", disablePictureInPicture: true, disableRemotePlayback: true });
+  m.crossOrigin = "anonymous"; // pour lire ses couleurs (texte blanc ou noir selon le fond)
   m.alt = "";
   m.src = src;
   box.appendChild(m);
   if (video) m.play().catch(() => {});
 }
-async function pickBg() {
-  const r = await window.studio.bg.pick();
+// Hush caché ou réduit : la vidéo de fond se met en pause (elle reprend en revenant)
+document.addEventListener("visibilitychange", () => {
+  const v = $("#bgMedia video");
+  if (!v) return;
+  if (document.hidden) v.pause(); else v.play().catch(() => {});
+});
+async function pickBg(kind) {
+  const r = await window.studio.bg.pick(kind);
   if (!r) return;
   S.bgImage = r.url; S.bgKind = r.kind; S.bg = "image";
   apply();
@@ -1385,6 +1419,7 @@ $("#players").oninput = (e) => {
 $("#speed").oninput = (e) => { S.speed = +e.target.value; apply(); };
 $("#accent").oninput = (e) => { S.accent = e.target.value; apply(); };
 $("#accentReset").onclick = () => { S.accent = null; apply(); };
+$("#avOutlineCustom").oninput = (e) => { S.avOutlineCustom = e.target.value; S.avOutlineColor = "custom"; apply(); };
 $("#ringColor").oninput = (e) => { S.ringColor = e.target.value; if (S.ringFrom !== "duo") S.ringFrom = "custom"; apply(); };
 $("#nameSize").oninput = (e) => { S.nameSize = +e.target.value; apply(); };
 $("#nameShift").oninput = (e) => { S.nameShift = +e.target.value; apply(); };
@@ -1394,17 +1429,58 @@ $("#nameShift").ondblclick = () => { S.nameShift = 0; apply(); };
 function fitNames() {
   const on = !!S.nameFit;
   document.body.classList.toggle("name-fit", on);
+  // Place libre autour de chaque avatar : jusqu'au voisin le plus proche sur la même ligne (à l'écran)
+  const boxes = [];
+  for (const t of tiles.values()) {
+    const a = t.el.querySelector(".av-wrap");
+    if (!a || !t.el.isConnected) continue;
+    const r = a.getBoundingClientRect();
+    // En 3D, un avatar derrière la caméra donne une boîte absurde : on l'ignore
+    if (r.width > 2 && r.width < innerWidth && r.height < innerHeight * 1.5) boxes.push([t, r]);
+  }
+  const spaceOf = (t) => {
+    const me = boxes.find((b) => b[0] === t);
+    if (!me || !me[1].width) return 0;
+    const r = me[1], cx = r.left + r.width / 2;
+    let d = Infinity;
+    for (const [o, q] of boxes) {
+      if (o === t || !q.width || Math.abs(q.top + q.height / 2 - (r.top + r.height / 2)) > Math.max(r.height, q.height) * 0.8) continue;
+      d = Math.min(d, Math.abs(q.left + q.width / 2 - cx));
+    }
+    // En unités de mise en page (sans le zoom 3D) : rapport à la largeur de l'avatar
+    return d === Infinity ? 2.6 : (d * 0.94) / r.width;
+  };
   for (const t of tiles.values()) {
     const name = t.el.querySelector(".name"), span = name && name.querySelector("span");
     if (!name || !span) continue;
-    if (!on) { name.style.removeProperty("--nfit"); continue; }
-    // Largeur réelle affichée, ramenée à la taille « pleine » (sans l'ajustement déjà posé)
-    const cur = parseFloat(name.style.getPropertyValue("--nfit")) || 1;
-    const full = Math.max(name.getBoundingClientRect().width, span.getBoundingClientRect().width, span.scrollWidth * (S.nameSize || 1) * cur) / cur;
+    if (!on) { name.style.removeProperty("--nfit"); name.style.removeProperty("--nmax"); name.classList.remove("nm-cut"); continue; }
+    // Largeur du texte dans la mise en page (offsetWidth ignore le zoom du pseudo, la 3D et la mini-fenêtre),
+    // comparée à la largeur de l'avatar mesurée de la même façon : le résultat ne dépend pas de l'ajustement
+    // déjà posé, donc plus de valeur qui bouge toute seule
+    // (mesuré sur une copie invisible, sur une seule ligne, hors de la tuile : rien ne la coupe ni ne la zoome)
+    const cs = getComputedStyle(span);
+    const m = fitNames.m || (fitNames.m = Object.assign(document.body.appendChild(document.createElement("span")), { ariaHidden: "true" }));
+    m.style.cssText = `position:fixed;left:-9999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none;font:${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily};letter-spacing:${cs.letterSpacing};text-transform:${cs.textTransform}`;
+    m.textContent = span.textContent || "";
+    const width = m.offsetWidth + 6;
     const av = t.el.querySelector(".av-wrap");
-    const room = Math.max(50, (av ? av.getBoundingClientRect().width : 100) * 1.2);
-    const fit = Math.max(0.38, Math.min(1, room / Math.max(1, full)));
-    name.style.setProperty("--nfit", fit.toFixed(3));
+    const avW = av ? av.offsetWidth : 100;
+    // Le pseudo peut déborder de l'avatar jusqu'à mi-chemin du voisin (jamais moins que l'avatar)
+    const room = Math.max(40, avW * Math.max(MINI ? 1.05 : 1.2, Math.min(3, spaceOf(t))));
+    const nk = S.nameSize || 1, fs = parseFloat(cs.fontSize) || 14;
+    // Taille réelle à l'écran : la 3D (Libre, Bande, Cinéma) rapetisse les avatars du fond, et leur pseudo avec
+    const box = boxes.find((b) => b[0] === t);
+    const k = box && avW ? Math.max(0.15, Math.min(3, box[1].width / avW)) : 1;
+    // Jamais illisible : au moins 12 px à l'écran (9 px en mini-fenêtre), quitte à grossir un peu le pseudo
+    const minFit = Math.min(2.2, (MINI ? 9 : 12) / (fs * nk * k));
+    const fit = Math.max(minFit, Math.min(1, room / Math.max(1, width * nk)));
+    const old = parseFloat(name.style.getPropertyValue("--nfit")) || 1;
+    if (Math.abs(old - fit) > 0.05) name.style.setProperty("--nfit", fit.toFixed(3)); // seuil large : pas de pseudo qui palpite quand la caméra bouge
+    // Trop long même à la taille minimum : coupé proprement avec « … »
+    const cut = width * nk * fit > room + 2;
+    const max = cut ? Math.floor(room / (nk * fit)) + "px" : "";
+    if (name.style.getPropertyValue("--nmax") !== max) { if (max) name.style.setProperty("--nmax", max); else name.style.removeProperty("--nmax"); }
+    name.classList.toggle("nm-cut", cut);
   }
 }
 setInterval(() => { if (S.nameFit || document.body.classList.contains("name-fit")) fitNames(); }, 700);
@@ -1459,7 +1535,7 @@ $("#playerSize").oninput = (e) => { S.playerW = +e.target.value; apply(); reques
 $("#bgZoomReset").onclick = () => { S.bgZoom = 1; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["nameFit", "camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "avOutlineAuto", "nameHover", "vertNameTop", "reports", "adminView", "menuFixed"];
+const SWITCHES = ["nameFit", "camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "nameHover", "vertNameTop", "reports", "adminView", "fxTv", "richPresence"];
 // Polices proposées (Google Fonts), chargées à la demande
 // Polices des pseudos : livrées avec Hush (assets/fonts), rien à télécharger
 const FONTS = ["Chomsky", "Alhambra", "Super Whales", "Super Mario 256", "Jersey 75", "Tropi Land", "Fat Kat", "Minecraft", "Kiwi Soda", "TypoSlab Irregular", "JoJo"];
@@ -1549,13 +1625,19 @@ function drawBgPicks() {
       const a = state.me && state.me.avatar;
       dot.style.background = a ? `center/cover url("${a}")` : "#5865f2";
     } else if (v === "image") {
-      const own = S.bgImage && !/^vsmedia:\/\/we\//.test(S.bgImage) && S.bgKind !== "video";
+      const own = S.bgImage && !isWeBg.of(S.bgImage) && S.bgKind !== "video";
       dot.style.background = own ? `center/cover url("${S.bgImage}")` : "";
       dot.classList.toggle("empty", !own);
+    } else if (v === "video") {
+      const own = S.bgImage && !isWeBg.of(S.bgImage) && S.bgKind === "video";
+      dot.classList.toggle("empty", !own);
+      dot.classList.toggle("vid", !!own);
     } else if (v === "we") {
-      // L'aperçu du fond Wallpaper Engine choisi, sinon le logo « WE »
-      dot.style.background = S.bgWePreview ? `center/cover url("${S.bgWePreview}")` : "";
-      dot.classList.toggle("we-logo", !S.bgWePreview);
+      // L'aperçu du fond Wallpaper Engine appliqué ; sinon un « ? » blanc sur fond noir
+      const on = isWeBg() && S.bgWePreview;
+      dot.style.background = on ? `center/cover url("${S.bgWePreview}")` : "";
+      dot.classList.toggle("we-logo", false);
+      dot.classList.toggle("we-none", !on);
     }
   });
 }
@@ -1612,7 +1694,7 @@ function apply() {
   $("#ringColor").value = S.ringColor || (RING_ORIGIN[S.ring] ? RING_ORIGIN[S.ring][0] : S.accent || SKINS[S.skin].a);
   $("#ringCoverHint").hidden = S.ringFrom !== "cover";
   $("#ringColor2Row").hidden = S.ringFrom !== "duo";
-  $("#ringColorLabel").textContent = S.ringFrom === "duo" ? "Couleur 1" : "Ma couleur";
+  $("#ringColorLabel").textContent = S.ringFrom === "duo" ? "Couleur 1" : "Unicolor";
   $("#ringColor2").value = S.ringColor2 || "#7c6cff";
   $("#voiceMin").value = S.voiceMin; $("#voiceMinOut").textContent = S.voiceMin ? Math.round(S.voiceMin * 100) + " %" : "aucune";
   // Flou du fond
@@ -1631,8 +1713,17 @@ function apply() {
   $("#vertNameRow").hidden = !S.vertical;
   b.classList.toggle("vname-top", !!S.vertNameTop);
   b.classList.toggle("av-outline", !!S.avOutline);
-  b.classList.toggle("av-outline-auto", !!S.avOutline && !!S.avOutlineAuto);
+  b.classList.toggle("av-outline-auto", !!S.avOutline && S.avOutlineColor === "auto");
+  b.classList.toggle("av-outline-custom", !!S.avOutline && S.avOutlineColor === "custom");
+  b.style.setProperty("--oc-custom", S.avOutlineCustom || "#ff4fa3");
+  $("#avOutlineCustom").value = S.avOutlineCustom || "#ff4fa3";
   $("#avOutlineAutoRow").hidden = !S.avOutline;
+  $("#avOutlineCustomRow").hidden = S.avOutlineColor !== "custom";
+  b.classList.toggle("fx-tv", !!S.fxTv);
+  b.classList.toggle("cam-tile", S.camView === "tile");
+  applyCursor();
+  $("#music").classList.toggle("bg-mosaic", S.playerBg === "mosaic");
+  if (S.avShadow) for (const t of tiles.values()) tileDrop(t);
   b.classList.toggle("glitch-snow", S.glitchStyle === "snow");
   // Mode économie : mêmes fonctions, rendu plus léger (voir ECO)
   ECO = S.perf === "eco" || (S.perf !== "max" && AUTO_ECO);
@@ -1698,6 +1789,7 @@ function apply() {
   // La barre du haut suit, mais moins vite (courbe plus douce)
   document.body.style.setProperty("--tb-veil-home", String(blurMode ? 0 : Math.pow(hv, 1.8) * 0.85));
   document.body.classList.toggle("hv-blur-mode", blurMode);
+  document.body.classList.toggle("hfx-noblur", !(blurMode && hv > 0.01));
   $("#homeVeilLabel").textContent = blurMode ? "Flou" : "Fondu";
   // En vocal : fondu du fond (Paramètres › Fond)
   const bf = S.bgFade || 0;
@@ -1720,7 +1812,12 @@ function apply() {
   SEGS.forEach(([id, k]) =>
     $(id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === S[k])));
   // Fond Wallpaper Engine : c'est son propre rond qui est allumé, pas « Image / GIF »
-  if (isWeBg()) { $('#bgSeg [data-v="image"]').setAttribute("aria-pressed", false); $("#bgWe").setAttribute("aria-pressed", true); }
+  {
+    const img = S.bg === "image" && !!S.bgImage && !isWeBg();
+    $('#bgSeg [data-v="image"]').setAttribute("aria-pressed", img && S.bgKind !== "video");
+    $('#bgSeg [data-v="video"]').setAttribute("aria-pressed", img && S.bgKind === "video");
+    $("#bgWe").setAttribute("aria-pressed", isWeBg());
+  }
   $("#glow").value = S.glow; $("#glowOut").textContent = S.glow + " %";
   $("#volume").value = S.volume; $("#volumeOut").textContent = Math.round(S.volume * 100) + " %";
   $("#mpVol").value = S.volume;
@@ -1785,6 +1882,11 @@ function drawBg(t, energy) {
     const cs = getComputedStyle(document.body);
     colors = { a: cs.getPropertyValue("--accent").trim(), b: cs.getPropertyValue("--accent2").trim() };
   }
+  if (S.bg === "image" && (S.glitch || "off") === "off") {
+    const k = `${w}x${h}x${cv.width}`;
+    if (drawBg.still === k) return;
+    drawBg.still = k;
+  } else drawBg.still = null;
   ctx.clearRect(0, 0, w, h);
   if (S.bg === "duo") {
     // Double dégradé : les deux couleurs choisies, en biais, avec une lueur douce qui respire avec les voix
@@ -2014,7 +2116,7 @@ $("#freeReset").onclick = () => { S.freePos = {}; save(); };
    la parole, gros plan s'il parle longtemps ou fort, plan à deux quand deux personnes se répondent.
    Les zooms suivent le débit (volume moyen récent de celui qu'on filme) : la caméra pousse doucement vers
    quelqu'un qui s'emballe et recule quand ça se calme. Mouvements amortis, travelling et orbite lents. */
-const film = { x: 0, z: 1, vx: 0, vz: 0, yaw: 0, pitch: 8, energy: 0, shot: "wide", since: 0, lastFocus: null };
+const film = { x: 0, z: 1, vx: 0, vz: 0, yaw: 0, pitch: 8, energy: 0, shot: "wide", since: 0, lastFocus: null, vyaw: 0, vpitch: 0, side: 1, dip: 0, plungeFor: null };
 function filmFrame(t) {
   const c = parseFloat(stage.style.getPropertyValue("--ctile")) || 200;
   const items = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
@@ -2051,6 +2153,16 @@ function filmFrame(t) {
     aim = lockI >= 0 ? lockI : Math.max(0, fi);
     zAim = shot === "close" ? 1.7 + film.energy * 0.4 : 1.15 + film.energy * 0.3;
   }
+  // Plongée : cadrage serré décalé, la personne d'un côté de l'image, la caméra de l'autre
+  const plunge = L === "plunge" && cam;
+  if (plunge && shot !== "wide") {
+    const who = lockI >= 0 ? lockI : shot === "two" ? Math.max(...talking) : Math.max(0, fi);
+    const id = items[who] && items[who].data.id;
+    // Nouvelle personne : la caméra change de côté et refait un plongeon
+    if (id !== film.plungeFor) { film.plungeFor = id; film.side = -film.side; film.dip = 1; }
+    aim = who - film.side * 0.32;
+    zAim = 1.45 + film.energy * 0.35;
+  }
   // Jamais plus gros que l'écran, jamais minuscule
   zAim = Math.max(0.22, Math.min(zAim, (other * 0.72) / c));
   // Ressorts amortis : le cadrage glisse (plus vite pour suivre quelqu'un, très lentement en plan large)
@@ -2066,9 +2178,20 @@ function filmFrame(t) {
   const drift = cam ? Math.sin(t * 0.00011 * sp) * 0.22 : 0;
   const yawAim = cam ? (aim - film.x) * -7 + Math.sin(t * 0.00016 * sp) * 8 + (shot === "close" ? -5 : 0) : 0;
   const pitchAim = cam ? (shot === "wide" ? 11 : shot === "close" ? 3 : 7) + Math.sin(t * 0.0002 * sp) * 2 : 0;
-  film.yaw += (yawAim - film.yaw) * 0.03;
-  film.pitch += (pitchAim - film.pitch) * 0.03;
-  const roll = cam && shot === "close" ? Math.sin(t * 0.0003 * sp) * 1.2 : 0;
+  if (plunge) {
+    // Ressorts amortis sur l'angle : ça part doucement, ça accélère, et ça se pose sans à-coup
+    film.dip *= 1 - 0.012 * sp;
+    const yA = shot === "wide" ? Math.sin(t * 0.00013 * sp) * 22 : film.side * 34 + Math.sin(t * 0.00017 * sp) * 4;
+    const pA = (shot === "wide" ? 20 : 27 + film.energy * 6) + film.dip * 16;
+    const k = 0.0085 * sp;
+    film.vyaw += (yA - film.yaw) * k; film.vyaw *= 1 - 2 * Math.sqrt(k); film.yaw += film.vyaw;
+    film.vpitch += (pA - film.pitch) * k; film.vpitch *= 1 - 2 * Math.sqrt(k); film.pitch += film.vpitch;
+    film.z -= film.dip * 0.004; // en plongeant, on recule un peu puis on revient serrer
+  } else {
+    film.yaw += (yawAim - film.yaw) * 0.03;
+    film.pitch += (pitchAim - film.pitch) * 0.03;
+  }
+  const roll = plunge ? -film.yaw * 0.09 : cam && shot === "close" ? Math.sin(t * 0.0003 * sp) * 1.2 : 0;
   view.slotPx = gap * film.z;
   items.forEach((it, i) => {
     const d = i - film.x - drift;
@@ -2315,7 +2438,7 @@ function updateLoupes() {
    (Ctrl+clic à nouveau, ou sur le fond, pour libérer). Sans action pendant 2,5 s, la caméra repart toute seule. */
 const FREE_MS = 2500;
 const view = { dragging: false, px: 0, py: 0, until: 0, x: null, y: 0, zoom: 1, lock: null, slotPx: 200 };
-const camLayout = () => L === "strip" || L === "cinema" || L === "film";
+const camLayout = () => L === "strip" || L === "cinema" || L === "film" || L === "plunge";
 const viewFree = () => view.dragging || performance.now() < view.until;
 const mainEl = document.querySelector(".main");
 
@@ -2349,7 +2472,7 @@ mainEl.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   view.dragging = true;
   view.px = e.clientX; view.py = e.clientY;
-  view.x = L === "strip" ? stripX : L === "film" ? film.x : camX;
+  view.x = L === "strip" ? stripX : L === "film" || L === "plunge" ? film.x : camX;
   mainEl.classList.add("grabbing");
 });
 addEventListener("pointermove", (e) => {
@@ -2457,7 +2580,7 @@ function frame(t) {
   if (L === "cinema") cinema(t);
   if (L === "strip") strip(t);
   if (L === "free") free(t);
-  if (L === "film") filmFrame(t);
+  if (L === "film" || L === "plunge") filmFrame(t);
   updateLoupes();
   // 2,5 s sans toucher : le décalage revient en place et la caméra reprend celui qui parle. Le zoom, lui, reste.
   if (!viewFree()) { view.x = null; view.y *= 0.88; }
@@ -2722,16 +2845,24 @@ syncOvBtn(false);
    Le bouton n'apparaît que dans ce mode : rien ne change sous Windows et Mac. ——— */
 if (!MINI) {
   const setEdit = (on) => {
-    $("#ovEdit").textContent = on ? "Terminé" : "Déplacer";
+    $("#ovEdit").querySelector("b").textContent = on ? "Terminé : clique pour fixer l'overlay" : "Déplacement libre";
     $("#ovEdit").classList.toggle("on", on);
     $("#ovEditHint").hidden = !on;
   };
+  // « Déplacement libre » toujours visible : si l'overlay est fermé, le bouton l'ouvre d'abord
   const showEdit = async (open) => {
     const can = open && (await window.studio.win.overlayCanEdit());
-    $("#ovEditRow").hidden = !can;
+    $("#ovEditRow").hidden = false;
     if (!can) setEdit(false);
   };
-  $("#ovEdit").onclick = async () => setEdit(await window.studio.win.overlayEdit(!$("#ovEdit").classList.contains("on")));
+  $("#ovEdit").onclick = async () => {
+    const on = !$("#ovEdit").classList.contains("on");
+    if (on && !(await window.studio.win.overlayCanEdit())) {
+      await openMini();
+      for (let i = 0; i < 20 && !(await window.studio.win.overlayCanEdit()); i++) await new Promise((r) => setTimeout(r, 150));
+    }
+    setEdit(await window.studio.win.overlayEdit(on));
+  };
   window.studio.win.onMini(showEdit);
   new MutationObserver(() => showEdit($("#miniBtn").classList.contains("on"))).observe($("#miniBtn"), { attributes: true, attributeFilter: ["class"] });
   window.studio.win.onOverlayEdit(setEdit);
@@ -2912,3 +3043,151 @@ else window.studio.voice.start();
 renderChrome();
 document.fonts && document.fonts.ready.then(layout);
 requestAnimationFrame(frame);
+
+/* ——— Texte noir sur fond clair, blanc sur fond sombre ———
+   Toutes les 1,2 s, Hush regarde le fond en tout petit (48 × 27 points) : l'image ou la vidéo, le canvas, puis le
+   fondu de l'accueil par-dessus. Pour chaque zone qui porte du texte, il calcule la clarté moyenne et met
+   body.ink-<zone> quand elle est claire (avec une marge, pour que ça ne clignote pas sur une vidéo). */
+const inkCv = document.createElement("canvas");
+inkCv.width = 48; inkCv.height = 27;
+const inkCtx = inkCv.getContext("2d", { willReadFrequently: true });
+const INK_ZONES = { left: [0, 0.2, 0.36, 0.8], center: [0.3, 0.38, 0.7, 0.62], bottom: [0.2, 0.62, 0.8, 1], top: [0, 0, 1, 0.09] };
+const inkOn = {};
+function inkCover(m, mw, mh) {
+  // Comme object-fit: cover, avec le zoom du fond
+  const W = 48, H = 27, z = S.bgZoom || 1;
+  const k = Math.max(W / mw, H / mh) * z;
+  inkCtx.drawImage(m, (W - mw * k) / 2, (H - mh * k) / 2, mw * k, mh * k);
+}
+function sampleInk() {
+  if (MINI || document.hidden) return;
+  const W = 48, H = 27;
+  let d;
+  try {
+    const cs = getComputedStyle(document.body);
+    const bgc = cs.getPropertyValue("--bg").trim() || "#000";
+    inkCtx.globalAlpha = 1;
+    inkCtx.fillStyle = bgc;
+    inkCtx.fillRect(0, 0, W, H);
+    const m = S.bg === "image" && $("#bgMedia:not([hidden]) :is(img,video)");
+    if (m && m.tagName === "VIDEO" && m.readyState >= 2) inkCover(m, m.videoWidth, m.videoHeight);
+    else if (m && m.tagName === "IMG" && m.complete && m.naturalWidth) inkCover(m, m.naturalWidth, m.naturalHeight);
+    inkCtx.drawImage(cv, 0, 0, W, H);
+    // Fondus par-dessus : celui de l'accueil, et le fondu du fond
+    const home = document.body.classList.contains("home-on");
+    const a = 1 - (1 - (home ? +cs.getPropertyValue("--home-veil") || 0 : 0)) * (1 - (+cs.getPropertyValue("--bg-fade") || 0));
+    if (a > 0) { inkCtx.globalAlpha = a; inkCtx.fillStyle = bgc; inkCtx.fillRect(0, 0, W, H); inkCtx.globalAlpha = 1; }
+    d = inkCtx.getImageData(0, 0, W, H).data;
+  } catch { return; } // image d'un autre site sans autorisation : on garde le texte comme il est
+  for (const [zone, [x0, y0, x1, y1]] of Object.entries(INK_ZONES)) {
+    let sum = 0, n = 0;
+    for (let y = Math.floor(y0 * H); y < Math.ceil(y1 * H); y++)
+      for (let x = Math.floor(x0 * W); x < Math.ceil(x1 * W); x++) {
+        const i = (y * W + x) * 4;
+        sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++;
+      }
+    const lum = n ? sum / n : 0;
+    const on = inkOn[zone] ? lum > 140 : lum > 168;
+    if (on !== !!inkOn[zone]) { inkOn[zone] = on; document.body.classList.toggle("ink-" + zone, on); }
+  }
+}
+setInterval(sampleInk, 1200);
+setTimeout(sampleInk, 400);
+
+/* ——— Curseur personnalisé (Paramètres › Curseur) ———
+   Des curseurs dessinés en SVG (couleur et taille au choix), ou une image à soi. Seulement dans Hush. */
+function cursorSvg(kind, c) {
+  const k = "#1a1026";
+  switch (kind) {
+    case "dot": return [`<circle cx="16" cy="16" r="6.5" fill="${c}" stroke="${k}" stroke-opacity=".55" stroke-width="1.6"/>`, 16, 16];
+    case "arrow": return [`<path d="M5 3.5 26 13.6l-9 2.4-4.1 8.6z" fill="${c}" stroke="${k}" stroke-width="1.8" stroke-linejoin="round"/>`, 5, 3];
+    case "ring": return [`<circle cx="16" cy="16" r="9.5" fill="none" stroke="${k}" stroke-opacity=".5" stroke-width="5"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="${c}" stroke-width="2.6"/><circle cx="16" cy="16" r="2.2" fill="${c}"/>`, 16, 16];
+    case "cross": return [`<path d="M16 3v9M16 20v9M3 16h9M20 16h9" stroke="${k}" stroke-opacity=".5" stroke-width="4.5" stroke-linecap="round"/><path d="M16 3v9M16 20v9M3 16h9M20 16h9" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="1.8" fill="${c}"/>`, 16, 16];
+    case "heart": return [`<path d="M16 27S4 19.6 4 11.8A6.2 6.2 0 0 1 16 9a6.2 6.2 0 0 1 12 2.8C28 19.6 16 27 16 27z" fill="${c}" stroke="${k}" stroke-width="1.8" stroke-linejoin="round"/>`, 16, 16];
+  }
+  return null;
+}
+function cursorUrl(kind, c, sz) {
+  const s = cursorSvg(kind, c);
+  if (!s) return null;
+  return [`data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 32 32">${s[0]}</svg>`)}`, Math.round((s[1] * sz) / 32), Math.round((s[2] * sz) / 32)];
+}
+// Image à soi : redimensionnée à la taille choisie (le résultat est gardé en cache)
+function customCursor(sz) {
+  const key = sz + "|" + (S.cursorImg || "").length;
+  if (customCursor.key === key) return customCursor.url;
+  customCursor.key = key; customCursor.url = null;
+  const i = new Image();
+  i.onload = () => {
+    const k = sz / Math.max(i.width, i.height), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(i.width * k)); c.height = Math.max(1, Math.round(i.height * k));
+    c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+    customCursor.url = c.toDataURL("image/png");
+    applyCursor();
+  };
+  i.src = S.cursorImg;
+  return null;
+}
+function applyCursor() {
+  if (MINI) return;
+  const sz = S.cursorSize || 24, col = S.cursorColor || "#ffffff";
+  let cur = null;
+  if (S.cursor === "custom" && S.cursorImg) { const u = customCursor(sz); if (u) cur = [u, 0, 0]; }
+  else cur = cursorUrl(S.cursor, col, sz);
+  document.body.classList.toggle("cur-on", !!cur);
+  if (cur) document.body.style.setProperty("--cur", `url("${cur[0]}") ${cur[1]} ${cur[2]}`);
+  // Aperçus dans les paramètres
+  document.querySelectorAll("#cursorSeg button").forEach((btn) => {
+    const p = btn.querySelector(".cur-prev"), v = btn.dataset.v;
+    if (v === "custom") p.style.backgroundImage = S.cursorImg ? `url("${S.cursorImg}")` : "";
+    else if (v !== "system") p.style.backgroundImage = `url("${cursorUrl(v, col, 40)[0]}")`;
+    p.classList.toggle("empty", v === "custom" && !S.cursorImg);
+  });
+  $("#cursorColor").value = col;
+  $("#cursorSize").value = sz; $("#cursorSizeOut").textContent = sz + " px";
+}
+if (!MINI) {
+  $("#cursorColor").oninput = (e) => { S.cursorColor = e.target.value; if (S.cursor === "system" || S.cursor === "custom") S.cursor = "arrow"; apply(); };
+  $("#cursorSize").oninput = (e) => { S.cursorSize = +e.target.value; apply(); };
+  // « Mon image » déjà choisie : un double-clic en choisit une autre
+  $("#cursorCustomBtn").ondblclick = () => $("#cursorFile").click();
+  $("#cursorFile").onchange = (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    // En PNG (pas en JPEG) : le fond transparent reste transparent
+    const u = URL.createObjectURL(f), i = new Image();
+    i.onload = () => {
+      const k = Math.min(1, 128 / Math.max(i.width, i.height)), c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(i.width * k)); c.height = Math.max(1, Math.round(i.height * k));
+      c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u);
+      S.cursorImg = c.toDataURL("image/png"); S.cursor = "custom"; apply();
+    };
+    i.onerror = () => { URL.revokeObjectURL(u); showToast("Cette image ne peut pas servir de curseur."); };
+    i.src = u;
+  };
+}
+
+/* ——— Rich Presence : Hush sur ton profil Discord ———
+   Le programme principal parle à Discord ; ici on lui dit juste où tu es (au plus une fois toutes les 4 s). */
+let presenceKey = "", presenceT = null, presenceSince = Date.now();
+function sendPresence() {
+  if (MINI || !window.studio.presence) return;
+  const ch = state.channel && state.status === "ready" ? state.channel : null;
+  const p = !S.richPresence ? null : {
+    details: ch ? (ch.call ? "En appel privé" : `En vocal dans #${chanLabel(ch)}`) : "Sur l'accueil de Hush",
+    state: ch ? (ch.call ? "Avec Hush" : `${ch.guild || "Discord"} · ${Math.max(1, state.members.length)} personne${state.members.length > 1 ? "s" : ""}`) : "Choisit un vocal",
+    channel: ch ? ch.id : "",
+  };
+  const key = JSON.stringify(p);
+  if (key === presenceKey) return;
+  // Nouveau salon : le chrono repart
+  const before = presenceKey ? JSON.parse(presenceKey) : null;
+  if (!before || !p || before.channel !== p.channel) presenceSince = Date.now();
+  presenceKey = key;
+  clearTimeout(presenceT);
+  presenceT = setTimeout(() => window.studio.presence.set(p ? { details: p.details, state: p.state, since: presenceSince } : null), 600);
+}
+setInterval(sendPresence, 4000);
+setTimeout(sendPresence, 1500);

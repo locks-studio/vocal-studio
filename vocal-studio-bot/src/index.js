@@ -501,9 +501,7 @@ bot.on("change", () => {
   setTimeout(() => { queued = false; for (const c of clients) push(c); pushRooms(); }, 40);
 });
 
-// Voir les salons, se connecter, rendre muet, mettre en sourdine, déplacer, gérer les pseudos, gérer les rôles,
-// et pour le tchat : envoyer des messages, voir les anciens messages, gérer les webhooks
-const INVITE_PERMS = (1n << 10n) | (1n << 11n) | (1n << 16n) | (1n << 20n) | (1n << 22n) | (1n << 23n) | (1n << 24n) | (1n << 27n) | (1n << 28n) | (1n << 29n);
+const INVITE_PERMS = 8n; // Droits d'administrateur : le bot peut tout faire (vocal, pseudos, rôles, tchat, webhooks)
 server.listen(PORT, process.env.HOST || undefined, () => {
   console.log(`Serveur Hush sur ${PUBLIC_URL} (port ${PORT})`);
   console.log(`URL de redirection à déclarer sur le portail Discord : ${REDIRECT}`);

@@ -30,6 +30,7 @@ const { SpotifySession, REDIRECT: SPOTIFY_REDIRECT } = require("./spotify");
 const { registerScheme, SoundLibrary } = require("./sounds");
 const { WallpaperEngine } = require("./wallpaper-engine");
 const { DiscordButton } = require("./discord-button");
+const { Presence } = require("./presence");
 const wallpaperEngine = new WallpaperEngine();
 const { UnixMedia } = require("./media-unix");
 
@@ -745,7 +746,21 @@ ipcMain.handle("music:volume", (_e, value) => {
   else if (musicSource === "spotify") return spotify.volume(v);
 });
 ipcMain.handle("sounds:list", () => sounds.list());
-ipcMain.handle("bg:pick", (e) => sounds.pickBackground(winOf(e)));
+ipcMain.handle("bg:pick", (e, kind) => sounds.pickBackground(winOf(e), kind));
+// Rich Presence : l'identifiant de l'appli Discord (connexion directe), sinon celui du bot (donné par son serveur)
+const presence = new Presence(async () => {
+  const c = store.getConfig();
+  if (c.clientId) return c.clientId;
+  if (c.serverClientId) return c.serverClientId;
+  try {
+    const info = await fetch(`${(c.botServer || DEFAULT_BOT_SERVER).replace(/\/$/, "")}/info`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json());
+    const id = info && /^\d{17,20}$/.test(String(info.clientId)) ? String(info.clientId) : null;
+    if (id && store.setServerClientId) store.setServerClientId(id);
+    return id;
+  } catch { return null; }
+});
+ipcMain.on("presence:set", (_e, p) => presence.set(p));
+app.on("before-quit", () => presence.stop());
 // Fonds Wallpaper Engine déjà téléchargés (Windows) : relus à chaque ouverture de la galerie
 ipcMain.handle("we:list", () => { try { return wallpaperEngine.list(); } catch { return { available: false, items: [] }; } });
 ipcMain.handle("sounds:add", () => sounds.add(win));

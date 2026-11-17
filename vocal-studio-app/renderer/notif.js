@@ -111,7 +111,13 @@ function notifShow(on) {
     for (const x of Notif.items) x.read = true;
     notifSave();
     $("#notifDot").hidden = true;
-  } else notifDraw();
+  } else {
+    // Déjà consultées : on les retire (les demandes d'ami restent tant qu'elles ne sont pas acceptées ou refusées)
+    const n = Notif.items.length;
+    Notif.items = Notif.items.filter((x) => !x.read);
+    if (Notif.items.length !== n) notifSave();
+    notifDraw();
+  }
 }
 $("#notifBtn").onclick = (e) => { e.stopPropagation(); notifShow(!Notif.open); };
 $("#notifClear").onclick = () => { Notif.items = Notif.filter === "all" || Notif.filter === "req" ? [] : Notif.items.filter((x) => (Notif.filter === "invite" ? x.kind !== "invite" : x.kind === "invite")); notifSave(); notifDraw(); };

@@ -75,6 +75,24 @@ async function fillCamDevices() {
   list.forEach((d, i) => add(d.deviceId, d.label || `Caméra ${i + 1}`));
   if (S.camDevice && !list.some((d) => d.deviceId === S.camDevice)) add(S.camDevice, "Caméra débranchée");
   sel.value = S.camDevice || "";
+  // La même liste, en cartes : une icône de caméra, son nom, et la caméra choisie allumée
+  const box = $("#camList");
+  box.textContent = "";
+  for (const o of sel.options) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cam-card";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(o.value === (S.camDevice || "")));
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="12.5" height="10" rx="2.5"/><path d="M15.5 11.2 21 8v8l-5.5-3.2z"/></svg>';
+    const t = document.createElement("span");
+    t.innerHTML = "<b></b><small></small>";
+    t.querySelector("b").textContent = o.value ? o.textContent.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "") : "Par défaut";
+    t.querySelector("small").textContent = !o.value ? "Celle de Windows" : o.textContent === "Caméra débranchée" ? "Introuvable pour l'instant" : "Webcam";
+    b.append(t);
+    b.onclick = () => { if (sel.value === o.value) return; sel.value = o.value; sel.dispatchEvent(new Event("change")); };
+    box.append(b);
+  }
 }
 if (!MINI) {
   fillCamDevices();
@@ -82,6 +100,7 @@ if (!MINI) {
   $("#camDevice").onchange = async (e) => {
     S.camDevice = e.target.value;
     save();
+    $("#camList").querySelectorAll(".cam-card").forEach((b, i) => b.setAttribute("aria-checked", String($("#camDevice").options[i].value === (S.camDevice || ""))));
     // Caméra déjà allumée : on passe tout de suite sur la nouvelle
     if (Cap.cam) { await toggleCam(); await toggleCam(); }
   };

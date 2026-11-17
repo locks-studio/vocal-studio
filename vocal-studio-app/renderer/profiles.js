@@ -9,7 +9,7 @@ const PRESET_KEYS = ["skin", "accent", "layout", "vertical", "vertNameTop", "fre
   "bg", "bgImage", "bgKind", "bgWePreview", "bgColor", "bgColor2", "bgZoom", "bgBlur", "bgFade", "blurType",
   "ring", "ringFrom", "ringColor", "ringColor2", "glow", "voiceMin", "avShadow", "avOutline", "avOutlineAuto", "avAnim", "speed", "joinAnim",
   "names", "cards", "hideMuted", "showMe", "namePos", "nameSize", "nameShift", "nameFit", "nameMask", "nameHover", "font", "pixel",
-  "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "musicOn", "playerColor", "playerBg", "playerW", "playerPos", "playerStyle", "camView"];
+  "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "fxTv", "avOutlineColor", "avOutlineCustom", "cursor", "cursorColor", "cursorSize", "musicOn", "playerColor", "playerBg", "playerW", "playerPos", "playerStyle", "camView"];
 // Applique un préréglage : un réglage absent (préréglage d'une ancienne version) reprend sa valeur de base
 function applyLook(data) {
   for (const k of PRESET_KEYS) {
@@ -83,20 +83,38 @@ $("#presetSave").onclick = () => {
 };
 $("#presetName").onkeydown = (e) => { if (e.key === "Enter") $("#presetSave").click(); };
 $("#presetImport").onclick = () => $("#presetFile").click();
-$("#presetFile").onchange = async (e) => {
-  for (const f of e.target.files) {
+async function importHush(files) {
+  let n = 0;
+  for (const f of files) {
     try {
       const j = JSON.parse(await f.text());
       if (!j || typeof j.data !== "object") throw new Error();
       // On ne garde que les réglages de look connus : un fichier ne peut rien toucher d'autre
       const name = String(j.name || f.name.replace(/\.hush$/i, "")).slice(0, 40);
       S.userPresets = [...(S.userPresets || []).filter((p) => p.name !== name), { name, data: lookOf(j.data) }];
+      n++;
     } catch { showToast(`« ${f.name} » n'est pas un préréglage Hush`); }
   }
-  e.target.value = "";
   save();
   renderPresets();
-};
+  if (n) showToast(n > 1 ? `${n} préréglages importés` : "Préréglage importé : il est dans « Mes préréglages »");
+}
+$("#presetFile").onchange = async (e) => { await importHush([...e.target.files]); e.target.value = ""; };
+// Glisser un fichier .hush n'importe où sur les paramètres : il est importé, et on montre l'onglet Préréglages
+{
+  const wrap = $("#panel");
+  const isHush = (e) => [...(e.dataTransfer && e.dataTransfer.items || [])].some((i) => i.kind === "file");
+  wrap.addEventListener("dragover", (e) => { if (!isHush(e)) return; e.preventDefault(); wrap.classList.add("hush-dragging"); });
+  wrap.addEventListener("dragleave", (e) => { if (!wrap.contains(e.relatedTarget)) wrap.classList.remove("hush-dragging"); });
+  wrap.addEventListener("drop", async (e) => {
+    wrap.classList.remove("hush-dragging");
+    const files = [...e.dataTransfer.files].filter((f) => /\.(hush|json)$/i.test(f.name));
+    if (!files.length) return;
+    e.preventDefault();
+    await importHush(files);
+    S.tab = "looks"; apply();
+  });
+}
 
 /* — Profils — */
 function readProfiles() {
