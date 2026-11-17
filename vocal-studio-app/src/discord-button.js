@@ -98,19 +98,18 @@ if ($p) { if ([HushF]::IsIconic($p.MainWindowHandle)) { [HushF]::ShowWindow($p.M
     let [L, T, R, B, fg, min, zoomed, hwnd] = l.split(" ").map(Number);
     // Fenêtre agrandie : Windows la fait dépasser de 8 px de chaque côté, hors de l'écran
     if (zoomed) { L += 8; T += 8; R -= 8; B -= 8; }
-    // La pastille est « possédée » par la fenêtre de Discord : elle reste juste au-dessus de Discord, et toute
-    // autre fenêtre posée sur Discord la recouvre aussi. Cachée seulement quand Discord est réduit.
-    if (min || R - L < 300) return this.hide();
+    // Seulement quand Discord est la fenêtre active : jamais par-dessus un jeu ou une autre appli
+    // (la pastille ne prend jamais le focus, donc un clic dessus laisse Discord au premier plan)
+    if (min || !fg || R - L < 300) return this.hide();
     this.lastHwnd = hwnd;
     if (hwnd && this.win && this.owner !== hwnd) this.setOwner(hwnd);
-    void fg;
     this.dw = (R - L) / (screen.getPrimaryDisplay().scaleFactor || 1);
     // Pixels réels → pixels de l'écran d'Electron
     let r = { x: L, y: T, width: R - L, height: B - T };
     try { r = screen.screenToDipRect(null, r); } catch {}
     const frac = Math.max(0.05, Math.min(0.95, this.o.getFrac()));
-    // Sur la barre de titre de Discord (22 px de haut) : centrée verticalement, à l'endroit choisi
-    const x = Math.round(r.x + (r.width - W) * frac), y = Math.round(r.y + 1);
+    // Sur la barre de titre de Discord, à l'endroit choisi, 15 px plus bas que le haut de la fenêtre
+    const x = Math.round(r.x + (r.width - W) * frac), y = Math.round(r.y + 6);
     this.show({ x, y });
   }
 

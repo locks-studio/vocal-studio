@@ -28,10 +28,27 @@ const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) 
 const avatarImg = (src, cls = "hm-av") => { const i = h("img", cls); i.alt = ""; i.src = src || "assets/discord-logo.png"; if (!src) i.classList.add("default"); i.onerror = () => { i.src = "assets/discord-logo.png"; i.classList.add("default"); }; return i; };
 
 function renderHome() {
+  const on = homeWanted();
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // L'accueil s'ouvre ou se ferme : l'ancien écran s'efface pendant que le nouveau arrive (zoom et flou)
+  if (Home.wasOn !== undefined && on !== Home.wasOn && !Home.inVT && document.startViewTransition && !reduce && !MINI) {
+    Home.inVT = true;
+    document.documentElement.classList.toggle("vt-home-in", on);
+    document.documentElement.classList.toggle("vt-home-out", !on);
+    const vt = document.startViewTransition(() => renderHomeNow());
+    vt.finished.finally(() => { Home.inVT = false; document.documentElement.classList.remove("vt-home-in", "vt-home-out"); });
+    return;
+  }
+  renderHomeNow();
+}
+function renderHomeNow() {
   const box = $("#home");
   const on = homeWanted();
+  Home.wasOn = on;
   box.hidden = !on;
   document.body.classList.toggle("home-on", on);
+  // Hors vocal : la scène (ton avatar et ton pseudo) disparaît de l'accueil ; en vocal, les avatars restent en fond
+  document.body.classList.toggle("home-solo", on && !(state.channel && state.status === "ready"));
   $("#homeBtn").classList.toggle("on", on);
   if (!on) { clearInterval(Home.timer); Home.timer = null; return; }
   if (!Home.timer) { Home.timer = setInterval(refreshHome, 10_000); refreshHome(); }
@@ -118,7 +135,7 @@ function drawHome() {
   const hp = $("#homePanel");
   hp.classList.toggle("hp-free", !!Home.tab && Home.tab !== "admin");
   hp.classList.toggle("glass", !hp.classList.contains("hp-free"));
-  if (hp.dataset.tab !== (Home.tab || "")) { hp.dataset.tab = Home.tab || ""; hp.classList.remove("hp-in"); void hp.offsetWidth; hp.classList.add("hp-in"); }
+  if (hp.dataset.tab !== (Home.tab || "")) { hp.dataset.tab = Home.tab || ""; hp.classList.remove("hp-in"); void hp.offsetWidth; hp.classList.add("hp-in"); clearTimeout(Home.hpInT); Home.hpInT = setTimeout(() => hp.classList.remove("hp-in"), 900); }
   document.querySelectorAll(".home-pane").forEach((p) => (p.hidden = p.dataset.ht !== Home.tab));
   if (Home.tab === "account") drawAccount();
   if (Home.tab === "people") drawPeople();
@@ -145,16 +162,22 @@ $("#home").addEventListener("pointermove", (e) => {
   homeHoverTile = tile;
   if (tile) tile.classList.add("home-hover");
   $("#home").classList.toggle("over-av", !!tile);
-  $("#home").title = tile ? "Retourner dans le vocal" : "";
 });
 $("#home").addEventListener("click", (e) => {
   if (e.target !== $("#home") || !state.channel || state.status !== "ready") return;
   if (!tileUnder(e.clientX, e.clientY)) return;
   if (homeHoverTile) homeHoverTile.classList.remove("home-hover");
-  homeHoverTile = null; $("#home").classList.remove("over-av"); $("#home").title = "";
+  homeHoverTile = null; $("#home").classList.remove("over-av");
   Home.forced = false; renderHome();
 });
 document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => (t.onclick = () => { Home.tab = Home.tab === t.dataset.ht ? null : t.dataset.ht; drawHome(); }));
+// Un onglet ouvert se referme d'un clic n'importe où ailleurs (pas dans le panneau, ni dans les fenêtres par-dessus)
+addEventListener("pointerdown", (e) => {
+  if (!Home.tab || $("#home").hidden || e.button !== 0) return;
+  if (e.target.closest("#homePanel, #homeTabs, .settings-wrap, #settingsWrap, .modal, dialog, .toast, #hsStats, .um, [class^='um-'], #wePanel, #notifPop")) return;
+  Home.tab = null;
+  drawHome();
+}, true);
 
 // — Connexion : ton compte en grand, des pastilles d'état, puis les actions en lignes (comme la liste de gauche) —
 const hpIcon = (d) => { const i = document.createElementNS("http://www.w3.org/2000/svg", "svg"); i.setAttribute("viewBox", "0 0 24 24"); i.innerHTML = d; i.classList.add("hp-ico"); return i; };
@@ -174,11 +197,20 @@ function hpAction(label, sub, icon, fn, hot) {
   r.onclick = fn;
   return r;
 }
-function drawAccount() {
+// Les panneaux ne sont remplacés que si leur contenu a vraiment changé : avant, ils étaient refaits à chaque
+// mise à jour de Hush (plusieurs fois par seconde) et rejouaient leur entrée, d'où le clignotement sans fin
+function stableFill(box, build) {
+  const tmp = document.createElement("div");
+  build(tmp);
+  const html = tmp.innerHTML;
+  if (box._hpHtml === html && box.childNodes.length) return;
+  box._hpHtml = html;
+  box.replaceChildren(...tmp.childNodes);
+}
+function drawAccount() { stableFill($("#homeAccount"), drawAccountIn); }
+function drawAccountIn(acc) {
   const isBot = state.mode === "bot";
   const info = Home.info;
-  const acc = $("#homeAccount");
-  acc.textContent = "";
   const me = state.me;
   const head = h("div", "hp-hero");
   const av = h("div", "hp-hero-av" + (state.status === "ready" ? " on" : ""));
@@ -213,12 +245,14 @@ function drawAccount() {
 
 // — Sur Hush : les membres de tes serveurs qui ont Hush (en ligne, en vocal) —
 function drawPeople() {
-  const ppl = $("#frList");
-  ppl.textContent = "";
-  const data = Home.data, fr = Home.friends;
+  const fr = Home.friends;
   $("#frCode").textContent = fr ? fr.code : "…";
   $("#frHide").checked = !!(fr && fr.hideVoice);
   $("#frRank").checked = !(fr && fr.hideRank);
+  stableFill($("#frList"), drawPeopleIn);
+}
+function drawPeopleIn(ppl) {
+  const data = Home.data, fr = Home.friends;
   if (Home.frError) ppl.append(h("p", "hint", Home.frError));
   if (fr) {
     for (const p of fr.incoming) {
@@ -351,7 +385,7 @@ $("#frCopy").onclick = () => { if (Home.friends) { window.studio.voice.copy(Home
 $("#frHide").onchange = (e) => friendOp("hide", e.target.checked);
 $("#frRank").onchange = (e) => friendOp("rank", e.target.checked);
 // Inviter le bot : le geste qui ouvre Hush à tout un serveur
-const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1566055526444568669&scope=bot%20applications.commands&permissions=970001408";
+const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1566055526444568669&scope=bot%20applications.commands&permissions=8";
 $("#homeInvite").onclick = () => window.studio.win.inviteBot((Home.info && Home.info.invite) || INVITE_URL);
 // Annonce le vocal où tu es à tes amis (aussi en connexion directe). Le nom personnalisé d'un salon reste chez toi.
 let frKey = "";
@@ -439,7 +473,12 @@ function drawSide() {
   const tab = ["fav", "friends", "hist"].includes(S.homeSide) ? S.homeSide : "top";
   document.querySelectorAll("#homeSide [data-hs]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.hs === tab));
   const box = $("#homeSideList");
-  box.textContent = "";
+  // Même règle que les panneaux : on ne refait la liste que si elle a changé (sinon elle remontait en haut
+  // à chaque mise à jour et la molette ne servait à rien)
+  if (box.dataset.tab !== tab) { box.dataset.tab = tab; box.scrollTop = 0; }
+  stableFill(box, (b) => drawSideIn(b, tab));
+}
+function drawSideIn(box, tab) {
   if (tab === "friends") return drawSideFriends(box);
   if (tab === "hist") return drawSideHistory(box);
   const list = tab === "fav"
@@ -741,7 +780,9 @@ async function drawTop() {
     [Top.list, Top.me] = await Promise.all([window.studio.usage.top().catch(() => null), window.studio.usage.me().catch(() => null)]);
   }
   if (Home.tab !== "top") return;
-  box.textContent = "";
+  stableFill(box, drawTopIn);
+}
+function drawTopIn(box) {
   const head = h("div", "hp-head");
   head.append(h("h2", "hp-title", "Classement"));
   if (Top.me) head.append(h("span", "hp-badge", `Toi : ${(Top.me.voiceMinutes / 60).toFixed(1).replace(".", ",")} h en vocal`));
@@ -764,7 +805,7 @@ async function drawTop() {
   box.append(podium);
   const list = h("div", "hp-list");
   Top.list.slice(3).forEach((p, k) => {
-    const row = h("div", "hp-row" + (p.id === meId ? " me" : ""));
+    const row = h("div", "hp-row " + (k + 4 <= 10 ? "top10" : "tier") + (p.id === meId ? " me" : ""));
     row.style.setProperty("--i", k);
     row.append(h("span", "hp-rank", String(k + 4)), avatarImg(p.avatar, "hp-av"));
     const t = h("div", "hp-row-t");
@@ -824,3 +865,66 @@ $("#homeBtn").onclick = () => {
   Home.forced = $("#home").hidden; renderHome();
 };
 
+
+/* ——— Liste de gauche : défilement doux, effet tambour et « tic » de molette ———
+   La molette ne saute plus : la liste glisse vers sa cible et ralentit en arrivant. Les salons s'inclinent
+   un peu en s'éloignant du milieu (comme un tambour), et chaque salon qui passe fait un petit « tic »,
+   comme la molette d'un casque quand on monte le son. */
+const SideScroll = { target: null, raf: 0, lastRow: null, ac: null, lastTick: 0 };
+function crownTick(up) {
+  const now = performance.now();
+  if (now - SideScroll.lastTick < 32) return;
+  SideScroll.lastTick = now;
+  try {
+    const ac = SideScroll.ac || (SideScroll.ac = new AudioContext());
+    if (ac.state === "suspended") ac.resume();
+    const t = ac.currentTime;
+    // Un clic court et mat : un peu de bruit filtré, et une note très brève par-dessus
+    const len = Math.floor(ac.sampleRate * 0.012), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = up ? 3600 : 3100; bp.Q.value = 2.2;
+    const g = ac.createGain(); g.gain.value = 0.22;
+    src.connect(bp).connect(g).connect(ac.destination);
+    const o = ac.createOscillator(), og = ac.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(up ? 2300 : 2050, t);
+    og.gain.setValueAtTime(0.035, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+    o.connect(og).connect(ac.destination);
+    src.start(t); o.start(t); o.stop(t + 0.02);
+  } catch { /* pas de son : tant pis */ }
+}
+function sideDrum() {
+  const box = $("#homeSideList");
+  const mid = box.scrollTop + box.clientHeight / 2, half = Math.max(1, box.clientHeight / 2);
+  for (const r of box.children) {
+    const c = r.offsetTop + r.offsetHeight / 2;
+    const k = Math.max(-1, Math.min(1, (c - mid) / half));
+    r.style.setProperty("--drum", k.toFixed(3));
+    r.style.setProperty("--drum2", (k * k).toFixed(3));
+  }
+}
+function sideStep() {
+  const box = $("#homeSideList");
+  const d = SideScroll.target - box.scrollTop;
+  box.scrollTop += Math.abs(d) < 0.5 ? d : d * 0.14;
+  const first = box.firstElementChild;
+  const rowH = (first ? first.offsetHeight : 56) + 6;
+  const row = Math.round(box.scrollTop / rowH);
+  if (SideScroll.lastRow !== null && row !== SideScroll.lastRow) crownTick(row < SideScroll.lastRow);
+  SideScroll.lastRow = row;
+  sideDrum();
+  if (Math.abs(d) >= 0.5) SideScroll.raf = requestAnimationFrame(sideStep);
+  else { SideScroll.raf = 0; SideScroll.target = null; }
+}
+$("#homeSideList").addEventListener("wheel", (e) => {
+  const box = e.currentTarget;
+  if (box.scrollHeight <= box.clientHeight + 1) return;
+  e.preventDefault(); e.stopPropagation(); // la molette ne zoome pas la scène derrière
+  const max = box.scrollHeight - box.clientHeight;
+  const step = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+  SideScroll.target = Math.max(0, Math.min(max, (SideScroll.target ?? box.scrollTop) + step));
+  if (SideScroll.lastRow === null) SideScroll.lastRow = Math.round(box.scrollTop / 62);
+  if (!SideScroll.raf) SideScroll.raf = requestAnimationFrame(sideStep);
+}, { passive: false });
+new ResizeObserver(() => sideDrum()).observe($("#homeSideList"));
+new MutationObserver(() => requestAnimationFrame(sideDrum)).observe($("#homeSideList"), { childList: true });

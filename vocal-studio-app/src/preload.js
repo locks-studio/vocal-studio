@@ -46,8 +46,9 @@ contextBridge.exposeInMainWorld("studio", {
     record: (data, duration) => ipcRenderer.invoke("sounds:record", data, duration),
     rename: (id, title) => ipcRenderer.invoke("sounds:rename", id, title),
   },
+  presence: { set: (p) => ipcRenderer.send("presence:set", p) },
   bg: {
-    pick: () => ipcRenderer.invoke("bg:pick"),
+    pick: (kind) => ipcRenderer.invoke("bg:pick", kind),
     wallpaperEngine: () => ipcRenderer.invoke("we:list"),
   },
   lyrics: {

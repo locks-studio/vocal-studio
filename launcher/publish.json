@@ -35,10 +35,19 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Panel admin : le menu pour changer le rôle de quelqu'un ne se referme plus tout seul",
-        "Panel admin : la recherche ne perd plus le curseur pendant que tu tapes",
-        "Accueil : les onglets du bas ne bougent plus sous la souris, avec une zone de clic plus grande ; leur nom s'affiche en bulle",
-        "Boutons, menus et lignes de l'accueil et du panel admin plus faciles à cliquer"
+        "Accueil : les panneaux Connexion, Mes amis et Classement ne clignotent plus en boucle",
+        "Accueil : Top, Favoris, Amis et Historique défilent à la molette, sans barre",
+        "Accueil : plus ton avatar ni ton pseudo en fond quand tu n'es pas en vocal",
+        "Un onglet ouvert se referme d'un clic ailleurs",
+        "Texte noir sur fond clair et blanc sur fond sombre, tout seul",
+        "Fonds vidéo plus fluides, et en pause quand Hush est caché",
+        "Nouvelle caméra « Plongée », ta caméra dans chaque disposition, effet vieille télé en vocal",
+        "Liste des vocaux plus douce, avec un petit « tic » de molette",
+        "Paramètres refaits : pastilles, curseur perso, Vidéo et Fenêtre séparés, import .hush en glisser-déposer",
+        "Anneaux : Spaghetti, Ondes, Profil, Indépendant, Unicolor, Album ; contour en couleur et ombre façon Ambilight",
+        "Rich Presence : Hush s'affiche sur ton profil Discord ; la pastille Hush ne s'affiche plus que sur Discord",
+        "Accueil : entrée et sortie en douceur, anneaux blancs et ombres noires, plus de bulle au survol",
+        "Pseudos lisibles dans toutes les dispositions ; classement aux couleurs des rangs ; notifications lues effacées"
       ],
       "artifacts": {
         "win32-x64": {

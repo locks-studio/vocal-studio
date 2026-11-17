@@ -83,7 +83,7 @@ function ask(question, { hidden = false, def = "" } = {}) {
   ].join("\n"));
 
   const redirect = `${publicUrl.replace(/\/$/, "")}/auth/callback`;
-  const invite = `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=${1024 + 1048576}`;
+  const invite = `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=8`;
   console.log("\n✓ Fichier .env enregistré.\n");
   console.log("Il reste deux clics sur le portail Discord :");
   console.log(`  • OAuth2 → Redirects → ajoute exactement : ${redirect}  puis « Save Changes »`);
