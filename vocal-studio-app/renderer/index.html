@@ -23,16 +23,19 @@
   <div class="bg-tilt" id="bgTilt" aria-hidden="true"></div>
   <div class="bg-snow" id="bgSnow" aria-hidden="true"></div>
   <div class="bg-grain" id="bgGrain" aria-hidden="true"></div>
+  <div class="bg-fade" aria-hidden="true"></div>
+  <!-- Accueil : fondu ou flou sur toute la fenêtre (sous la barre du haut, qui le garde même quand elle se cache) -->
+  <div class="home-fx" aria-hidden="true"><i class="hfx-blur"></i><i class="hfx-veil"></i></div>
 
   <header class="titlebar">
     <div class="chan"><span>#</span> <b id="chanName">Hush</b></div>
     <div class="meta"><span id="status"><i class="dot"></i> Hors ligne</span><span id="guild"></span><span id="count"></span><button class="pill" id="showHidden" hidden></button></div>
     <div class="winbtns">
-      <button class="wb" id="homeBtn" title="Accueil" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-6h4v6"/></svg></button>
+      <button class="wb" id="homeBtn" title="Accueil" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path class="hole" d="M10 20v-6h4v6"/></svg></button>
       <button class="wb notif-btn" id="notifBtn" title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><i class="notif-dot" id="notifDot" hidden></i></button>
-      <button class="wb" id="togglePanel" title="Paramètres" aria-label="Ouvrir ou fermer les paramètres"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="wb" id="togglePanel" title="Paramètres" aria-label="Ouvrir ou fermer les paramètres"><svg viewBox="0 0 24 24"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/><circle class="hole" cx="12" cy="12" r="3"/></svg></button>
       <button class="wb" id="fullscreen" title="Plein écran (F11)" aria-label="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-      <button class="wb" id="miniBtn" title="Mini-fenêtre (toujours au premier plan)" aria-label="Ouvrir la mini-fenêtre"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="11" y="11" width="7" height="6" rx="1.5"/></svg></button>
+      <button class="wb" id="miniBtn" title="Mini-fenêtre (toujours au premier plan)" aria-label="Ouvrir la mini-fenêtre"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><rect class="hole" x="11" y="11" width="7" height="6" rx="1.5"/></svg></button>
       <button class="wb" id="pin" title="Toujours au premier plan" aria-label="Garder la fenêtre au premier plan"><svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg></button>
       <button class="wb" id="min" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
       <button class="wb" id="max" title="Agrandir" aria-label="Agrandir"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>
@@ -151,14 +154,19 @@
     <div class="share-pick" id="wePanel" hidden>
       <section class="share-card glass" role="dialog" aria-modal="true" aria-labelledby="weTitle">
         <header><h3 id="weTitle">Tes fonds Wallpaper Engine</h3><button class="wb" id="weClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+        <p class="we-tip"><b>Conseil :</b> les fonds <b>« Vidéo animée »</b> donnent le meilleur résultat : ils bougent dans Hush comme dans Wallpaper Engine. Les scènes et les fonds web n'affichent que leur aperçu.</p>
         <input type="search" id="weSearch" placeholder="Chercher un fond…" aria-label="Chercher un fond">
+        <div class="we-filters" id="weFilters">
+          <div class="we-chips" data-f="type" aria-label="Type"><button type="button" data-v="all">Tous</button><button type="button" data-v="video">Vidéos animées</button><button type="button" data-v="scene">Scènes</button><button type="button" data-v="web">Web</button><button type="button" data-v="other">Autres</button></div>
+          <div class="we-chips" data-f="src" aria-label="Provenance"><button type="button" data-v="all">Partout</button><button type="button" data-v="workshop">Workshop</button><button type="button" data-v="mine">Mes projets</button></div>
+          <div class="we-chips" data-f="sort" aria-label="Ordre"><button type="button" data-v="video">Vidéos d'abord</button><button type="button" data-v="az">A → Z</button></div>
+        </div>
         <div class="share-grid we-grid" id="weGrid"></div>
-        <p class="hint">Les fonds vidéo s'animent dans Hush. Pour les scènes et les fonds web, Hush affiche leur aperçu : leur format est propre à Wallpaper Engine.</p>
       </section>
     </div>
 
     <!-- Appel : tu es seul, ça sonne / on attend -->
-    <div class="call-banner glass" id="callBanner" hidden><i class="call-dot"></i><div><b id="callTitle"></b><small id="callSub"></small></div></div>
+    <div class="call-banner glass" id="callBanner" hidden><i class="call-dot"></i><div><b id="callTitle"></b><small id="callSub"></small></div><button class="wb call-x" id="callClose" type="button" title="Cacher" aria-label="Cacher ce message"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <!-- Quelqu'un vient de lancer un vocal -->
     <div class="incoming glass" id="incoming" hidden>
       <img id="incomingAv" alt=""><div><b id="incomingText"></b><small id="incomingSub"></small></div>
@@ -171,32 +179,39 @@
       <!-- Sur le côté : tes salons les plus utilisés, et tes favoris -->
       <aside class="home-side" id="homeSide" aria-label="Top salons et favoris">
         <div class="hs-in">
-        <nav class="hs-tabs" aria-label="Salons"><button type="button" data-hs="top">Top salons</button><button type="button" data-hs="fav">Favoris</button></nav>
+        <nav class="hs-tabs" aria-label="Salons"><button type="button" data-hs="top">Top</button><button type="button" data-hs="fav">Favoris</button><button type="button" data-hs="friends">Amis</button><button type="button" data-hs="hist">Historique</button></nav>
         <div class="hs-list" id="homeSideList"></div>
         </div>
       </aside>
+      <!-- Clic droit sur un salon : tes stats dans ce salon -->
+      <div class="hs-stats glass" id="hsStats" hidden></div>
       <p class="home-why" id="homeWhy" hidden></p>
       <p class="home-hint" id="homeHint" hidden>Hush marche sur les serveurs où le bot est invité.</p>
       <!-- Onglets discrets en bas : un clic ouvre un petit panneau de verre, un second clic le referme -->
       <section class="home-panel glass" id="homePanel" hidden>
         <div class="home-pane" data-ht="account" id="homeAccount"></div>
         <div class="home-pane" data-ht="people" id="homePeople">
-          <div class="fr-me"><span>Mon code ami : <b id="frCode">…</b></span><button type="button" class="ghost small" id="frCopy">Copier</button></div>
-          <form class="fr-add" id="frAdd"><input type="text" id="frInput" class="field" maxlength="40" placeholder="Code ami de la personne (ex. AB12CD)" aria-label="Code ami" autocomplete="off" spellcheck="false"><button type="button" class="ghost small" id="frPaste" title="Coller le code copié">Coller</button><button class="cta small">Ajouter</button></form>
-          <label class="fr-hide"><input type="checkbox" id="frHide"> Cacher à mes amis dans quel vocal je suis</label>
-          <label class="fr-hide"><input type="checkbox" id="frRank"> Apparaître dans le classement public</label>
+          <div class="hp-head"><h2 class="hp-title">Mes amis</h2><button type="button" class="hp-code" id="frCopy" title="Copier mon code ami"><small>Mon code</small><b id="frCode">…</b><i>Copier</i></button></div>
+          <div class="fr-me" hidden></div>
+          <form class="fr-add hp-add" id="frAdd"><input type="text" id="frInput" class="field" maxlength="40" placeholder="Code ami de la personne (ex. AB12CD)" aria-label="Code ami" autocomplete="off" spellcheck="false"><button type="button" class="ghost small" id="frPaste" title="Coller le code copié">Coller</button><button class="cta small">Ajouter</button></form>
+          <div class="hp-toggles"><label class="fr-hide hp-tog"><input type="checkbox" id="frHide"><span>Cacher mon vocal à mes amis</span></label>
+          <label class="fr-hide hp-tog"><input type="checkbox" id="frRank"><span>Dans le classement public</span></label></div>
           <div id="frList"></div>
         </div>
         <div class="home-pane" data-ht="history" id="homeHistory"></div>
         <div class="home-pane" data-ht="top" id="homeTop"></div>
         <div class="home-pane" data-ht="admin" id="homeAdmin"></div>
       </section>
-      <label class="home-veil" title="Opacité du fond de l'accueil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/></svg><input type="range" id="homeVeil" min="0" max="1" step="0.05" aria-label="Opacité du fond de l'accueil"></label>
+      <div class="home-quick">
+        <button type="button" class="hq-btn hq-ov" id="homeOverlay" role="switch" aria-checked="true" title="La mini-fenêtre de Hush au-dessus de tes jeux"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="11" y="11" width="7" height="6" rx="1.5"/></svg><span>Overlay</span><i class="hq-sw"></i></button>
+        <button type="button" class="hq-btn hq-dc" id="homeDiscord" title="Ouvrir Discord"><img src="assets/discord-logo.png" alt=""><span>Aller sur Discord</span></button>
+      </div>
+      <div class="home-blur" aria-hidden="true"></div>
+      <div class="home-veil" title="Fond de l'accueil : fondu ou flou"><button type="button" id="homeVeilMode" class="hv-mode" title="Passer du fondu au flou" aria-label="Passer du fondu au flou"><svg class="hv-fade" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/></svg><svg class="hv-blur" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="6" opacity=".6"/><circle cx="12" cy="12" r="9.2" opacity=".3"/></svg><b id="homeVeilLabel">Fondu</b></button><input type="range" id="homeVeil" min="0" max="1" step="0.05" aria-label="Fond de l'accueil"></div>
       <nav class="home-tabs" id="homeTabs" aria-label="Accueil">
         <button type="button" id="homeInvite" class="invite" title="Il faut le droit de gérer le serveur pour inviter le bot."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg><span>Inviter le bot</span></button>
         <button type="button" data-ht="account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Connexion</span></button>
         <button type="button" data-ht="people"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg><span>Mes amis</span></button>
-        <button type="button" data-ht="history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg><span>Historique</span></button>
         <button type="button" data-ht="top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a4 4 0 0 0 3.5 4M17 6h3v1a4 4 0 0 1-3.5 4M12 14v4M8 21h8M9.5 18h5"/></svg><span>Classement</span></button>
         <button type="button" data-ht="admin" id="adminTab" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Admin</span></button>
         <button type="button" id="homeStudio" class="studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Personnaliser</span></button>
@@ -204,10 +219,12 @@
     </div>
 
     <!-- Mode Personnaliser : un vocal simulé, seul, pour tout essayer -->
+    <label class="sb-guests glass" id="sbGuests" hidden title="Nombre de personnes dans le vocal simulé">
+      <b id="sbGuestsOut">1</b><input type="range" id="sbGuestsRange" min="1" max="24" step="1" aria-label="Nombre de personnes dans le vocal simulé"><small>pers.</small>
+    </label>
     <div class="sandbox-pill glass" id="sandboxPill" hidden>
       <span><b>Personnalisation</b> · vocal simulé, rien n'est envoyé</span>
       <button type="button" id="sandboxTalk" class="on">Je parle</button>
-      <button type="button" id="sandboxGuests">+ Invités</button>
       <button type="button" id="sandboxQuit" class="quit">Quitter</button>
     </div>
 
@@ -224,7 +241,7 @@
       <header class="chat-head"><b id="chatTitle">Tchat</b><button class="wb" id="chatClose" aria-label="Fermer le tchat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
       <div class="chat-list" id="chatList" role="log" aria-live="polite"></div>
       <p class="chat-why" id="chatWhy" hidden></p>
-      <form class="chat-form" id="chatForm"><input type="text" id="chatInput" maxlength="1900" placeholder="Écrire un message…" aria-label="Écrire un message" autocomplete="off"><button class="wb" type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button></form>
+      <form class="chat-form" id="chatForm"><button class="wb chat-attach" type="button" id="chatAttach" title="Envoyer une photo ou un fichier (8 Mo max) · tu peux aussi coller ou glisser" aria-label="Envoyer une photo ou un fichier"><svg viewBox="0 0 24 24"><path d="M20.5 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/></svg></button><input type="file" id="chatFile" multiple hidden><input type="text" id="chatInput" maxlength="1900" placeholder="Écrire un message…" aria-label="Écrire un message" autocomplete="off"><button class="wb" type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button></form>
     </section>
 
     <nav class="dock glass" id="dock" aria-label="Contrôles d'appel">
@@ -243,6 +260,7 @@
   <!-- Notifications : demandes d'ami, invitations, amis en vocal -->
   <section class="notif-pop glass" id="notifPop" aria-label="Notifications" hidden>
     <header class="nt-head"><b>Notifications</b><button class="linkbtn" id="notifClear" type="button">Tout effacer</button></header>
+    <nav class="nt-filters" id="notifFilters" aria-label="Trier les notifications"><button type="button" data-nf="all">Tout</button><button type="button" data-nf="req">Demandes</button><button type="button" data-nf="invite">Invitations</button><button type="button" data-nf="voice">En vocal</button></nav>
     <div class="nt-list" id="notifList"></div>
   </section>
 
@@ -256,6 +274,7 @@
           <button role="tab" data-tab="looks">Préréglages</button>
           <button role="tab" data-tab="general">Disposition</button>
           <button role="tab" data-tab="avatars">Avatars et anneau</button>
+          <button role="tab" data-tab="names">Pseudos</button>
           <button role="tab" data-tab="anim">Animation</button>
           <button role="tab" data-tab="effets">Effets</button>
           <button role="tab" data-tab="fond">Fond</button>
@@ -331,11 +350,12 @@
           <div class="group"><div class="label">Anneau</div>
             <div class="seg" id="ringSeg"><button data-v="aura">Aura</button><button data-v="wave">Vagues</button><button data-v="flame">Flammes</button><button data-v="gradient">Dégradé</button><button data-v="solid">Plein</button></div>
             <div class="label">Couleur de l'anneau</div>
-            <div class="seg" id="ringFromSeg"><button data-v="origin">Basique</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button><button data-v="duo">Dégradé 2 couleurs</button><button data-v="avatar">Avatar de chacun</button></div>
+            <div class="seg" id="ringFromSeg"><button data-v="origin">Base</button><button data-v="avatar">Couleur de chaque photo</button><button data-v="friends">Couleur de mes amis</button><button data-v="ambi">Ambilight</button><button data-v="custom">Ma couleur</button><button data-v="cover">Pochette</button><button data-v="duo">Dégradé 2 couleurs</button></div>
             <div class="row" id="ringColorRow"><label for="ringColor" id="ringColorLabel">Ma couleur</label><input type="color" id="ringColor"></div>
             <div class="row" id="ringColor2Row" hidden><label for="ringColor2">Couleur 2</label><input type="color" id="ringColor2"></div>
             <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de la pochette du morceau en cours.</p>
-            <p class="hint">Avatar de chacun : l'anneau de chaque personne est un dégradé des deux couleurs principales de sa photo de profil.</p>
+            <p class="hint">Couleur de chaque photo : l'anneau de chacun reprend les deux couleurs principales de sa photo. Couleur de mes amis : tu choisis la couleur de chacun (clic droit sur la personne › Couleur de son anneau). Ambilight : l'anneau prolonge les couleurs du bord de la photo, tout autour.</p>
+            <div id="friendColors" class="fc-list" hidden></div>
           </div>
           <div class="group">
             <div class="label"><label for="glow">Intensité du halo</label><output id="glowOut"></output></div>
@@ -353,6 +373,10 @@
             <div class="row"><span>Contour</span><button class="switch" id="avOutline" role="switch" aria-label="Contour autour des avatars"></button></div>
             <div class="row" id="avOutlineAutoRow"><span>Couleur de l'avatar (au lieu du noir)</span><button class="switch" id="avOutlineAuto" role="switch" aria-label="Contour de la couleur de l'avatar"></button></div>
           </div>
+        </div>
+
+        <!-- ——— Pseudos : à part, avec leur hauteur ——— -->
+        <div class="tab-panel" data-tab="names" role="tabpanel">
           <h4 class="sec">Pseudos</h4>
           <div class="group">
             <div class="row"><span>Afficher les pseudos</span><button class="switch" id="names" role="switch" aria-label="Afficher les pseudos"></button></div>
@@ -361,6 +385,11 @@
             <div class="row" id="nameHoverRow"><span>Voir le pseudo au survol de la souris</span><button class="switch" id="nameHover" role="switch" aria-label="Voir le pseudo au survol"></button></div>
             <div class="label">Position</div>
             <div class="seg two" id="namePosSeg"><button data-v="top">En haut</button><button data-v="bottom">En bas</button></div>
+            <div class="label"><label for="nameShift">Hauteur</label><output id="nameShiftOut"></output></div>
+            <input type="range" id="nameShift" min="-40" max="40" step="1">
+            <p class="hint">À droite, le pseudo monte un peu au-dessus de l'avatar ; à gauche, il descend. Double-clic sur la barre : au milieu.</p>
+            <div class="row"><span>Adapter la taille à chaque pseudo</span><button class="switch" id="nameFit" role="switch" aria-label="Adapter la taille de chaque pseudo à sa longueur"></button></div>
+            <p class="hint">Adapter : un pseudo long devient un peu plus petit pour s'afficher en entier, chez tout le monde.</p>
             <div class="label"><label for="nameSize">Taille</label><output id="nameSizeOut"></output></div>
             <input type="range" id="nameSize" min="0.5" max="2" step="0.05">
             <div class="row"><label for="fontSel">Police</label><select id="fontSel" class="field"></select></div>
@@ -409,14 +438,15 @@
             <div class="bg-groups" id="bgSeg">
               <div class="bg-grp"><small class="bg-grp-t">Espace</small><div class="bg-pick"><button data-v="space" title="Espace"><span class="bg-dot"></span><small>Espace</small></button><button data-v="pinkspace" title="Espace rose"><span class="bg-dot"></span><small>Espace rose</small></button></div></div>
               <div class="bg-grp"><small class="bg-grp-t">Couleurs</small><div class="bg-pick"><button data-v="solid" title="Uni"><span class="bg-dot"></span><small>Uni</small></button><button data-v="gradient" title="Dégradé"><span class="bg-dot"></span><small>Dégradé</small></button><button data-v="duo" title="Double dégradé"><span class="bg-dot"></span><small>Double dégradé</small></button></div></div>
-              <div class="bg-grp"><small class="bg-grp-t">Personnalisé</small><div class="bg-pick"><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="image" title="Image / GIF"><span class="bg-dot"></span><small>Image / GIF</small></button><button data-v="we" id="bgWe" title="Wallpaper Engine" hidden><span class="bg-dot"></span><small>Wallpaper Engine</small></button></div></div>
+              <div class="bg-grp"><small class="bg-grp-t">Personnalisé</small><div class="bg-pick"><button data-v="profile" title="Profil"><span class="bg-dot"></span><small>Profil</small></button><button data-v="image" title="Image, GIF ou vidéo"><span class="bg-dot"></span><small>Image / GIF / Vidéo</small></button><button data-v="we" id="bgWe" title="Wallpaper Engine" hidden><span class="bg-dot"></span><small>Wallpaper Engine</small></button></div></div>
             </div>
             <button class="ghost" id="bgPick" hidden>Choisir un fond</button>
+            <p class="hint bg-res" id="bgRes" hidden><b>Meilleure qualité :</b> la taille de ton écran (souvent 1920 × 1080, ou 2560 × 1440).<br>Image : PNG, JPG ou WebP. Vidéo : MP4 (H.264) ou WebM, en boucle, 30 ou 60 images/s, moins de 100 Mo ; le son est coupé. GIF : 1280 × 720 suffit (au-delà, ça devient lourd).</p>
             <button class="ghost" id="wePick" hidden>Changer de fond Wallpaper Engine</button>
             <div class="row" id="bgColorRow" hidden><label for="bgColor" id="bgColorLabel">Couleur du fond</label><input type="color" id="bgColor"></div>
             <div class="row" id="bgColor2Row" hidden><label for="bgColor2">Couleur 2</label><input type="color" id="bgColor2"></div>
             <input type="file" id="bgFile" accept="image/*" hidden>
-            <p class="hint">« Profil » : la photo de profil de celui qui parle, en grand et floutée. « Double dégradé » : deux couleurs au choix. « Image / GIF » garde ton image en pleine qualité ; les GIF et les vidéos bougent.</p>
+            <p class="hint">« Profil » : la photo de profil de celui qui parle, en grand et floutée. « Double dégradé » : deux couleurs au choix. « Image / GIF / Vidéo » garde ton fichier en pleine qualité ; les GIF et les vidéos bougent.</p>
           </div>
           <div class="group" id="bgZoomGroup" hidden>
             <div class="label"><label for="bgZoom">Zoom de l'image</label><output id="bgZoomOut"></output></div>
@@ -424,6 +454,9 @@
             <button class="linkbtn" id="bgZoomReset">Revenir à 100 %</button>
           </div>
           <div class="group">
+            <div class="label"><label for="bgFade">Fondu du fond</label><output id="bgFadeOut"></output></div>
+            <input type="range" id="bgFade" min="0" max="0.9" step="0.05">
+            <p class="hint">Assombrit le fond en vocal, et un peu la barre du haut. Le flou est juste en dessous.</p>
             <div class="label"><label for="bgBlur">Flou du fond</label><output id="bgBlurOut"></output></div>
             <input type="range" id="bgBlur" min="0" max="80" step="1">
             <div class="seg two" id="blurTypeSeg" style="grid-template-columns:repeat(3,1fr)"><button data-v="gaussian">Doux</button><button data-v="motion">Mouvement</button><button data-v="frost">Verre dépoli</button></div>
@@ -432,6 +465,11 @@
 
         <!-- ——— Thème : la couleur de l'interface ——— -->
         <div class="tab-panel" data-tab="theme" role="tabpanel">
+          <h4 class="sec">Style des fenêtres</h4>
+          <div class="group">
+            <div class="seg two" id="uiDaSeg"><button data-v="home">Comme l'accueil</button><button data-v="glass">Verre clair</button></div>
+            <p class="hint">Comme l'accueil : verre fumé sombre et texte blanc partout (paramètres, tchat, notifications, menus). Verre clair : l'ancien style.</p>
+          </div>
           <h4 class="sec">Couleur d'accent</h4>
           <div class="skins" id="skins" hidden></div>
           <div class="group">
@@ -545,6 +583,7 @@
           <h4 class="sec">Overlay en jeu</h4>
           <div class="group">
             <div class="row"><span>Overlay</span><button class="ghost" id="setMini">Ouvrir</button></div>
+            <div class="row" id="discordBtnRow" hidden><span>Bouton « Hush » sur la fenêtre de Discord</span><button class="switch" id="discordBtn" role="switch" aria-label="Bouton Hush sur la fenêtre de Discord"></button></div>
             <div class="row" id="ovEditRow" hidden><span>Place et taille</span><button class="ghost" id="ovEdit">Déplacer</button></div>
             <p class="hint" id="ovEditHint" hidden>Fais glisser l'overlay où tu veux, même sur un autre écran, et change sa taille avec la molette. Échap, clic droit ou « Terminé » pour finir.</p>
             <p class="hint">Toujours au premier plan, et la souris passe à travers : il ne gêne jamais quand tu joues. Ctrl+Maj+H l'affiche ou le cache, même en jeu. Un jeu en plein écran exclusif le recouvre : mets le jeu en « fenêtré sans bordure ».</p>

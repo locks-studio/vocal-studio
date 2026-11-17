@@ -41,16 +41,44 @@ try {
 } catch {}
 // Toujours décidé ici, d'après le compte vérifié : l'appli ne peut pas se déclarer administrateur
 const isAdmin = (id) => bot.owners.has(id) || ADMIN_IDS.has(id);
+// Rôles donnés par les administrateurs (roles.json, hors GitHub) : Phantom, Standard, Premium, Limitless, Testeur, Collaborateur, Streamer
+const ROLES = ["standard", "phantom", "premium", "limitless", "testeur", "collaborateur", "streamer"];
+const ROLES_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "roles.json");
+let roles = {};
+try { roles = JSON.parse(fs.readFileSync(ROLES_FILE, "utf8")) || {}; } catch {}
+const saveRoles = () => fs.writeFile(ROLES_FILE + ".tmp", JSON.stringify(roles), (e) => { if (!e) fs.rename(ROLES_FILE + ".tmp", ROLES_FILE, () => {}); });
+const roleOf = (id) => roles[id] || "standard";
 function adminStats() {
   const seen = new Map();
-  for (const x of clients) if (x.user) seen.set(x.user.id, { id: x.user.id, name: x.user.name, avatar: x.user.avatar, version: x.meta.version || "?", os: x.meta.os || "?", inVoice: !!friends.presence.get(x.user.id) });
+  for (const x of clients) if (x.user) seen.set(x.user.id, { id: x.user.id, name: x.user.name, avatar: x.user.avatar, version: x.meta.version || "?", os: x.meta.os || "?", inVoice: !!friends.presence.get(x.user.id), cam: !!(x.video && x.video.cam), screen: !!(x.video && x.video.screen), role: roleOf(x.user.id) });
   const hours = Object.values(usage).reduce((a, u) => a + (u.minutes || 0), 0) / 60;
+  const now = Date.now();
+  const active = (ms) => Object.values(usage).filter((u) => u.last && now - u.last < ms).length;
+  const count = (key) => { const m = {}; for (const p of seen.values()) m[p[key]] = (m[p[key]] || 0) + 1; return m; };
+  const roleCount = {};
+  for (const r of Object.values(roles)) roleCount[r] = (roleCount[r] || 0) + 1;
+  const servers = bot.client.isReady() ? [...bot.client.guilds.cache.values()].map((g) => ({ name: g.name, members: g.memberCount })) : [];
   return {
-    uptime: Date.now() - STARTED, memMB: Math.round(process.memoryUsage().rss / 1e6), botOnline: bot.client.isReady(),
-    servers: bot.client.isReady() ? [...bot.client.guilds.cache.values()].map((g) => ({ name: g.name, members: g.memberCount })) : [],
+    uptime: now - STARTED, memMB: Math.round(process.memoryUsage().rss / 1e6), botOnline: bot.client.isReady(), ping: bot.client.ws ? Math.round(bot.client.ws.ping) : null,
+    servers, members: servers.reduce((a, g) => a + (g.members || 0), 0),
     online: [...seen.values()], accounts: new Set(Object.values(sessions).map((x) => x.id)).size, friendsAccounts: Object.keys(friends.db).length,
     hours: Math.round(hours), reportCount: reports.list.length,
+    inVoice: [...seen.values()].filter((p) => p.inVoice).length, video: [...seen.values()].filter((p) => p.cam || p.screen).length,
+    active24h: active(86_400_000), active7d: active(7 * 86_400_000), ranked: Object.keys(usage).length,
+    versions: count("version"), systems: count("os"), roles: roleCount,
+    top: Object.entries(usage).map(([id, u]) => ({ id, name: u.name || "?", avatar: u.avatar || null, hours: Math.round((u.minutes / 60) * 10) / 10 })).sort((a, b) => b.hours - a.hours).slice(0, 5),
   };
+}
+// Tous les comptes connus (amis Hush, classement, sessions), avec leur rôle : pour la gestion des rôles
+function adminUsers() {
+  const all = new Map();
+  const add = (id, name, avatar) => { if (!/^\d{5,25}$/.test(String(id))) return; const p = all.get(id) || { id, name: null, avatar: null }; p.name = p.name || name || null; p.avatar = p.avatar || avatar || null; all.set(id, p); };
+  for (const [id, u] of Object.entries(friends.db)) add(id, u.name, u.avatar);
+  for (const [id, u] of Object.entries(usage)) add(id, u.name, u.avatar);
+  for (const s of Object.values(sessions)) add(s.id, s.name, null);
+  const on = new Set([...clients].filter((x) => x.user).map((x) => x.user.id));
+  return [...all.values()].map((p) => ({ ...p, name: p.name || "?", role: roleOf(p.id), online: on.has(p.id), hours: usage[p.id] ? Math.round((usage[p.id].minutes / 60) * 10) / 10 : 0, last: usage[p.id] ? usage[p.id].last || null : null }))
+    .sort((a, b) => b.online - a.online || b.hours - a.hours);
 }
 const FRIENDS_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "friends.json");
 const USAGE_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, ".."), "usage.json");
@@ -172,6 +200,25 @@ const server = http.createServer((req, res) => {
     bot.avatarOf(s.id).then((avatar) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ id: s.id, name: s.name, avatar }));
+    });
+  } else if (url.pathname === "/chat/upload" && req.method === "POST") {
+    // Photo ou fichier envoyé dans le tchat depuis Hush : 8 Mo au plus, avec la session de la personne
+    const m = /^Bearer (\S{10,200})$/.exec(req.headers.authorization || "");
+    const s = m && sessionOf(m[1]);
+    if (!s) { res.writeHead(401).end(); return; }
+    const dec = (x) => { try { return decodeURIComponent(String(x)); } catch { return ""; } };
+    const MAX = 8 * 1024 * 1024;
+    if (+req.headers["content-length"] > MAX) { res.writeHead(413).end(JSON.stringify({ error: "Fichier trop lourd : 8 Mo au plus." })); return; }
+    const name = dec(req.headers["x-file-name"] || "fichier").replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").slice(0, 100) || "fichier";
+    const text = dec(req.headers["x-text"] || "").slice(0, 1900);
+    const parts = []; let size = 0, over = false;
+    req.on("data", (d) => { size += d.length; if (size > MAX) { over = true; req.destroy(); } else parts.push(d); });
+    req.on("end", async () => {
+      res.setHeader("Content-Type", "application/json");
+      if (over) return res.writeHead(413).end(JSON.stringify({ error: "Fichier trop lourd : 8 Mo au plus." }));
+      if (!allow("chat:" + s.id, 10)) return res.writeHead(429).end(JSON.stringify({ error: "Doucement : 10 messages par minute au plus." }));
+      try { const data = await bot.chatSend(s.id, text, [{ attachment: Buffer.concat(parts), name }]); res.writeHead(200).end(JSON.stringify({ data })); }
+      catch (e) { res.writeHead(400).end(JSON.stringify({ error: e.message })); }
     });
   } else if (url.pathname === "/auth/poll") {
     const p = pending.get(url.searchParams.get("state"));
@@ -323,7 +370,7 @@ wss.on("connection", (ws, req) => {
       clients.add(c);
       friends.touch(c.user);
       friends.notifyFriends(c.user.id); // « Hush ouvert »
-      ws.send(JSON.stringify({ type: "hello", user: c.user, admin: isAdmin(c.user.id) }));
+      ws.send(JSON.stringify({ type: "hello", user: c.user, admin: isAdmin(c.user.id), role: roleOf(c.user.id) }));
       return push(c);
     }
     try {
@@ -356,7 +403,15 @@ wss.on("connection", (ws, req) => {
         try {
           if (!isAdmin(c.user.id)) throw new Error("Réservé à l'administrateur.");
           if (msg.op === "clear") reports.clear();
-          const data = msg.op === "reports" || msg.op === "clear" ? reports.list.slice(0, 50) : adminStats();
+          if (msg.op === "setRole") {
+            const a = msg.arg || {};
+            if (!/^\d{5,25}$/.test(String(a.id)) || !ROLES.includes(a.role)) throw new Error("Rôle ou compte invalide.");
+            if (a.role === "standard") delete roles[a.id]; else roles[a.id] = a.role;
+            saveRoles();
+            // La personne connectée reçoit son nouveau rôle tout de suite
+            for (const x of clients) if (x.user && x.user.id === a.id && x.ws.readyState === 1) x.ws.send(JSON.stringify({ type: "role", role: roleOf(a.id) }));
+          }
+          const data = msg.op === "reports" || msg.op === "clear" ? reports.list.slice(0, 50) : msg.op === "users" || msg.op === "setRole" ? adminUsers() : adminStats();
           ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data }));
         } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
       }

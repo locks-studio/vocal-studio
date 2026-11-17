@@ -6,9 +6,9 @@
 // Tout le visuel : appliquer un préréglage remet Hush exactement dans l'état où il a été enregistré
 // (les couleurs choisies comprises : anneau, fond, accent).
 const PRESET_KEYS = ["skin", "accent", "layout", "vertical", "vertNameTop", "freePos", "shape", "players", "zoom", "camera",
-  "bg", "bgImage", "bgKind", "bgWePreview", "bgColor", "bgColor2", "bgZoom", "bgBlur", "blurType",
+  "bg", "bgImage", "bgKind", "bgWePreview", "bgColor", "bgColor2", "bgZoom", "bgBlur", "bgFade", "blurType",
   "ring", "ringFrom", "ringColor", "ringColor2", "glow", "voiceMin", "avShadow", "avOutline", "avOutlineAuto", "avAnim", "speed", "joinAnim",
-  "names", "cards", "hideMuted", "showMe", "namePos", "nameSize", "nameMask", "nameHover", "font", "pixel",
+  "names", "cards", "hideMuted", "showMe", "namePos", "nameSize", "nameShift", "nameFit", "nameMask", "nameHover", "font", "pixel",
   "glitch", "glitchAmt", "glitchVoice", "glitchStyle", "musicOn", "playerColor", "playerBg", "playerW", "playerPos", "playerStyle", "camView"];
 // Applique un préréglage : un réglage absent (préréglage d'une ancienne version) reprend sa valeur de base
 function applyLook(data) {

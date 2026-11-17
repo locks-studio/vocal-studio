@@ -9,6 +9,9 @@ function chatMsgEl(m) {
   row.className = "chat-msg";
   const av = document.createElement("img");
   av.className = "chat-av"; av.alt = ""; av.src = m.avatar || "assets/discord-logo.png";
+  // Photo pas encore prête chez Discord : on réessaie un peu plus tard, puis le logo par défaut
+  let tries = 0;
+  av.onerror = () => { if (tries++ < 3 && m.avatar) setTimeout(() => { av.src = m.avatar + (m.avatar.includes("?") ? "&" : "?") + "r=" + tries; }, 1500 * tries); else av.src = "assets/discord-logo.png"; };
   const body = document.createElement("div");
   body.style.minWidth = "0";
   const who = document.createElement("div");
@@ -36,6 +39,17 @@ function chatMsgEl(m) {
     el.className = "pic";
     if (x.w && x.h) el.style.aspectRatio = `${x.w} / ${x.h}`;
     body.append(el);
+  }
+  // Autres fichiers : un lien de téléchargement (ouvert dans le navigateur)
+  for (const f of m.files || []) {
+    const a = document.createElement("button");
+    a.type = "button"; a.className = "chat-file";
+    a.innerHTML = '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+    const t = document.createElement("span"); t.textContent = f.name;
+    const sz = document.createElement("small"); sz.textContent = f.size > 1048576 ? (f.size / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(f.size / 1024)) + " Ko";
+    a.append(t, sz);
+    a.onclick = () => window.open(f.url);
+    body.append(a);
   }
   row.dataset.id = m.id;
   row.append(av, body);
@@ -91,6 +105,31 @@ $("#chatForm").onsubmit = async (e) => {
     showToast(`Message envoyé sous le nom du bot, pas sous ton pseudo : ${r.data.why}.`);
   }
 };
+
+// Photos et fichiers : bouton trombone, Ctrl+V d'une image, ou glisser-déposer sur le tchat
+async function chatUpload(files) {
+  files = [...files].slice(0, 4);
+  if (!files.length || $("#chatForm").hidden) return;
+  const input = $("#chatInput"), text = input.value.trim();
+  for (const [i, f] of files.entries()) {
+    if (f.size > 8 * 1024 * 1024) { showToast(`${f.name} est trop lourd : 8 Mo au plus.`); continue; }
+    chatNote(`Envoi de ${f.name}…`);
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const r = await window.studio.chat.upload(f.name || "image.png", bytes, i === 0 ? text : "");
+    if (r.error) { chatNote(r.error); showToast(r.error); return; }
+    if (i === 0 && text) input.value = "";
+  }
+  chatNote("");
+}
+$("#chatAttach").onclick = () => $("#chatFile").click();
+$("#chatFile").onchange = (e) => { chatUpload(e.target.files); e.target.value = ""; };
+$("#chatInput").addEventListener("paste", (e) => {
+  const files = [...(e.clipboardData || {}).files || []];
+  if (files.length) { e.preventDefault(); chatUpload(files); }
+});
+$("#chat").addEventListener("dragover", (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { e.preventDefault(); $("#chat").classList.add("drop"); } });
+$("#chat").addEventListener("dragleave", (e) => { if (!e.relatedTarget || !$("#chat").contains(e.relatedTarget)) $("#chat").classList.remove("drop"); });
+$("#chat").addEventListener("drop", (e) => { e.preventDefault(); $("#chat").classList.remove("drop"); chatUpload(e.dataTransfer.files); });
 
 window.studio.chat.onMessage((m) => {
   if (!Chat.open) { if (!(m.id && Chat.seen && Chat.seen.has(m.id))) { Chat.unread++; $("#chatDot").hidden = false; } (Chat.seen || (Chat.seen = new Set())).add(m.id); return; }

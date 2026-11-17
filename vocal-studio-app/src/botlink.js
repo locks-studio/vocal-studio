@@ -48,7 +48,8 @@ class BotLink {
       else if (msg.type === "chat") { if (this.onChat) this.onChat(msg.message); }
       else if (msg.type === "friends-changed") { if (this.onFriends) this.onFriends(); }
       else if (msg.type === "friend-invite") { if (this.onInvite) this.onInvite(msg); }
-      else if (msg.type === "hello") { this.admin = !!msg.admin; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); this.send({ type: "video", ...this.lastVideo }); if (this.onFriends) this.onFriends(); }
+      else if (msg.type === "role") this.role = msg.role;
+      else if (msg.type === "hello") { this.admin = !!msg.admin; this.role = msg.role || "standard"; if (this.lastPresence !== undefined) this.send({ type: "presence", voice: this.lastPresence }); this.send({ type: "video", ...this.lastVideo }); if (this.onFriends) this.onFriends(); }
       else if (msg.type === "video-room" || msg.type === "rtc") { if (this.onVideo) this.onVideo(msg); }
       else if (msg.type === "mod-result") {
         const p = this.pending.get(msg.rid);
@@ -98,7 +99,7 @@ class BotLink {
       try {
         const r = await fetch(`${this.server()}/auth/poll?state=${state}`).then((x) => x.json());
         misses = 0;
-        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.start(); }
+        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.loggedInAt = Date.now(); this.start(); }
         else if (r.error) { clearInterval(this.loginTimer); this.set(this.blank("needs-login", r.error)); }
       } catch {
         // Serveur injoignable plusieurs fois de suite : il a été fermé pendant la connexion
@@ -140,9 +141,22 @@ class BotLink {
 
   // Tchat du salon vocal où tu es : historique ou envoi, réponse du serveur attendue
   chat(op, text) { return this.ask({ type: "chat", op, text }); }
+  // Photo ou fichier pour le tchat : envoyé en HTTP (trop gros pour le lien temps réel)
+  async upload(name, bytes, text) {
+    const token = this.store.getToken();
+    if (!token || !this.server()) throw new Error("Pas connecté au bot.");
+    const r = await fetch(this.server() + "/chat/upload", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(name), "X-Text": encodeURIComponent(text || "") },
+      body: bytes,
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || (r.status === 413 ? "Fichier trop lourd : 8 Mo au plus." : r.status === 404 ? "Le serveur du bot n'accepte pas encore les fichiers (il doit être mis à jour)." : "Envoi refusé (" + r.status + ")."));
+    return j.data;
+  }
   // Amis : liste, ajout, acceptation… ; presence : le vocal où tu es, gardé pour le renvoyer après une reconnexion
   friends(op, arg) { return this.ask({ type: "friends", op, arg }); }
-  adminOp(op) { return this.ask({ type: "admin", op }); }
+  adminOp(op, arg) { return this.ask({ type: "admin", op, arg }); }
   // Vidéo entre applis Hush : ce que je montre (caméra / écran), et les messages WebRTC pour un autre membre
   video(v) { this.lastVideo = { cam: !!(v && v.cam), screen: !!(v && v.screen) }; this.send({ type: "video", ...this.lastVideo }); }
   rtc(to, data) { this.send({ type: "rtc", to, data }); }

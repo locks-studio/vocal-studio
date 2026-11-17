@@ -90,7 +90,8 @@ function plainError(msg) {
 function homeMessage() {
   const isBot = state.mode === "bot";
   const info = Home.info;
-  if (state.channel && state.status === "ready") return { text: `Vous êtes dans ${chanLabel(state.channel)}`, act: () => { Home.forced = false; renderHome(); } };
+  // En vocal : plus de nom au milieu, on clique directement sur les avatars en fond pour y retourner
+  if (state.channel && state.status === "ready") return { text: "" };
   if (isBot && (state.status === "disconnected" || (info && (info.unreachable || info.online === false)))) return { text: "Hush est en maintenance" };
   if (isBot && state.status === "needs-login") return { text: "Connectez-vous au bot", act: () => window.studio.bot.login() };
   if (!isBot && state.status === "disconnected") return { text: "Ouvrez Discord" };
@@ -101,6 +102,7 @@ function drawHome() {
   if ($("#home").hidden) return;
   const m = homeMessage(), b = $("#homeMsg");
   if (b.dataset.msg !== m.text) { b.dataset.msg = m.text; b.textContent = m.text; b.classList.remove("in"); void b.offsetWidth; b.classList.add("in"); }
+  b.hidden = !m.text;
   $("#homeHint").hidden = !(state.mode === "bot" && state.status === "ready" && !state.channel);
   b.classList.toggle("act", !!m.act);
   b.disabled = !m.act;
@@ -112,6 +114,11 @@ function drawHome() {
   // Onglets : seul celui qui est ouvert est dessiné
   document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => t.setAttribute("aria-pressed", t.dataset.ht === Home.tab));
   $("#homePanel").hidden = !Home.tab;
+  // Panneaux du bas (sauf l'admin) : sans boîte, dans l'écriture de la liste de gauche ; rejoue l'entrée à chaque onglet
+  const hp = $("#homePanel");
+  hp.classList.toggle("hp-free", !!Home.tab && Home.tab !== "admin");
+  hp.classList.toggle("glass", !hp.classList.contains("hp-free"));
+  if (hp.dataset.tab !== (Home.tab || "")) { hp.dataset.tab = Home.tab || ""; hp.classList.remove("hp-in"); void hp.offsetWidth; hp.classList.add("hp-in"); }
   document.querySelectorAll(".home-pane").forEach((p) => (p.hidden = p.dataset.ht !== Home.tab));
   if (Home.tab === "account") drawAccount();
   if (Home.tab === "people") drawPeople();
@@ -126,46 +133,82 @@ function drawHome() {
   drawSide();
 }
 $("#homeStudio").onclick = () => setSandbox(true);
+// Accueil ouvert pendant un vocal : un clic sur un avatar en fond ramène dans le vocal
+const tileUnder = (x, y) => document.elementsFromPoint(x, y).find((el) => el.closest && el.closest("#stage .tile"));
+let homeHoverTile = null;
+$("#home").addEventListener("pointermove", (e) => {
+  const ok = e.target === $("#home") && state.channel && state.status === "ready";
+  const t = ok ? tileUnder(e.clientX, e.clientY) : null;
+  const tile = t && t.closest(".tile");
+  if (tile === homeHoverTile) return;
+  if (homeHoverTile) homeHoverTile.classList.remove("home-hover");
+  homeHoverTile = tile;
+  if (tile) tile.classList.add("home-hover");
+  $("#home").classList.toggle("over-av", !!tile);
+  $("#home").title = tile ? "Retourner dans le vocal" : "";
+});
+$("#home").addEventListener("click", (e) => {
+  if (e.target !== $("#home") || !state.channel || state.status !== "ready") return;
+  if (!tileUnder(e.clientX, e.clientY)) return;
+  if (homeHoverTile) homeHoverTile.classList.remove("home-hover");
+  homeHoverTile = null; $("#home").classList.remove("over-av"); $("#home").title = "";
+  Home.forced = false; renderHome();
+});
 document.querySelectorAll("#homeTabs [data-ht]").forEach((t) => (t.onclick = () => { Home.tab = Home.tab === t.dataset.ht ? null : t.dataset.ht; drawHome(); }));
 
-// — Connexion : ton compte, comment Hush est connecté, et l'état du bot —
+// — Connexion : ton compte en grand, des pastilles d'état, puis les actions en lignes (comme la liste de gauche) —
+const hpIcon = (d) => { const i = document.createElementNS("http://www.w3.org/2000/svg", "svg"); i.setAttribute("viewBox", "0 0 24 24"); i.innerHTML = d; i.classList.add("hp-ico"); return i; };
+const HP_ICONS = {
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  bot: '<rect x="4" y="8" width="16" height="11" rx="4"/><path d="M12 4v4M9 13h.01M15 13h.01"/>',
+  invite: '<circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+};
+function hpAction(label, sub, icon, fn, hot) {
+  const r = h("button", "hp-act" + (hot ? " hot" : ""));
+  r.type = "button";
+  const t = h("div", "hp-act-t");
+  t.append(h("b", "", label));
+  if (sub) t.append(h("small", "", sub));
+  r.append(hpIcon(HP_ICONS[icon] || ""), t, h("i", "hp-chev", "›"));
+  r.onclick = fn;
+  return r;
+}
 function drawAccount() {
   const isBot = state.mode === "bot";
   const info = Home.info;
   const acc = $("#homeAccount");
   acc.textContent = "";
   const me = state.me;
-  const top = h("div", "hm-me");
-  top.append(avatarImg(me && me.avatar, "hm-av big"));
-  const who = h("div");
-  who.append(h("h2", "", me ? me.name : "Pas connecté"));
-  const lines = h("div", "hm-status");
-  const line = (ok, text) => { const p = h("p", "hm-line " + (ok === true ? "ok" : ok === false ? "err" : "warn")); p.append(h("i", "dot"), text); lines.append(p); };
-  if (isBot) line(state.status === "ready", state.status === "ready" ? "Connecté avec le bot Hush" : state.status === "needs-login" ? "Compte Discord pas encore lié au bot" : (STATUS[state.status] || STATUS.idle)[1]);
-  else line(state.status === "ready", state.status === "ready" ? "Connexion directe à Discord" : (STATUS[state.status] || STATUS.idle)[1]);
-  if (!info || info.unreachable) line(false, "Serveur du bot injoignable");
-  else line(info.online, info.online ? `Bot ${info.name || ""} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
-  who.append(lines);
-  top.append(who);
-  acc.append(top);
-  const btns = h("div", "hm-actions");
-  const b = (label, cls, fn) => { const x = h("button", cls, label); x.onclick = fn; btns.append(x); };
-  if (isBot && state.status === "needs-login") b("Lier mon compte", "cta small", () => window.studio.bot.login());
-  // Connexion directe : lier aussi le bot permet « Ajouter le bot à la voc », Mes amis et le classement
-  if (!isBot && info && !info.unreachable && !info.linked) b("Lier au bot", "ghost small", () => window.studio.bot.login());
+  const head = h("div", "hp-hero");
+  const av = h("div", "hp-hero-av" + (state.status === "ready" ? " on" : ""));
+  av.append(avatarImg(me && me.avatar, "hp-hero-img"));
+  const who = h("div", "hp-hero-t");
+  who.append(h("small", "hp-kicker", "Connexion"), h("h2", "hp-name", me ? me.name : "Pas connecté"));
+  const chips = h("div", "hp-chips");
+  const chip = (ok, text) => { const c = h("span", "hp-chip " + (ok === true ? "ok" : ok === false ? "err" : "warn")); c.append(h("i"), text); chips.append(c); };
+  if (isBot) chip(state.status === "ready", state.status === "ready" ? "Avec le bot Hush" : state.status === "needs-login" ? "Compte pas encore lié" : (STATUS[state.status] || STATUS.idle)[1]);
+  else chip(state.status === "ready", state.status === "ready" ? "Connexion directe à Discord" : (STATUS[state.status] || STATUS.idle)[1]);
+  if (!info || info.unreachable) chip(false, "Serveur du bot injoignable");
+  else chip(info.online, info.online ? `${info.name || "Bot"} en ligne · ${info.servers} serveur${info.servers > 1 ? "s" : ""}` : "Bot hors ligne");
+  who.append(chips);
+  head.append(av, who);
+  acc.append(head);
+  const list = h("div", "hp-list");
+  if (isBot && state.status === "needs-login") list.append(hpAction("Lier mon compte", "Une page Discord s'ouvre, puis tu reviens ici tout seul", "link", () => window.studio.bot.login(), true));
+  if (!isBot && info && !info.unreachable && !info.linked) list.append(hpAction("Lier au bot", "Pour « Ajouter le bot à la voc », Mes amis et le classement", "link", () => window.studio.bot.login()));
   if (state.channel && state.status === "ready" && !state.channel.call) {
-    b("Ajouter le bot à la voc", "cta small", async (e) => {
+    list.append(hpAction("Ajouter le bot à la voc", "Il rejoint ton vocal en cours", "bot", async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
       const r = await window.studio.voice.summon();
       btn.disabled = false;
       showToast(r && r.ok ? "Le bot arrive dans ton vocal…" : (r && r.error) || "Le bot n'a pas pu venir.");
-    });
-  } else if (state.channel && state.channel.call) line(null, "Le bot ne peut pas rejoindre un appel privé (seulement les salons de serveur)");
-  if (isBot && !state.channel) line(null, "Rejoins un vocal, puis « Ajouter le bot à la voc »");
-  if (info && info.invite) b(`Inviter ${info.name || "le bot"}`, "ghost small", () => window.open(info.invite));
-  b("Modifier la connexion", "ghost small", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); });
-  acc.append(btns);
+    }, true));
+  } else if (state.channel && state.channel.call) list.append(h("p", "hint", "Le bot ne peut pas rejoindre un appel privé (seulement les salons de serveur)."));
+  if (info && info.invite) list.append(hpAction(`Inviter ${info.name || "le bot"}`, "Sur un serveur que tu gères · retour à Hush ensuite", "invite", () => window.studio.win.inviteBot(info.invite)));
+  list.append(hpAction("Modifier la connexion", "Bot Hush ou connexion directe", "edit", () => { Home.forced = false; editingConfig = true; screenKey = ""; renderChrome(); }));
+  acc.append(list);
 }
 
 // — Sur Hush : les membres de tes serveurs qui ont Hush (en ligne, en vocal) —
@@ -309,7 +352,7 @@ $("#frHide").onchange = (e) => friendOp("hide", e.target.checked);
 $("#frRank").onchange = (e) => friendOp("rank", e.target.checked);
 // Inviter le bot : le geste qui ouvre Hush à tout un serveur
 const INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1566055526444568669&scope=bot%20applications.commands&permissions=970001408";
-$("#homeInvite").onclick = () => window.open((Home.info && Home.info.invite) || INVITE_URL);
+$("#homeInvite").onclick = () => window.studio.win.inviteBot((Home.info && Home.info.invite) || INVITE_URL);
 // Annonce le vocal où tu es à tes amis (aussi en connexion directe). Le nom personnalisé d'un salon reste chez toi.
 let frKey = "";
 function friendsOnState(s) {
@@ -376,70 +419,172 @@ function pastFaces(id) {
   for (const v of S.history) if (v.id === id) for (const m of v.members || []) if (m && m.name && !seen.has(m.name)) seen.set(m.name, m);
   return [...seen.values()];
 }
+// Ronds de profil façon Discord, un peu les uns sur les autres. Plus de 4 : les 3 premiers, puis un rond blanc « +N »
+function faceStack(faces) {
+  const th = h("div", "hs-thumb");
+  if (!faces.length) {
+    // Personne : le logo du salon vide, en glitch noir et blanc
+    th.classList.add("empty");
+    th.append(h("i", "hs-gl"), h("i", "hs-gl b"));
+    return th;
+  }
+  const shown = faces.length > 4 ? faces.slice(0, 3) : faces.slice(0, 4);
+  th.classList.add("n" + (faces.length > 4 ? 4 : shown.length));
+  for (const m of shown) { const im = avatarImg(m.avatar, "hs-face"); im.title = m.name || ""; th.append(im); }
+  if (faces.length > 4) th.append(h("b", "hs-more", "+" + (faces.length - 3)));
+  return th;
+}
+const SIDE_MAX = { top: 13, fav: 30 };
 function drawSide() {
-  const tab = S.homeSide === "fav" ? "fav" : "top";
+  const tab = ["fav", "friends", "hist"].includes(S.homeSide) ? S.homeSide : "top";
   document.querySelectorAll("#homeSide [data-hs]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.hs === tab));
   const box = $("#homeSideList");
   box.textContent = "";
+  if (tab === "friends") return drawSideFriends(box);
+  if (tab === "hist") return drawSideHistory(box);
   const list = tab === "fav"
-    ? S.favChans.map((f) => ({ ...f, ...(S.chanStats[f.id] || {}), name: (S.chanStats[f.id] || f).name }))
-    : Object.values(S.chanStats).sort((a, b) => b.ms - a.ms).slice(0, 10);
+    ? S.favChans.slice(0, SIDE_MAX.fav).map((f) => ({ ...f, ...(S.chanStats[f.id] || {}), name: (S.chanStats[f.id] || f).name }))
+    : Object.values(S.chanStats).sort((a, b) => b.ms - a.ms).slice(0, SIDE_MAX.top);
   if (!list.length) box.append(h("p", "hint", tab === "fav" ? "Touche l'étoile d'un salon pour l'ajouter ici." : "Tes salons apparaîtront ici après quelques vocaux."));
   list.forEach((c, i) => {
     const row = h("div", "hs-row");
-    // Vignette : Favoris → qui est dans le salon en ce moment ; Top → ceux avec qui tu y as été.
-    // Personne : l'image « salon vide » avec 0 par-dessus.
+    // Favoris → qui est dans le salon en ce moment ; Top → ceux avec qui tu y as été
     const faces = tab === "fav" ? liveFaces(c.id) : pastFaces(c.id);
-    const th = h("div", "hs-thumb" + (faces.length ? " n" + Math.min(4, faces.length) : " empty"));
-    if (faces.length) for (const m of faces.slice(0, 4)) { const im = avatarImg(m.avatar, "hs-face"); im.title = m.name || ""; th.append(im); }
-    else th.append(h("b", "hs-zero", "0"));
+    const th = faceStack(faces);
     if (tab === "fav" && faces.length) th.append(h("i", "hs-live", String(faces.length)));
     if (tab === "top") th.append(h("i", "hs-pos", String(i + 1)));
-    row.append(th);
     const t = h("div", "hm-ptext");
     t.append(h("b", "", (c.call ? "📞 " : "") + c.name), h("small", "", [c.guild, c.ms ? dur(c.ms) : null, c.count ? `${c.count} fois` : null].filter(Boolean).join(" · ")));
     const star = h("button", "hs-star" + (isFav(c.id) ? " on" : ""), isFav(c.id) ? "★" : "☆");
     star.title = isFav(c.id) ? "Retirer des favoris" : "Ajouter aux favoris";
     star.onclick = (e) => { e.stopPropagation(); toggleFav(c); };
-    row.append(t, star);
-    row.title = `Rejoindre ${c.name}`;
+    row.append(th, t, star);
+    row.title = `Rejoindre ${c.name} · clic droit : tes stats`;
     row.onclick = () => joinVoice(c.id, c.guildId, c.name);
+    row.oncontextmenu = (e) => { e.preventDefault(); showChanStats(c, e); };
     box.append(row);
   });
 }
+// Amis : ceux qui sont en vocal en haut (clic : on les rejoint), puis ceux qui ont Hush ouvert
+function drawSideFriends(box) {
+  const fr = Home.friends;
+  if (!fr) return box.append(h("p", "hint", Home.frError || "Chargement de tes amis…"));
+  const inVoice = fr.friends.filter((p) => p.voice);
+  const online = fr.friends.filter((p) => !p.voice && p.online);
+  if (!fr.friends.length) return box.append(h("p", "hint", "Ajoute des amis dans « Mes amis » (en bas) pour les voir ici quand ils sont en vocal."));
+  if (!inVoice.length) box.append(h("p", "hint", "Aucun ami en vocal pour l'instant."));
+  for (const p of [...inVoice, ...online]) {
+    const v = p.voice;
+    const row = h("div", "hs-row hs-friend" + (v ? "" : " idle"));
+    const th = h("div", "hs-thumb n1");
+    th.append(avatarImg(p.avatar, "hs-face"));
+    if (v) th.append(h("i", "hs-dot"));
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", p.name), h("small", "", v ? (v.call ? "En appel privé" : `🔊 ${v.name}${v.guild ? " · " + v.guild : ""}`) : "Hush ouvert"));
+    row.append(th, t);
+    if (v && v.channelId) { row.title = `Rejoindre ${v.name}`; row.onclick = () => joinVoice(v.channelId, v.guildId, v.name); }
+    box.append(row);
+  }
+}
+// Historique : tes derniers vocaux (clic : on y retourne)
+function drawSideHistory(box) {
+  if (!S.history.length) return box.append(h("p", "hint", "Tes vocaux apparaîtront ici."));
+  for (const v of S.history.slice(0, 12)) {
+    const row = h("div", "hs-row");
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", (v.call ? "📞 " : "") + v.name), h("small", "", [v.guild, ago(v.at), dur(v.dur)].filter(Boolean).join(" · ")));
+    row.append(faceStack(v.members || []), t);
+    if (v.id && v.id !== "sandbox" && v.id !== "demo") {
+      row.title = `Rejoindre ${v.name} · clic droit : tes stats`;
+      row.onclick = () => joinVoice(v.id, v.guildId, v.name);
+      row.oncontextmenu = (e) => { e.preventDefault(); showChanStats({ ...(S.chanStats[v.id] || {}), id: v.id, name: v.name, guild: v.guild, guildId: v.guildId, call: v.call }, e); };
+    }
+    box.append(row);
+  }
+}
+// Clic droit sur un salon : tes stats dans ce salon (temps, fois, moyenne, dernière fois, avec qui)
+function showChanStats(c, e) {
+  const st = S.chanStats[c.id] || { ms: 0, count: 0 };
+  const visits = S.history.filter((v) => v.id === c.id);
+  const met = new Map();
+  for (const v of visits) for (const m of v.members || []) if (m && m.name) met.set(m.name, { ...m, n: ((met.get(m.name) || {}).n || 0) + 1 });
+  const best = [...met.values()].sort((a, b) => b.n - a.n).slice(0, 5);
+  const rank = Object.values(S.chanStats).sort((a, b) => b.ms - a.ms).findIndex((x) => x.id === c.id) + 1;
+  const longest = visits.reduce((m, v) => Math.max(m, v.dur || 0), 0);
+  const box = $("#hsStats");
+  box.textContent = "";
+  const head = h("header", "hss-head");
+  head.append(h("b", "", (c.call ? "📞 " : "🔊 ") + c.name), h("small", "", c.guild || ""));
+  const grid = h("div", "hss-grid");
+  const cell = (n, l) => { const x = h("div", "hss-cell"); x.append(h("b", "", n), h("small", "", l)); grid.append(x); };
+  cell(st.ms ? dur(st.ms) : "0 min", "passées ici");
+  cell(String(st.count || 0), st.count > 1 ? "visites" : "visite");
+  cell(st.count ? dur(st.ms / st.count) : "—", "en moyenne");
+  cell(rank ? "#" + rank : "—", "dans ton top");
+  cell(longest ? dur(longest) : "—", "plus long vocal");
+  cell(st.last ? ago(st.last) : "—", "dernière fois");
+  box.append(head, grid);
+  if (best.length) {
+    const w = h("div", "hss-met");
+    w.append(h("small", "", "Avec qui tu y vas le plus"));
+    const row = h("div", "hss-faces");
+    for (const m of best) { const f = h("span", "hss-face"); f.append(avatarImg(m.avatar, "hs-face"), h("i", "", m.name)); row.append(f); }
+    w.append(row);
+    box.append(w);
+  }
+  box.hidden = false;
+  const r = box.getBoundingClientRect();
+  box.style.left = Math.min(innerWidth - r.width - 10, e.clientX + 8) + "px";
+  box.style.top = Math.min(innerHeight - r.height - 10, Math.max(10, e.clientY - 20)) + "px";
+}
+addEventListener("pointerdown", (e) => { const b = $("#hsStats"); if (!b.hidden && !e.target.closest("#hsStats")) b.hidden = true; });
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("#hsStats").hidden = true; });
 document.querySelectorAll("#homeSide [data-hs]").forEach((b) => (b.onclick = () => { S.homeSide = b.dataset.hs; save(); drawSide(); }));
 
-// — Vue administrateur : l'état du service, les personnes connectées, les erreurs reçues —
-const Admin = { stats: null, reports: [], at: 0, error: null };
+// — Vue administrateur : l'état du service, les chiffres utiles, les rôles, les erreurs reçues —
+const Admin = { stats: null, reports: [], users: [], at: 0, error: null, q: "", roleFilter: "" };
+const ROLE_INFO = {
+  standard: { label: "Standard", color: "#9aa0b4" },
+  phantom: { label: "Phantom", color: "#b07cff" },
+  premium: { label: "Premium", color: "#ffc93c" },
+  limitless: { label: "Limitless", color: "#ff3d9a" },
+  testeur: { label: "Testeur", color: "#3ddc97" },
+  collaborateur: { label: "Collaborateur", color: "#4fb3ff" },
+  streamer: { label: "Streamer", color: "#ff5a3d" },
+};
+const roleTag = (r) => { const i = ROLE_INFO[r] || ROLE_INFO.standard; const t = h("span", "ad-role", i.label); t.style.setProperty("--rc", i.color); return t; };
 const hm = (ms) => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`; };
 async function drawAdmin(force) {
   if (force || Date.now() - Admin.at > 10_000) {
     Admin.at = Date.now();
-    const [a, b] = await Promise.all([window.studio.admin("stats"), window.studio.admin("reports")]);
+    const [a, b, c] = await Promise.all([window.studio.admin("stats"), window.studio.admin("reports"), window.studio.admin("users")]);
     Admin.error = a.error || b.error || null;
-    Admin.stats = a.data || null; Admin.reports = b.data || [];
+    Admin.stats = a.data || null; Admin.reports = b.data || []; Admin.users = c.data || [];
   }
   if (Home.tab !== "admin") return;
   const box = $("#homeAdmin");
+  const keepScroll = $("#homePanel").scrollTop;
   box.textContent = "";
   if (Admin.error) return box.append(h("p", "hint", Admin.error));
   const s = Admin.stats;
   if (!s) return box.append(h("p", "hint", "Chargement…"));
-  // État du service : un gros voyant, puis la durée et la mémoire
+  // État du service : un gros voyant, puis la durée, la mémoire et le ping
   const st = h("div", "ad-status " + (s.botOnline ? "ok" : "ko"));
   const stTxt = h("div", "ad-st-text");
-  stTxt.append(h("b", "", s.botOnline ? "Tout fonctionne" : "Le bot est hors ligne"), h("small", "", `Serveur allumé depuis ${hm(s.uptime)} · ${s.memMB} Mo de mémoire`));
+  stTxt.append(h("b", "", s.botOnline ? "Tout fonctionne" : "Le bot est hors ligne"), h("small", "", [`Serveur allumé depuis ${hm(s.uptime)}`, `${s.memMB} Mo`, s.ping != null && s.ping >= 0 ? `ping ${s.ping} ms` : null].filter(Boolean).join(" · ")));
   const refresh = h("button", "ghost small", "Actualiser");
   refresh.onclick = () => drawAdmin(true);
   st.append(h("i", "ad-led"), stTxt, refresh);
   box.append(st);
   // Les chiffres clés
   const nums = h("div", "ad-nums");
-  for (const [n, l, k] of [[s.online.length, "en ligne", "on"], [s.accounts, "comptes", ""], [s.servers.length, "serveurs", ""], [s.hours + " h", "de vocal", ""], [s.reportCount, "erreurs", s.reportCount ? "warn" : ""]]) {
-    const c = h("div", "ad-num " + k);
-    c.append(h("b", "", String(n)), h("small", "", l));
-    nums.append(c);
-  }
+  const tiles = [
+    [s.online.length, "en ligne", "on"], [s.inVoice ?? 0, "en vocal", "on"], [s.video ?? 0, "caméra / écran", ""],
+    [s.accounts, "comptes liés", ""], [s.active24h ?? "—", "actifs 24 h", ""], [s.active7d ?? "—", "actifs 7 j", ""],
+    [s.servers.length, "serveurs", ""], [s.members ?? "—", "membres touchés", ""], [s.hours + " h", "de vocal", ""],
+    [s.friendsAccounts ?? "—", "comptes amis", ""], [s.ranked ?? "—", "au classement", ""], [s.reportCount, "erreurs", s.reportCount ? "warn" : ""],
+  ];
+  for (const [n, l, k] of tiles) { const c = h("div", "ad-num " + k); c.append(h("b", "", String(n)), h("small", "", l)); nums.append(c); }
   box.append(nums);
   const card = (title, count) => {
     const c = h("section", "ad-card");
@@ -447,6 +592,24 @@ async function drawAdmin(force) {
     hd.append(h("h3", "ad-title", title));
     if (count != null) hd.append(h("span", "ad-count", String(count)));
     c.append(hd);
+    return c;
+  };
+  // Une répartition en barres (versions, systèmes, rôles)
+  const bars = (title, obj, label = (k) => k, color) => {
+    const c = card(title);
+    const list = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+    if (!list.length) c.append(h("p", "hint", "Rien pour l'instant."));
+    const big = Math.max(1, ...list.map((x) => x[1]));
+    for (const [k, n] of list) {
+      const row = h("div", "ad-server");
+      const top = h("div", "ad-sv-top");
+      top.append(h("b", "", label(k)), h("small", "", String(n)));
+      const bar = h("i", "ad-bar");
+      bar.style.setProperty("--w", Math.max(4, Math.round((n / big) * 100)) + "%");
+      if (color) bar.style.setProperty("--bc", color(k));
+      row.append(top, bar);
+      c.append(row);
+    }
     return c;
   };
   const cols = h("div", "ad-cols");
@@ -458,29 +621,89 @@ async function drawAdmin(force) {
     const t = h("div", "hm-ptext");
     t.append(h("b", "", p.name));
     const tags = h("div", "ad-tags");
-    tags.append(h("span", "ad-tag", "Hush " + p.version), h("span", "ad-tag", p.os));
+    tags.append(roleTag(p.role), h("span", "ad-tag", "Hush " + p.version), h("span", "ad-tag", p.os));
     if (p.inVoice) tags.append(h("span", "ad-tag live", "en vocal"));
+    if (p.cam) tags.append(h("span", "ad-tag live", "caméra"));
+    if (p.screen) tags.append(h("span", "ad-tag live", "écran"));
     t.append(tags);
     row.append(avatarImg(p.avatar), t);
     on.append(row);
   }
-  // Serveurs, du plus grand au plus petit, avec une barre de taille
+  // Les plus gros utilisateurs
+  const top = card("Top utilisateurs");
+  if (!(s.top || []).length) top.append(h("p", "hint", "Personne pour l'instant."));
+  (s.top || []).forEach((p, i) => {
+    const row = h("div", "ad-person");
+    const t = h("div", "hm-ptext");
+    t.append(h("b", "", `${i + 1}. ${p.name}`), h("small", "", `${String(p.hours).replace(".", ",")} h en vocal`));
+    row.append(avatarImg(p.avatar), t);
+    top.append(row);
+  });
+  // Serveurs, du plus grand au plus petit
   const sv = card("Serveurs", s.servers.length);
   const big = Math.max(1, ...s.servers.map((g) => g.members));
   if (!s.servers.length) sv.append(h("p", "hint", "Aucun."));
   for (const g of [...s.servers].sort((a, b) => b.members - a.members)) {
     const row = h("div", "ad-server");
-    const top = h("div", "ad-sv-top");
-    top.append(h("b", "", g.name), h("small", "", `${g.members} membres`));
+    const tp = h("div", "ad-sv-top");
+    tp.append(h("b", "", g.name), h("small", "", `${g.members} membres`));
     const bar = h("i", "ad-bar");
     bar.style.setProperty("--w", Math.max(4, Math.round((g.members / big) * 100)) + "%");
-    row.append(top, bar);
+    row.append(tp, bar);
     sv.append(row);
   }
-  cols.append(on, sv);
+  cols.append(on, top, sv,
+    bars("Versions (en ligne)", s.versions, (k) => "Hush " + k),
+    bars("Systèmes (en ligne)", s.systems),
+    bars("Rôles donnés", s.roles, (k) => (ROLE_INFO[k] || ROLE_INFO.standard).label, (k) => (ROLE_INFO[k] || ROLE_INFO.standard).color));
   box.append(cols);
+  // Gestion des rôles : chercher quelqu'un, puis choisir son rôle
+  const rc = card("Rôles", Admin.users.length);
+  rc.classList.add("ad-wide");
+  const tools = h("div", "ad-role-tools");
+  const q = h("input", "field");
+  q.type = "search"; q.placeholder = "Chercher un pseudo ou un identifiant"; q.value = Admin.q; q.spellcheck = false;
+  const f = h("select", "field");
+  f.append(new Option("Tous les rôles", ""));
+  for (const [k, v] of Object.entries(ROLE_INFO)) f.append(new Option(v.label, k));
+  f.value = Admin.roleFilter;
+  tools.append(q, f);
+  rc.append(tools);
+  const list = h("div", "ad-role-list");
+  const drawList = () => {
+    list.textContent = "";
+    const needle = Admin.q.trim().toLowerCase();
+    const shown = Admin.users.filter((u) => (!needle || u.name.toLowerCase().includes(needle) || u.id.includes(needle)) && (!Admin.roleFilter || u.role === Admin.roleFilter)).slice(0, 80);
+    if (!shown.length) list.append(h("p", "hint", "Personne ne correspond."));
+    for (const u of shown) {
+      const row = h("div", "ad-person ad-user" + (u.online ? " online" : ""));
+      const t = h("div", "hm-ptext");
+      t.append(h("b", "", u.name), h("small", "", [u.online ? "en ligne" : u.last ? "vu " + ago(u.last) : null, u.hours ? `${String(u.hours).replace(".", ",")} h` : null, u.id].filter(Boolean).join(" · ")));
+      const sel = h("select", "field ad-role-sel");
+      for (const [k, v] of Object.entries(ROLE_INFO)) sel.append(new Option(v.label, k));
+      sel.value = u.role;
+      sel.style.setProperty("--rc", (ROLE_INFO[u.role] || ROLE_INFO.standard).color);
+      sel.onchange = async () => {
+        sel.disabled = true;
+        const r = await window.studio.admin("setRole", { id: u.id, role: sel.value });
+        sel.disabled = false;
+        if (r.error) { showToast(r.error); sel.value = u.role; return; }
+        Admin.users = r.data || Admin.users;
+        showToast(`${u.name} est maintenant ${(ROLE_INFO[sel.value] || ROLE_INFO.standard).label}.`);
+        Admin.at = 0; drawAdmin(true);
+      };
+      row.append(avatarImg(u.avatar), t, sel);
+      list.append(row);
+    }
+  };
+  q.oninput = () => { Admin.q = q.value; drawList(); };
+  f.onchange = () => { Admin.roleFilter = f.value; drawList(); };
+  drawList();
+  rc.append(list);
+  box.append(rc);
   // Erreurs reçues
   const er = card("Erreurs reçues", Admin.reports.length);
+  er.classList.add("ad-wide");
   if (Admin.reports.length) {
     const clear = h("button", "ghost small", "Tout effacer");
     clear.onclick = async () => {
@@ -500,8 +723,9 @@ async function drawAdmin(force) {
     er.append(d);
   }
   box.append(er);
+  $("#homePanel").scrollTop = keepScroll;
 }
-// — Classement : les plus gros utilisateurs de Hush en vocal (heures comptées par le serveur du bot) —
+// — Classement : un podium pour les 3 premiers, puis les autres en lignes —
 const Top = { list: null, at: 0, me: null };
 async function drawTop() {
   const box = $("#homeTop");
@@ -511,18 +735,37 @@ async function drawTop() {
   }
   if (Home.tab !== "top") return;
   box.textContent = "";
-  if (Top.me) box.append(h("p", "hint", `Toi : ${(Top.me.voiceMinutes / 60).toFixed(1)} h en vocal avec Hush, ${(Top.me.appMinutes / 60).toFixed(1)} h en tout (sur ce PC).`));
+  const head = h("div", "hp-head");
+  head.append(h("h2", "hp-title", "Classement"));
+  if (Top.me) head.append(h("span", "hp-badge", `Toi : ${(Top.me.voiceMinutes / 60).toFixed(1).replace(".", ",")} h en vocal`));
+  box.append(head);
   if (!Top.list) { box.append(h("p", "hint", "Classement indisponible : le serveur du bot ne répond pas.")); return; }
   if (!Top.list.length) { box.append(h("p", "hint", "Personne pour l'instant : chaque minute en vocal avec Hush compte.")); return; }
   const meId = state.me && state.me.id;
-  Top.list.forEach((p, i) => {
-    const row = h("div", "hm-person hm-rank" + (p.id === meId ? " me" : ""));
-    row.append(h("span", "hm-pos" + (i < 3 ? " p" + (i + 1) : ""), String(i + 1)), avatarImg(p.avatar));
-    const t = h("div", "hm-ptext");
-    t.append(h("b", "", p.name), h("small", "", `${String(p.hours).replace(".", ",")} h en vocal`));
-    row.append(t);
-    box.append(row);
+  const hours = (p) => `${String(p.hours).replace(".", ",")} h`;
+  // Podium : 2e, 1er, 3e
+  const podium = h("div", "hp-podium");
+  [1, 0, 2].forEach((i) => {
+    const p = Top.list[i];
+    if (!p) return;
+    const c = h("div", "hp-pod p" + (i + 1) + (p.id === meId ? " me" : ""));
+    const avw = h("div", "hp-pod-av");
+    avw.append(avatarImg(p.avatar, "hp-pod-img"), h("b", "hp-pod-n", String(i + 1)));
+    c.append(avw, h("b", "hp-pod-name", p.name), h("small", "", hours(p)), h("i", "hp-pod-step"));
+    podium.append(c);
   });
+  box.append(podium);
+  const list = h("div", "hp-list");
+  Top.list.slice(3).forEach((p, k) => {
+    const row = h("div", "hp-row" + (p.id === meId ? " me" : ""));
+    row.style.setProperty("--i", k);
+    row.append(h("span", "hp-rank", String(k + 4)), avatarImg(p.avatar, "hp-av"));
+    const t = h("div", "hp-row-t");
+    t.append(h("b", "", p.name), h("small", "", hours(p) + " en vocal"));
+    row.append(t);
+    list.append(row);
+  });
+  box.append(list);
 }
 
 /* — Historique des vocaux, arrivées / départs, écran d'appel — */
@@ -557,7 +800,8 @@ function homeOnState(s) {
   const alone = !!(ch && s.status === "ready" && s.members.filter((m) => !m.ghost).length <= 1);
   const ringing = alone && !!ch.call;
   document.body.classList.toggle("calling", ringing);
-  $("#callBanner").hidden = !alone;
+  // La croix cache le bandeau pour ce salon (il revient au prochain salon)
+  $("#callBanner").hidden = !alone || (!ringing && Home.callHidden === ch.id);
   $("#callBanner").classList.toggle("ringing", ringing);
   if (alone) {
     $("#callTitle").textContent = ringing ? `Appel à ${ch.callee ? ch.callee.name : "…"}` : `Tu es seul dans #${chanLabel(ch)}`;
@@ -565,6 +809,7 @@ function homeOnState(s) {
   }
 }
 
+$("#callClose").onclick = () => { Home.callHidden = state.channel && state.channel.id; $("#callBanner").hidden = true; };
 // Bouton maison : ouvre l'accueil, ou le referme s'il est ouvert
 $("#homeBtn").onclick = () => {
   // En mode Personnaliser : on en sort et on revient à l'accueil

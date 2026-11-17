@@ -35,14 +35,13 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Accueil : tes salons montrent les photos de ceux qui y étaient (favoris : qui y est en ce moment), et une barre règle l'opacité du fond",
-        "Fonds rangés en Espace, Couleurs et Personnalisé ; Wallpaper Engine a son propre rond, et sa galerie s'ouvre à gauche des paramètres",
-        "Caméras côte à côte, clique sur une pour la verrouiller en grand ; seulement les caméras quand tout le salon a la sienne",
-        "Nouveau : les caméras dans le mode Cinéma 3D, et le choix de la caméra si tu en as plusieurs",
-        "Partage d'écran façon Discord : Applications ou Écrans, résolution et images/s",
-        "Tchat : plus jamais de message au nom du bot, Hush explique comment réparer",
-        "Le mini-vinyle apparaît en taille moyenne, en bas à droite",
-        "Les clips quittent Hush le temps d'être refaits (ils reviennent bientôt)"
+        "Accueil : Top, Favoris, Amis et Historique à gauche ; ronds façon Discord, salon vide en glitch, stats au clic droit",
+        "Accueil : fondu ou flou réglable sur toute la fenêtre ; avatars en fond façon vieille télé, un clic dessus ramène au vocal",
+        "Nouveaux panneaux Connexion, Mes amis et Classement (podium), et tout Hush en verre fumé (réglable dans Thème)",
+        "Overlay activé de base, « Aller sur Discord » et pastille « Hush » accrochée à la fenêtre de Discord",
+        "Dashboard admin complet avec les rôles ; retour automatique sur Hush après connexion ou invitation du bot",
+        "Tchat : photos et fichiers ; pseudos : hauteur et taille adaptée ; anneaux Photo, Mes amis et Ambilight",
+        "Fond vidéo, filtres Wallpaper Engine, lecteur de musique refait, clips retirés"
       ],
       "artifacts": {
         "win32-x64": {

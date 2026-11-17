@@ -196,8 +196,10 @@ function findCluster(u8, from = 0) {
   for (let i = from; i + 3 < u8.length; i++) if (u8[i] === 0x1f && u8[i + 1] === 0x43 && u8[i + 2] === 0xb6 && u8[i + 3] === 0x75) return i;
   return -1;
 }
+// Clips retirés de Hush (et de Hush Preview) : le code reste là, éteint, pour un futur logiciel à part
+const CLIPS_ON = false;
 async function replayStart() {
-  if (Replay.on || !window.studio.preview) return;
+  if (Replay.on || !CLIPS_ON) return;
   const audio = !!S.clipAudio;
   let stream;
   try {
@@ -246,7 +248,7 @@ function replayStop() {
 }
 // F9 / bouton : garde les N dernières secondes
 async function saveClip() {
-  if (!window.studio.preview) return;
+  if (!CLIPS_ON) return;
   if (!Replay.on) { await replayStart(); return showToast(`Replay lancé : F9 gardera les ${+S.clipLen || 30} dernières secondes`); }
   if (Replay.saving || !Replay.head) return;
   Replay.saving = true;
@@ -287,10 +289,10 @@ $("#clipBtn").onclick = saveClip;
 $("#shareAudio").onclick = (e) => e.currentTarget.setAttribute("aria-checked", e.currentTarget.getAttribute("aria-checked") !== "true");
 $("#openClips").onclick = () => window.studio.clip.show(Cap.lastClip || "");
 // Clips : seulement dans Hush Preview (pour les autres, le bouton et les réglages disparaissent)
-if (!window.studio.preview) document.body.classList.add("no-clips");
-else if (!MINI) {
-  // Petite étiquette PREVIEW dans la barre du haut : on sait toujours quelle version est ouverte
-  const pv = document.createElement("i"); pv.className = "pv-badge"; pv.textContent = "PREVIEW"; document.querySelector(".titlebar .chan").appendChild(pv);
+if (!CLIPS_ON) document.body.classList.add("no-clips");
+// Petite étiquette PREVIEW dans la barre du haut : on sait toujours quelle version est ouverte
+if (window.studio.preview && !MINI) { const pv = document.createElement("i"); pv.className = "pv-badge"; pv.textContent = "PREVIEW"; document.querySelector(".titlebar .chan").appendChild(pv); }
+if (CLIPS_ON && !MINI) {
   window.studio.clip.onHotkey(saveClip);
   $("#replayOn").onclick = () => (Replay.on ? replayStop() : replayStart());
   for (const [id, k] of [["#clipLenSeg", "clipLen"], ["#clipSrcSeg", "clipSource"]]) $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => { S[k] = b.dataset.v; save(); clipSegs(); if (k === "clipSource" && Replay.on) { replayStop(); replayStart(); } }));

@@ -131,6 +131,20 @@ function renderUserMenu(m) {
   head.textContent = m.name;
   el.appendChild(head);
 
+  // Couleur de son anneau (mode « Couleur de mes amis ») : elle reste chez toi
+  if (!isMe) {
+    const row = document.createElement("label");
+    row.className = "um-item um-color";
+    const t = document.createElement("span");
+    t.textContent = "Couleur de son anneau";
+    const inp = document.createElement("input");
+    inp.type = "color";
+    inp.value = (S.friendColors || {})[id] || "#ff8cc6";
+    inp.oninput = () => { setFriendColor(id, inp.value); if (S.ringFrom !== "friends") { S.ringFrom = "friends"; apply(); showToast("Anneau : « Couleur de mes amis » activé"); } };
+    row.append(t, inp);
+    el.appendChild(row);
+    el.appendChild(umSep());
+  }
   // — Amis Hush —
   if (!isMe && real) {
     const st = friendState(id);
