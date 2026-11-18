@@ -1,7 +1,14 @@
 // /installer-hush : monte le serveur Discord communautaire de Hush (rôles, catégories, salons, permissions).
 // On peut le relancer autant de fois qu'on veut : ce qui existe déjà (même nom) est laissé tel quel,
 // seul ce qui manque est créé. Rien n'est jamais supprimé ni modifié.
-const { ChannelType, PermissionFlagsBits: P } = require("discord.js");
+// Pas de require("discord.js") ici : les valeurs fixes de l'API Discord suffisent, et le test tourne sans les dépendances du bot
+const ChannelType = { GuildText: 0, GuildVoice: 2, GuildCategory: 4, GuildAnnouncement: 5 };
+const bit = (n) => 1n << BigInt(n);
+const P = {
+  AddReactions: bit(6), ViewChannel: bit(10), SendMessages: bit(11), ManageMessages: bit(13), ReadMessageHistory: bit(16),
+  MentionEveryone: bit(17), MuteMembers: bit(22), MoveMembers: bit(24), ManageThreads: bit(34), CreatePublicThreads: bit(35),
+  CreatePrivateThreads: bit(36), SendMessagesInThreads: bit(38), ModerateMembers: bit(40),
+};
 
 const ROLES = [
   {
@@ -145,4 +152,4 @@ async function installCommunity(guild, { dryRun = false } = {}) {
   return { created, existing };
 }
 
-module.exports = { installCommunity, ROLES, CATEGORIES, RULES, overwrites, norm };
+module.exports = { installCommunity, ROLES, CATEGORIES, RULES, overwrites, norm, ChannelType, P };

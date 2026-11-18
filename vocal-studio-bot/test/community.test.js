@@ -1,7 +1,16 @@
 // /installer-hush : simulation sur un faux serveur Discord (aucune connexion à Discord)
 const assert = require("assert");
-const { ChannelType, PermissionFlagsBits: P, PermissionsBitField, Collection } = require("discord.js");
-const { installCommunity, ROLES, CATEGORIES, norm } = require("../src/community.js");
+const { installCommunity, ROLES, CATEGORIES, norm, ChannelType, P } = require("../src/community.js");
+
+// Sans discord.js (vérification GitHub) : petite Collection maison. Avec : on vérifie en plus nos valeurs fixes.
+class Collection extends Map { find(fn) { for (const v of this.values()) if (fn(v)) return v; } }
+let resolvePerms = (list) => list.forEach((x) => assert.equal(typeof x, "bigint", "permission inconnue"));
+try {
+  const d = require("discord.js");
+  for (const [k, v] of Object.entries(P)) assert.equal(v, d.PermissionFlagsBits[k], `permission ${k}`);
+  for (const [k, v] of Object.entries(ChannelType)) assert.equal(v, d.ChannelType[k], `type de salon ${k}`);
+  resolvePerms = (list) => d.PermissionsBitField.resolve(list);
+} catch (e) { if (e.code !== "MODULE_NOT_FOUND") throw e; }
 
 // Faux serveur : garde en mémoire ce qui est créé, refuse toute suppression ou modification
 function fakeGuild() {
@@ -15,7 +24,7 @@ function fakeGuild() {
     calls, everyone,
     roles: {
       cache: roles, everyone, fetch: async () => roles, delete: forbid, edit: forbid,
-      create: async (o) => { calls.roles++; PermissionsBitField.resolve(o.permissions); const r = { id: `r${++n}`, ...o, delete: forbid, edit: forbid }; roles.set(r.id, r); return r; },
+      create: async (o) => { calls.roles++; resolvePerms(o.permissions); const r = { id: `r${++n}`, ...o, delete: forbid, edit: forbid }; roles.set(r.id, r); return r; },
     },
     channels: {
       cache: channels, fetch: async () => channels, delete: forbid, edit: forbid,
@@ -25,7 +34,7 @@ function fakeGuild() {
         const name = o.type === ChannelType.GuildText ? norm(o.name) : o.name;
         for (const ow of o.permissionOverwrites || []) {
           assert.ok(roles.has(ow.id), `droits sur un rôle inconnu : ${ow.id}`);
-          PermissionsBitField.resolve(ow.allow || []); PermissionsBitField.resolve(ow.deny || []);
+          resolvePerms(ow.allow || []); resolvePerms(ow.deny || []);
         }
         if (o.parent) assert.ok(channels.get(o.parent).type === ChannelType.GuildCategory, "parent = catégorie");
         const c = { id: `c${++n}`, ...o, name, parentId: o.parent || null, delete: forbid, edit: forbid, send: async (t) => calls.sent.push([name, t]) };
