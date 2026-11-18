@@ -5,6 +5,7 @@ const { Client, GatewayIntentBits, Events, MessageFlags, PermissionFlagsBits } =
 const { joinVoiceChannel, getVoiceConnection, VoiceConnectionStatus, entersState, EndBehaviorType } = require("@discordjs/voice");
 const prism = require("prism-media");
 const { EventEmitter } = require("events");
+const { installCommunity } = require("./community");
 
 const EMPTY_LEAVE_MS = 30_000;
 
@@ -61,6 +62,12 @@ class StudioBot extends EventEmitter {
       // Le bot parle sous son propre nom (celui choisi sur le portail Discord, par exemple « 1999 »)
       { name: "hush", description: `Fait venir ${c.user.username} dans ton salon vocal (affichage Hush)` },
       { name: "hush-stop", description: `Fait partir ${c.user.username} du salon vocal` },
+      // Réservée au propriétaire du serveur (vérifié à l'exécution) ; cachée aux non-administrateurs
+      {
+        name: "installer-hush", description: "Crée les rôles et salons du serveur Hush (sans rien supprimer ni doubler)",
+        default_member_permissions: String(PermissionFlagsBits.Administrator), dm_permission: false,
+        options: [{ type: 5, name: "apercu", description: "Montrer seulement ce qui serait créé, sans rien créer" }],
+      },
     ]);
     this.emit("change");
   }
@@ -439,9 +446,35 @@ class StudioBot extends EventEmitter {
       } catch (e) {
         await i.editReply(e.message);
       }
+    } else if (i.commandName === "installer-hush") {
+      return this.installServer(i);
     } else if (i.commandName === "hush-stop") {
       this.leave(i.guildId);
       await i.reply({ content: `${this.client.user.username} a quitté le salon.`, flags: MessageFlags.Ephemeral });
+    }
+  }
+
+  async installServer(i) {
+    if (!i.guild) return i.reply({ content: "Cette commande se lance dans un serveur.", flags: MessageFlags.Ephemeral });
+    if (i.user.id !== i.guild.ownerId) return i.reply({ content: "Seul le propriétaire du serveur peut lancer cette commande.", flags: MessageFlags.Ephemeral });
+    const me = i.guild.members.me;
+    if (!me || !me.permissions.has([PermissionFlagsBits.ManageRoles, PermissionFlagsBits.ManageChannels])) {
+      return i.reply({ content: `${this.client.user.username} a besoin des droits « Gérer les rôles » et « Gérer les salons » (le lien d'invitation les donne).`, flags: MessageFlags.Ephemeral });
+    }
+    const dryRun = i.options.getBoolean("apercu") === true;
+    await i.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      const { created, existing } = await installCommunity(i.guild, { dryRun });
+      const list = (a) => a.map((x) => `• ${x}`).join("\n");
+      let text = dryRun
+        ? (created.length ? `**Aperçu — serait créé (${created.length}) :**\n${list(created)}` : "Aperçu : tout est déjà en place, rien ne serait créé.")
+        : (created.length ? `**Créé (${created.length}) :**\n${list(created)}` : "Tout était déjà en place : rien n'a été créé.");
+      if (existing.length) text += `\n\nDéjà là, laissé tel quel : ${existing.length} élément·s.`;
+      if (!dryRun) text += "\n\nÉtape suivante : Paramètres du serveur → **Activer la Communauté**.";
+      await i.editReply(text.length > 1900 ? text.slice(0, 1900) + "…" : text);
+    } catch (e) {
+      console.error("installer-hush :", e);
+      await i.editReply(`Installation interrompue : ${e.message}\nCe qui a déjà été créé reste en place ; relance la commande pour finir.`);
     }
   }
 }
