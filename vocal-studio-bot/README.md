@@ -67,6 +67,7 @@ Au-delà de 100 serveurs, Discord demande de faire vérifier le bot.
 | Fichier | Rôle |
 | --- | --- |
 | `src/bot.js` | Le bot : rejoint les salons, suit les membres et qui parle, commandes `/hush`, actions du menu clic droit |
+| `src/community.js` | Commande `/installer-hush` : crée les rôles et salons du serveur communautaire (voir [SERVEUR-COMMUNAUTE.md](SERVEUR-COMMUNAUTE.md)) |
 | `src/index.js` | Le serveur : connexion « Se connecter avec Discord » et liaison en direct avec l'appli |
 | `.env` | Tes secrets (jamais partagé, ignoré par git) |
 | `sessions.json` | Les applis connectées (créé automatiquement, ignoré par git) |
