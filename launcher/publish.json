@@ -35,19 +35,19 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Accueil : les panneaux Connexion, Mes amis et Classement ne clignotent plus en boucle",
-        "Accueil : Top, Favoris, Amis et Historique défilent à la molette, sans barre",
-        "Accueil : plus ton avatar ni ton pseudo en fond quand tu n'es pas en vocal",
-        "Un onglet ouvert se referme d'un clic ailleurs",
-        "Texte noir sur fond clair et blanc sur fond sombre, tout seul",
-        "Fonds vidéo plus fluides, et en pause quand Hush est caché",
-        "Nouvelle caméra « Plongée », ta caméra dans chaque disposition, effet vieille télé en vocal",
-        "Liste des vocaux plus douce, avec un petit « tic » de molette",
-        "Paramètres refaits : pastilles, curseur perso, Vidéo et Fenêtre séparés, import .hush en glisser-déposer",
-        "Anneaux : Spaghetti, Ondes, Profil, Indépendant, Unicolor, Album ; contour en couleur et ombre façon Ambilight",
-        "Rich Presence : Hush s'affiche sur ton profil Discord ; la pastille Hush ne s'affiche plus que sur Discord",
-        "Accueil : entrée et sortie en douceur, anneaux blancs et ombres noires, plus de bulle au survol",
-        "Pseudos lisibles dans toutes les dispositions ; classement aux couleurs des rangs ; notifications lues effacées"
+        "Petits sons doux, différents selon le bouton (onglet, pastille, interrupteur…), notification, caméra, stream, passage Hush ↔ Discord",
+        "Accueil : le « tic » de molette sonne au survol d'un vocal (en passant la souris ou en défilant)",
+        "Plongée plus douce : la caméra, un peu au-dessus, tourne lentement et sans arrêt autour de celui qui parle",
+        "Anneau « Indépendant » : tu choisis aussi ta propre couleur",
+        "Pseudos plus jamais rognés sur les côtés ; les vocaux de l'accueil ne sont plus coupés au survol",
+        "Sons désactivables dans Paramètres › Musique, avec leur volume",
+        "Bouton « Aller sur Discord » instantané",
+        "Nouvel onglet Paramètres › Bouton Discord : l'enlever, choisir sa forme (pilule, arrondi, rond, contour) et les couleurs de son dégradé",
+        "Clic droit sur quelqu'un qui n'a pas Hush : « Inviter sur Hush »",
+        "Fonds d'écran nets : « Taille réelle » (jamais agrandie), « Entière », zoom sans flou, et déplacement en largeur ou en hauteur",
+        "Après la connexion Discord, Hush revient tout seul devant (et un bouton « Retourner sur Hush » sur la page)",
+        "Ombre portée des avatars toujours noire et bien placée sous l'avatar",
+        "Curseurs : Windows et Flèche Hush, plus tes propres curseurs (images ou GIF animés) que tu enregistres, renommes et supprimes, avec un « + » pour en créer"
       ],
       "artifacts": {
         "win32-x64": {

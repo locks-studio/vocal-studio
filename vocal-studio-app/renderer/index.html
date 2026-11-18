@@ -285,6 +285,7 @@
           <button role="tab" data-tab="video">Vidéo</button>
           <button role="tab" data-tab="window">Fenêtre</button>
           <button role="tab" data-tab="overlay">Overlay en jeu</button>
+          <button role="tab" data-tab="dcbtn" id="tabDcBtn" hidden>Bouton Discord</button>
           <div class="set-cat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c1.4-3.6 4.4-5.5 8-5.5s6.6 1.9 8 5.5"/></svg><span>Compte</span></div>
           <button role="tab" data-tab="account">Compte et langue</button>
         </nav>
@@ -358,7 +359,7 @@
             <div class="row" id="ringColorRow"><label for="ringColor" id="ringColorLabel">Unicolor</label><input type="color" id="ringColor"></div>
             <div class="row" id="ringColor2Row" hidden><label for="ringColor2">Couleur 2</label><input type="color" id="ringColor2"></div>
             <p class="hint" id="ringCoverHint" hidden>L'anneau prend les couleurs de l'album du morceau en cours.</p>
-            <p class="hint">Profil : l'anneau de chacun reprend les deux couleurs principales de sa photo. Indépendant : tu choisis la couleur de chacun (clic droit sur la personne › Couleur de son anneau). Ambilight : l'anneau prolonge les couleurs du bord de la photo, tout autour. Unicolor : une seule couleur pour tout le monde.</p>
+            <p class="hint">Profil : l'anneau de chacun reprend les deux couleurs principales de sa photo. Indépendant : tu choisis la couleur de chacun, toi compris (clic droit sur la personne › Couleur de son anneau). Ambilight : l'anneau prolonge les couleurs du bord de la photo, tout autour. Unicolor : une seule couleur pour tout le monde.</p>
             <div id="friendColors" class="fc-list" hidden></div>
           </div>
           <div class="group">
@@ -461,9 +462,14 @@
             <p class="hint">« Profil » : la photo de profil de celui qui parle, en grand et floutée. « Double dégradé » : deux couleurs au choix. « Image / GIF » et « Vidéo » gardent ton fichier en pleine qualité. Clique à nouveau sur un rond déjà choisi pour changer de fichier.</p>
           </div>
           <div class="group" id="bgZoomGroup" hidden>
+            <div class="label"><span>Taille de l'image</span></div>
+            <div class="seg" id="bgFitSeg"><button data-v="cover">Remplir</button><button data-v="native">Taille réelle</button><button data-v="contain">Entière</button></div>
+            <p class="hint" id="bgFitHint"></p>
             <div class="label"><label for="bgZoom">Zoom de l'image</label><output id="bgZoomOut"></output></div>
-            <input type="range" id="bgZoom" min="0.5" max="3" step="0.05">
+            <input type="range" id="bgZoom" min="0.25" max="3" step="0.05">
             <button class="linkbtn" id="bgZoomReset">Revenir à 100 %</button>
+            <div id="bgPanXRow"><div class="label"><label for="bgPanX">Déplacer en largeur</label></div><input type="range" id="bgPanX" min="0" max="1" step="0.005"></div>
+            <div id="bgPanYRow"><div class="label"><label for="bgPanY">Déplacer en hauteur</label></div><input type="range" id="bgPanY" min="0" max="1" step="0.005"></div>
           </div>
           <div class="group">
             <div class="label"><label for="bgFade">Fondu du fond</label><output id="bgFadeOut"></output></div>
@@ -497,23 +503,29 @@
           <div class="group">
             <div class="cur-grid" id="cursorSeg">
               <button data-v="system"><i class="cur-prev"></i><small>Windows</small></button>
-              <button data-v="dot"><i class="cur-prev"></i><small>Point</small></button>
               <button data-v="arrow"><i class="cur-prev"></i><small>Flèche Hush</small></button>
-              <button data-v="ring"><i class="cur-prev"></i><small>Anneau</small></button>
-              <button data-v="cross"><i class="cur-prev"></i><small>Viseur</small></button>
-              <button data-v="heart"><i class="cur-prev"></i><small>Cœur</small></button>
-              <button data-v="custom" id="cursorCustomBtn"><i class="cur-prev"></i><small>Mon image</small></button>
+              <button data-v="add" id="cursorAdd" title="Créer un curseur avec ton image (PNG, GIF animé…)"><i class="cur-prev empty"></i><small>Nouveau</small></button>
             </div>
-            <input type="file" id="cursorFile" accept="image/png,image/gif,image/webp,image/svg+xml,.cur" hidden>
-            <div class="row"><label for="cursorColor">Couleur</label><input type="color" id="cursorColor"></div>
+            <input type="file" id="cursorFile" accept="image/png,image/gif,image/webp,image/svg+xml" hidden>
+            <div class="row" id="cursorEdit" hidden><input type="text" id="cursorName" maxlength="24" placeholder="Nom du curseur" aria-label="Nom du curseur"><button class="ghost" id="cursorDel" type="button">Supprimer</button></div>
+            <div class="row" id="cursorColorRow"><label for="cursorColor">Couleur</label><input type="color" id="cursorColor"></div>
             <div class="label"><label for="cursorSize">Taille</label><output id="cursorSizeOut"></output></div>
-            <input type="range" id="cursorSize" min="16" max="48" step="2">
-            <p class="hint">Le curseur change seulement dans Hush. « Mon image » : une petite image PNG (fond transparent), la pointe est en haut à gauche.</p>
+            <input type="range" id="cursorSize" min="16" max="64" step="2">
+            <p class="hint">Le curseur change seulement dans Hush. « + » crée un curseur avec ton image : PNG à fond transparent, ou GIF animé (jusqu'à 1 Mo). La pointe est en haut à gauche. Tes curseurs restent enregistrés : clique sur l'un d'eux pour le renommer ou le supprimer.</p>
           </div>
         </div>
 
         <!-- ——— 4. Musique ——— -->
         <div class="tab-panel" data-tab="sound" role="tabpanel">
+          <h4 class="sec">Sons de l'interface</h4>
+          <div class="group">
+            <div class="row"><span>Petits sons (clics, notifications, caméra, stream)</span><button class="switch" id="sfx" role="switch" aria-label="Sons de l'interface"></button></div>
+            <div id="sfxVolRow">
+              <div class="label"><label for="sfxVol">Volume des sons</label><output id="sfxVolOut"></output></div>
+              <input type="range" id="sfxVol" min="0" max="1" step="0.05">
+            </div>
+          </div>
+          <h4 class="sec">Musique</h4>
           <div class="group">
             <div class="row"><span>Lecteur musique</span><button class="switch" id="musicOn" role="switch" aria-label="Afficher le lecteur musique"></button></div>
             <div class="music-box" id="musicFields">
@@ -616,12 +628,28 @@
           </div>
         </div>
 
+        <!-- ——— Bouton « Hush » posé sur la fenêtre de Discord (Windows) ——— -->
+        <div class="tab-panel" data-tab="dcbtn" role="tabpanel">
+          <h4 class="sec">Bouton Discord</h4>
+          <div class="group">
+            <div class="row" id="discordBtnRow"><span>Bouton « Hush » sur la fenêtre de Discord</span><button class="switch" id="discordBtn" role="switch" aria-label="Bouton Hush sur la fenêtre de Discord"></button></div>
+            <div id="dcStyleBox">
+              <div class="dc-prev-bar"><span class="dc-prev-title">Discord</span><span id="dcPrev" class="dc-prev"><i></i><b>Hush</b></span></div>
+              <div class="label"><span>Forme</span></div>
+              <div class="seg" id="dcShape"><button data-v="pill">Pilule</button><button data-v="soft">Arrondi</button><button data-v="round">Rond</button><button data-v="outline">Contour</button></div>
+              <div class="row"><label for="dcC1">Couleur 1 du dégradé</label><input type="color" id="dcC1"></div>
+              <div class="row"><label for="dcC2">Couleur 2 du dégradé</label><input type="color" id="dcC2"></div>
+              <div class="row"><span>Couleurs de base</span><button class="ghost" id="dcReset" type="button">Rétablir</button></div>
+            </div>
+            <p class="hint">Le bouton se pose sur la barre du haut de Discord : un clic t'amène sur Hush. Fais-le glisser pour le déplacer le long de la barre.</p>
+          </div>
+        </div>
+
         <!-- ——— Overlay en jeu : toujours au premier plan, la souris passe à travers ——— -->
         <div class="tab-panel" data-tab="overlay" role="tabpanel">
           <h4 class="sec">Overlay en jeu</h4>
           <div class="group">
             <div class="row"><span>Overlay</span><button class="ghost" id="setMini">Ouvrir</button></div>
-            <div class="row" id="discordBtnRow" hidden><span>Bouton « Hush » sur la fenêtre de Discord</span><button class="switch" id="discordBtn" role="switch" aria-label="Bouton Hush sur la fenêtre de Discord"></button></div>
             <div id="ovEditRow" hidden><button class="hush-drop ov-free" id="ovEdit" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg><span><b>Déplacement libre</b><small>Fais glisser l'overlay où tu veux, et change sa taille à la molette</small></span></button></div>
             <p class="hint" id="ovEditHint" hidden>Fais glisser l'overlay où tu veux, même sur un autre écran, et change sa taille avec la molette. Échap, clic droit ou « Terminé » pour finir.</p>
             <p class="hint">Toujours au premier plan, et la souris passe à travers : il ne gêne jamais quand tu joues. Ctrl+Maj+H l'affiche ou le cache, même en jeu. Un jeu en plein écran exclusif le recouvre : mets le jeu en « fenêtré sans bordure ».</p>
@@ -716,6 +744,7 @@
 <script src="rings.js"></script>
 <script src="music.js"></script>
 <script src="lens.js"></script>
+<script src="sfx.js"></script>
 <script src="app.js"></script>
 <script src="profiles.js"></script>
 <script src="usermenu.js"></script>

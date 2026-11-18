@@ -32,6 +32,10 @@ function attachLocalMedia() {
     } else if (v) v.remove();
     t.el.classList.toggle("video", !!cam || !!t.data.video);
     t.el.classList.toggle("live", !!screen || !!t.data.stream);
+    const vid = !!cam || !!t.data.video, live = !!screen || !!t.data.stream;
+    if (t.sfxVid !== undefined && vid !== t.sfxVid) Sfx.play(vid ? "camOn" : "camOff");
+    if (t.sfxLive !== undefined && live !== t.sfxLive) Sfx.play(live ? "streamOn" : "streamOff");
+    t.sfxVid = vid; t.sfxLive = live;
     t.el.classList.toggle("has-feed", !!(cam || screen));
   }
   $("#camBtn").classList.toggle("on", !!Cap.cam);

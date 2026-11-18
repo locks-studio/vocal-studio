@@ -22,7 +22,7 @@ const SHAPES = {
   squircle: { r: "30%", c: "none" },
 };
 const DEFAULTS = { skin: "nuit", layout: "strip", shape: "round", bg: "pinkspace", glow: 25, speed: 1, accent: null, names: true, cards: true, hideMuted: false, panel: true, demo: false, players: 99,
-  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, homeVeilMode: "fade", bgFade: 0, uiDa: "home", nameFit: false, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "tile", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true, fxTv: false, avOutlineColor: "black", avOutlineCustom: "#ff4fa3", cursor: "system", cursorColor: "#ffffff", cursorSize: 24, cursorImg: null, richPresence: true,
+  ring: "solid", pixel: false, camera: true, bgImage: null, bgColor: "#fcbbdd", bgColor2: "#9b7bff", bgZoom: 1, ringColor2: "#7c6cff", musicOn: true, musicSource: "pc", volume: 0.8, playerColor: "accent", playerBg: "gradient", playerStyle: "card", zoom: 0.55, tab: "general", chanNames: {}, playerW: null, playerPos: null, autoHide: true, font: "Chomsky", showMe: false, ringColor: null, ringFrom: "origin", voiceMin: 0.4, avShadow: false, bgBlur: 0, blurType: "gaussian", musicTitle: "MADARA-OST", musicCover: null, userPresets: [], notes: {}, userGain: {}, userVol: {}, localMuted: {}, hiddenUsers: [], clipAudio: true, namePos: "top", nameSize: 1, freePos: {}, squash: true, history: [], nameMask: "none", glitch: "off", glitchAmt: 0.5, glitchVoice: true, joinAnim: "pop", avOutline: false, avOutlineAuto: false, nameHover: true, vertNameTop: false, glitchStyle: "rgb", perf: "auto", chanStats: {}, favChans: [], homeSide: "top", homeBg: 1, homeVeilMode: "fade", bgFade: 0, uiDa: "home", nameFit: false, sbGuests: 7, nameShift: 0, friendColors: {}, camView: "tile", camDevice: "", clipLen: "30", clipSource: "screen", replayAuto: false, reports: false, onboarded: false, adminView: true, avAnim: "db", menuFixed: true, fxTv: false, avOutlineColor: "black", avOutlineCustom: "#ff4fa3", cursor: "system", cursorColor: "#ffffff", cursorSize: 24, cursorImg: null, myCursors: [], richPresence: true, sfx: true, sfxVol: 0.7, bgFit: "cover", bgPanX: 0.5, bgPanY: 0.5,
   // Overlay en jeu : emplacement (coin + décalage, en pixels), taille, écran, et ce qu'il affiche
   ov: { pos: "tl", x: 24, y: 24, w: 280, h: 420, screen: 0, layout: "column", ring: "same", names: true, anim: true, onlyTalk: false, hideMuted: false, opacity: 1 } };
 // Anciennes valeurs par défaut : un réglage jamais touché passe une fois aux nouvelles valeurs de base
@@ -1030,7 +1030,7 @@ Object.entries(SKINS).forEach(([k, v]) => {
   b.onclick = () => { S.skin = k; S.accent = null; apply(); };
   skinsEl.appendChild(b);
 });
-const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"], ["#uiDaSeg", "uiDa"], ["#avOutlineColorSeg", "avOutlineColor"], ["#cursorSeg", "cursor"]];
+const SEGS = [["#namePosSeg", "namePos"], ["#layoutSeg", "layout"], ["#shapeSeg", "shape"], ["#ringSeg", "ring"], ["#ringFromSeg", "ringFrom"], ["#blurTypeSeg", "blurType"], ["#bgSeg", "bg"], ["#musicSrcSeg", "musicSource"], ["#playerColorSeg", "playerColor"], ["#playerBgSeg", "playerBg"], ["#playerStyleSeg", "playerStyle"], ["#nameMaskSeg", "nameMask"], ["#glitchSeg", "glitch"], ["#joinAnimSeg", "joinAnim"], ["#glitchStyleSeg", "glitchStyle"], ["#perfSeg", "perf"], ["#avAnimSeg", "avAnim"], ["#camViewSeg", "camView"], ["#uiDaSeg", "uiDa"], ["#avOutlineColorSeg", "avOutlineColor"]];
 SEGS.forEach(([id, key]) =>
   $(id).querySelectorAll("button").forEach((b) => (b.onclick = () => {
     if (key === "bg" && b.dataset.v === "we") return openWe();
@@ -1041,7 +1041,6 @@ SEGS.forEach(([id, key]) =>
       if (!own || b.getAttribute("aria-pressed") === "true") return pickBg(want);
       S.bg = "image"; return apply();
     }
-    if (key === "cursor" && b.dataset.v === "custom" && !S.cursorImg) return $("#cursorFile").click();
     // Changer de style de lecteur : il revient à sa taille par défaut, en bas à droite
     if (key === "playerStyle" && S.playerStyle !== b.dataset.v) { S.playerW = null; S.playerPos = null; requestAnimationFrame(() => placeMusic()); }
     S[key] = b.dataset.v;
@@ -1168,10 +1167,38 @@ function loadBgImg() {
   if (video) Object.assign(m, { muted: true, loop: true, autoplay: true, playsInline: true, preload: "auto", disablePictureInPicture: true, disableRemotePlayback: true });
   m.crossOrigin = "anonymous"; // pour lire ses couleurs (texte blanc ou noir selon le fond)
   m.alt = "";
+  m.addEventListener(video ? "loadedmetadata" : "load", layoutBg);
   m.src = src;
   box.appendChild(m);
   if (video) m.play().catch(() => {});
 }
+// Taille du fond, sans perte de qualité : on calcule nous-mêmes la taille affichée (pas de zoom par « transform »,
+// qui adoucit l'image). « Remplir » couvre la fenêtre (une image d'un autre format est alors agrandie),
+// « Taille réelle » affiche un pixel de l'image par pixel de l'écran (jamais agrandie, toujours nette),
+// « Entière » montre toute l'image. Si elle dépasse, on la déplace en largeur ou en hauteur.
+function layoutBg() {
+  const box = $("#bgMedia"), m = box && box.firstElementChild;
+  const fit = ["cover", "native", "contain"].includes(S.bgFit) ? S.bgFit : "cover";
+  document.querySelectorAll("#bgFitSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === fit)));
+  $("#bgPanX").value = S.bgPanX ?? 0.5; $("#bgPanY").value = S.bgPanY ?? 0.5;
+  if (!m) return;
+  const iw = m.naturalWidth || m.videoWidth, ih = m.naturalHeight || m.videoHeight;
+  const bw = box.clientWidth || innerWidth, bh = box.clientHeight || innerHeight;
+  if (!iw || !ih || !bw || !bh) return;
+  const dpr = devicePixelRatio || 1;
+  const base = fit === "native" ? 1 / dpr : fit === "contain" ? Math.min(bw / iw, bh / ih) : Math.max(bw / iw, bh / ih);
+  const s = base * (S.bgZoom || 1), w = iw * s, h = ih * s;
+  const px = S.bgPanX ?? 0.5, py = S.bgPanY ?? 0.5;
+  Object.assign(m.style, { position: "absolute", width: w + "px", height: h + "px", left: (bw - w) * px + "px", top: (bh - h) * py + "px", objectFit: "fill", transform: "none", maxWidth: "none", maxHeight: "none" });
+  $("#bgPanXRow").hidden = w <= bw + 1; $("#bgPanYRow").hidden = h <= bh + 1;
+  // Agrandie : on le dit, avec la taille de l'image, et la solution
+  const up = s * dpr;
+  $("#bgFitHint").textContent = up > 1.15
+    ? `Ton image fait ${iw}×${ih} : ici elle est agrandie ×${up.toFixed(1).replace(".", ",")}, donc un peu floue. « Taille réelle » la garde parfaitement nette ; déplace-la ensuite pour choisir la partie visible.`
+    : `Ton image fait ${iw}×${ih} : elle est affichée sans être agrandie, donc nette.`;
+}
+addEventListener("resize", () => requestAnimationFrame(layoutBg));
+
 // Hush caché ou réduit : la vidéo de fond se met en pause (elle reprend en revenant)
 document.addEventListener("visibilitychange", () => {
   const v = $("#bgMedia video");
@@ -1498,7 +1525,9 @@ function drawFriendColors() {
   box.hidden = S.ringFrom !== "friends";
   if (box.hidden) return;
   const meId = state.me && state.me.id;
-  const ppl = (state.members || []).filter((m) => m.id !== meId && !m.ghost);
+  // Toi en premier (ta propre couleur), puis les autres
+  const meM = (state.members || []).find((m) => m.id === meId) || (state.me && meId ? { id: meId, name: state.me.name, avatar: state.me.avatar } : null);
+  const ppl = [...(meM ? [{ ...meM, isMe: true }] : []), ...(state.members || []).filter((m) => m.id !== meId && !m.ghost)];
   const sig = S.ringFrom + JSON.stringify(ppl.map((m) => m.id)) + JSON.stringify(S.friendColors || {});
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
@@ -1508,7 +1537,7 @@ function drawFriendColors() {
     const row = document.createElement("label");
     row.className = "row fc-row";
     const im = Object.assign(document.createElement("img"), { alt: "", src: m.avatar || "assets/discord-logo.png" });
-    const n = Object.assign(document.createElement("span"), { textContent: m.name });
+    const n = Object.assign(document.createElement("span"), { textContent: m.isMe ? `${m.name} (toi)` : m.name });
     const inp = Object.assign(document.createElement("input"), { type: "color", value: (S.friendColors || {})[m.id] || "#ff8cc6" });
     inp.oninput = () => setFriendColor(m.id, inp.value);
     row.append(im, n, inp);
@@ -1517,10 +1546,15 @@ function drawFriendColors() {
   }
 }
 $("#voiceMin").oninput = (e) => { S.voiceMin = +e.target.value; apply(); };
+$("#sfxVol").oninput = (e) => { S.sfxVol = +e.target.value; apply(); };
+$("#sfxVol").onchange = () => Sfx.play("click"); // on entend le nouveau volume en lâchant le curseur
 $("#ringColor2").oninput = (e) => { S.ringColor2 = e.target.value; S.ringFrom = "duo"; apply(); };
 $("#bgColor").oninput = (e) => { S.bgColor = e.target.value; apply(); };
 $("#bgColor2").oninput = (e) => { S.bgColor2 = e.target.value; apply(); };
 $("#bgZoom").oninput = (e) => { S.bgZoom = +e.target.value; apply(); };
+$("#bgPanX").oninput = (e) => { S.bgPanX = +e.target.value; apply(); };
+$("#bgPanY").oninput = (e) => { S.bgPanY = +e.target.value; apply(); };
+document.querySelectorAll("#bgFitSeg button").forEach((b) => (b.onclick = () => { S.bgFit = b.dataset.v; S.bgZoom = 1; S.bgPanX = S.bgPanY = 0.5; apply(); }));
 // Accueil : opacité du fond (1 = fond bien visible, 0 = fond caché derrière un voile)
 $("#homeVeil").oninput = (e) => { S.homeBg = +e.target.value; apply(); };
 // Clic sur le logo de la barre : fondu ↔ flou
@@ -1535,7 +1569,7 @@ $("#playerSize").oninput = (e) => { S.playerW = +e.target.value; apply(); reques
 $("#bgZoomReset").onclick = () => { S.bgZoom = 1; apply(); };
 $("#bgBlur").oninput = (e) => { S.bgBlur = +e.target.value; apply(); };
 $("#glitchAmt").oninput = (e) => { S.glitchAmt = +e.target.value; apply(); };
-const SWITCHES = ["nameFit", "camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "nameHover", "vertNameTop", "reports", "adminView", "fxTv", "richPresence"];
+const SWITCHES = ["nameFit", "camera", "names", "showMe", "hideMuted", "autoHide", "avShadow", "clipAudio", "replayAuto", "vertical", "glitchVoice", "avOutline", "nameHover", "vertNameTop", "reports", "adminView", "fxTv", "richPresence", "sfx"];
 // Polices proposées (Google Fonts), chargées à la demande
 // Polices des pseudos : livrées avec Hush (assets/fonts), rien à télécharger
 const FONTS = ["Chomsky", "Alhambra", "Super Whales", "Super Mario 256", "Jersey 75", "Tropi Land", "Fat Kat", "Minecraft", "Kiwi Soda", "TypoSlab Irregular", "JoJo"];
@@ -1696,6 +1730,8 @@ function apply() {
   $("#ringColor2Row").hidden = S.ringFrom !== "duo";
   $("#ringColorLabel").textContent = S.ringFrom === "duo" ? "Couleur 1" : "Unicolor";
   $("#ringColor2").value = S.ringColor2 || "#7c6cff";
+  $("#sfxVol").value = S.sfxVol ?? 0.7; $("#sfxVolOut").textContent = Math.round((S.sfxVol ?? 0.7) * 100) + " %";
+  $("#sfxVolRow").hidden = S.sfx === false;
   $("#voiceMin").value = S.voiceMin; $("#voiceMinOut").textContent = S.voiceMin ? Math.round(S.voiceMin * 100) + " %" : "aucune";
   // Flou du fond
   const blur = S.bgBlur;
@@ -1798,6 +1834,7 @@ function apply() {
   $("#bgFade").value = bf; $("#bgFadeOut").textContent = bf ? Math.round(bf * 100) + " %" : "aucun";
   $("#bgZoom").value = S.bgZoom; $("#bgZoomOut").textContent = Math.round(S.bgZoom * 100) + " %";
   $("#bgMedia").style.setProperty("--bg-zoom", S.bgZoom);
+  layoutBg();
   $("#freeHint").hidden = S.layout !== "free";
   $("#bgPick").textContent = S.bgImage ? "Changer le fond (image, GIF, vidéo)" : "Choisir un fond (image, GIF, vidéo)";
   loadBgImg();
@@ -2157,18 +2194,17 @@ function filmFrame(t) {
   const plunge = L === "plunge" && cam;
   if (plunge && shot !== "wide") {
     const who = lockI >= 0 ? lockI : shot === "two" ? Math.max(...talking) : Math.max(0, fi);
-    const id = items[who] && items[who].data.id;
-    // Nouvelle personne : la caméra change de côté et refait un plongeon
-    if (id !== film.plungeFor) { film.plungeFor = id; film.side = -film.side; film.dip = 1; }
-    aim = who - film.side * 0.32;
-    zAim = 1.45 + film.energy * 0.35;
+    // La caméra tourne lentement et sans arrêt autour de celui qui parle : elle glisse d'un côté à l'autre
+    film.orb = (t * 0.00032 * (reduced ? 0 : S.speed));
+    aim = who - Math.sin(film.orb) * 0.16;
+    zAim = 1.4 + film.energy * 0.2;
   }
   // Jamais plus gros que l'écran, jamais minuscule
   zAim = Math.max(0.22, Math.min(zAim, (other * 0.72) / c));
   // Ressorts amortis : le cadrage glisse (plus vite pour suivre quelqu'un, très lentement en plan large)
   if (viewFree() && view.x !== null) { film.x = view.x; film.vx = 0; }
   else {
-    const kx = (shot === "wide" ? 0.006 : shot === "two" ? 0.01 : 0.016) * S.speed;
+    const kx = (shot === "wide" ? 0.006 : plunge ? 0.007 : shot === "two" ? 0.01 : 0.016) * S.speed; // Plongée : glisse plus douce d'une personne à l'autre
     film.vx += (aim - film.x) * kx; film.vx *= 1 - 2 * Math.sqrt(kx); film.x += film.vx;
   }
   const kz = 0.006 * S.speed;
@@ -2179,19 +2215,19 @@ function filmFrame(t) {
   const yawAim = cam ? (aim - film.x) * -7 + Math.sin(t * 0.00016 * sp) * 8 + (shot === "close" ? -5 : 0) : 0;
   const pitchAim = cam ? (shot === "wide" ? 11 : shot === "close" ? 3 : 7) + Math.sin(t * 0.0002 * sp) * 2 : 0;
   if (plunge) {
-    // Ressorts amortis sur l'angle : ça part doucement, ça accélère, et ça se pose sans à-coup
-    film.dip *= 1 - 0.012 * sp;
-    const yA = shot === "wide" ? Math.sin(t * 0.00013 * sp) * 22 : film.side * 34 + Math.sin(t * 0.00017 * sp) * 4;
-    const pA = (shot === "wide" ? 20 : 27 + film.energy * 6) + film.dip * 16;
-    const k = 0.0085 * sp;
+    // Plongée douce : la caméra est un peu au-dessus et fait le tour de la personne, lentement et en continu
+    // (angles faibles, ressorts très amortis : rien ne saute quand quelqu'un d'autre prend la parole)
+    const ph = film.orb || t * 0.00032 * sp;
+    const yA = shot === "wide" ? Math.sin(t * 0.00012 * sp) * 14 : Math.sin(ph) * 24;
+    const pA = shot === "wide" ? 13 : 15 + Math.cos(ph * 0.8) * 6;
+    const k = 0.004 * sp;
     film.vyaw += (yA - film.yaw) * k; film.vyaw *= 1 - 2 * Math.sqrt(k); film.yaw += film.vyaw;
     film.vpitch += (pA - film.pitch) * k; film.vpitch *= 1 - 2 * Math.sqrt(k); film.pitch += film.vpitch;
-    film.z -= film.dip * 0.004; // en plongeant, on recule un peu puis on revient serrer
   } else {
     film.yaw += (yawAim - film.yaw) * 0.03;
     film.pitch += (pitchAim - film.pitch) * 0.03;
   }
-  const roll = plunge ? -film.yaw * 0.09 : cam && shot === "close" ? Math.sin(t * 0.0003 * sp) * 1.2 : 0;
+  const roll = plunge ? -film.yaw * 0.05 : cam && shot === "close" ? Math.sin(t * 0.0003 * sp) * 1.2 : 0;
   view.slotPx = gap * film.z;
   items.forEach((it, i) => {
     const d = i - film.x - drift;
@@ -2831,13 +2867,30 @@ $("#setMini").onclick = openMini;
 const syncOvBtn = (open) => { $("#homeOverlay").setAttribute("aria-checked", String(!!open)); $("#homeOverlay").querySelector("span").textContent = open ? "Overlay activé" : "Overlay désactivé"; };
 window.studio.win.onMini((open) => { $("#miniBtn").classList.toggle("on", open); $("#setMini").textContent = open ? "Fermer" : "Ouvrir"; syncOvBtn(open); });
 $("#homeOverlay").onclick = async () => { await openMini(); syncOvBtn($("#miniBtn").classList.contains("on")); };
-$("#homeDiscord").onclick = () => window.studio.win.goDiscord();
+$("#homeDiscord").onclick = () => { Sfx.play("toDiscord"); window.studio.win.goDiscord(); };
 // Bouton « Hush » accroché à Discord (Windows) : on/off dans Vidéo et fenêtre
 if (!MINI) window.studio.win.discordBtn().then((c) => {
   if (!c || !c.supported) return;
-  $("#discordBtnRow").hidden = false;
+  $("#tabDcBtn").hidden = false;
   $("#discordBtn").setAttribute("aria-checked", String(c.on));
-  $("#discordBtn").onclick = async () => { const on = await window.studio.win.discordBtn($("#discordBtn").getAttribute("aria-checked") !== "true"); $("#discordBtn").setAttribute("aria-checked", String(on)); };
+  $("#dcStyleBox").hidden = !c.on;
+  $("#discordBtn").onclick = async () => { const on = await window.studio.win.discordBtn($("#discordBtn").getAttribute("aria-checked") !== "true"); $("#discordBtn").setAttribute("aria-checked", String(on)); $("#dcStyleBox").hidden = !on; };
+  // Forme et couleurs du bouton : l'aperçu change tout de suite, le vrai bouton sur Discord aussi
+  const DC_STYLE0 = { shape: "pill", c1: "#ff4fa3", c2: "#a35cff" };
+  let st = { ...DC_STYLE0, ...(c.style || {}) };
+  const draw = () => {
+    $("#dcPrev").className = "dc-prev " + st.shape;
+    $("#dcPrev").style.setProperty("--c1", st.c1); $("#dcPrev").style.setProperty("--c2", st.c2);
+    $("#dcC1").value = st.c1; $("#dcC2").value = st.c2;
+    document.querySelectorAll("#dcShape button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === st.shape)));
+  };
+  let saveT = null;
+  const save = (now) => { draw(); clearTimeout(saveT); saveT = setTimeout(() => window.studio.win.discordBtnStyle(st), now ? 0 : 150); };
+  document.querySelectorAll("#dcShape button").forEach((b) => (b.onclick = () => { st.shape = b.dataset.v; save(true); }));
+  $("#dcC1").oninput = (e) => { st.c1 = e.target.value; save(); };
+  $("#dcC2").oninput = (e) => { st.c2 = e.target.value; save(); };
+  $("#dcReset").onclick = () => { st = { ...DC_STYLE0, shape: st.shape }; save(true); };
+  draw();
 }).catch(() => {});
 syncOvBtn(false);
 
@@ -3095,74 +3148,135 @@ setInterval(sampleInk, 1200);
 setTimeout(sampleInk, 400);
 
 /* ——— Curseur personnalisé (Paramètres › Curseur) ———
-   Des curseurs dessinés en SVG (couleur et taille au choix), ou une image à soi. Seulement dans Hush. */
-function cursorSvg(kind, c) {
+   « Windows », « Flèche Hush » (couleur et taille au choix), et les curseurs enregistrés de chacun (image ou GIF animé),
+   qu'on nomme, renomme et supprime. Seulement dans Hush. */
+function cursorUrl(c, sz) {
   const k = "#1a1026";
-  switch (kind) {
-    case "dot": return [`<circle cx="16" cy="16" r="6.5" fill="${c}" stroke="${k}" stroke-opacity=".55" stroke-width="1.6"/>`, 16, 16];
-    case "arrow": return [`<path d="M5 3.5 26 13.6l-9 2.4-4.1 8.6z" fill="${c}" stroke="${k}" stroke-width="1.8" stroke-linejoin="round"/>`, 5, 3];
-    case "ring": return [`<circle cx="16" cy="16" r="9.5" fill="none" stroke="${k}" stroke-opacity=".5" stroke-width="5"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="${c}" stroke-width="2.6"/><circle cx="16" cy="16" r="2.2" fill="${c}"/>`, 16, 16];
-    case "cross": return [`<path d="M16 3v9M16 20v9M3 16h9M20 16h9" stroke="${k}" stroke-opacity=".5" stroke-width="4.5" stroke-linecap="round"/><path d="M16 3v9M16 20v9M3 16h9M20 16h9" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="1.8" fill="${c}"/>`, 16, 16];
-    case "heart": return [`<path d="M16 27S4 19.6 4 11.8A6.2 6.2 0 0 1 16 9a6.2 6.2 0 0 1 12 2.8C28 19.6 16 27 16 27z" fill="${c}" stroke="${k}" stroke-width="1.8" stroke-linejoin="round"/>`, 16, 16];
+  const svg = `<path d="M5 3.5 26 13.6l-9 2.4-4.1 8.6z" fill="${c}" stroke="${k}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  return [`data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 32 32">${svg}</svg>`)}`, Math.round((5 * sz) / 32), Math.round((3 * sz) / 32)];
+}
+// Anciens réglages : l'image unique devient un curseur enregistré, les formes retirées repassent sur la flèche
+function cursorMigrate() {
+  if (!Array.isArray(S.myCursors)) S.myCursors = [];
+  if (S.cursorImg) {
+    const id = "c" + Date.now().toString(36);
+    S.myCursors.push({ id, name: "Mon image", img: S.cursorImg });
+    if (S.cursor === "custom") S.cursor = "c:" + id;
+    S.cursorImg = null;
   }
-  return null;
+  const ok = S.cursor === "system" || S.cursor === "arrow" || (/^c:/.test(S.cursor || "") && S.myCursors.some((c) => "c:" + c.id === S.cursor));
+  if (!ok) S.cursor = S.cursor === "system" ? "system" : "arrow";
 }
-function cursorUrl(kind, c, sz) {
-  const s = cursorSvg(kind, c);
-  if (!s) return null;
-  return [`data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 32 32">${s[0]}</svg>`)}`, Math.round((s[1] * sz) / 32), Math.round((s[2] * sz) / 32)];
-}
-// Image à soi : redimensionnée à la taille choisie (le résultat est gardé en cache)
-function customCursor(sz) {
-  const key = sz + "|" + (S.cursorImg || "").length;
-  if (customCursor.key === key) return customCursor.url;
-  customCursor.key = key; customCursor.url = null;
+function myCursor() { return /^c:/.test(S.cursor || "") ? S.myCursors.find((c) => "c:" + c.id === S.cursor) : null; }
+// Image fixe : redimensionnée à la taille choisie (gardée en cache). Un GIF garde son animation : voir fakeCursor.
+function staticCursor(img, sz) {
+  const key = sz + "|" + img.length + "|" + img.slice(-40);
+  if (staticCursor.key === key) return staticCursor.url;
+  staticCursor.key = key; staticCursor.url = null;
   const i = new Image();
   i.onload = () => {
     const k = sz / Math.max(i.width, i.height), c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(i.width * k)); c.height = Math.max(1, Math.round(i.height * k));
     c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
-    customCursor.url = c.toDataURL("image/png");
+    staticCursor.url = c.toDataURL("image/png");
     applyCursor();
   };
-  i.src = S.cursorImg;
+  i.src = img;
   return null;
+}
+// Un GIF animé ne bouge pas en curseur Windows : on cache la souris et une image animée la suit
+function fakeCursor(img, sz) {
+  const fakeCur = fakeCursor;
+  if (!fakeCur.el) {
+    fakeCur.el = document.createElement("img");
+    fakeCur.el.id = "fakeCursor"; fakeCur.el.alt = "";
+    document.body.appendChild(fakeCur.el);
+    addEventListener("pointermove", (e) => { fakeCur.el.style.translate = `${e.clientX}px ${e.clientY}px`; fakeCur.el.style.opacity = "1"; }, { capture: true, passive: true });
+    document.documentElement.addEventListener("mouseleave", () => { if (fakeCur.el) fakeCur.el.style.opacity = "0"; });
+  }
+  if (fakeCur.el.getAttribute("src") !== img) fakeCur.el.src = img;
+  fakeCur.el.style.width = sz + "px"; fakeCur.el.style.height = sz + "px";
 }
 function applyCursor() {
   if (MINI) return;
-  const sz = S.cursorSize || 24, col = S.cursorColor || "#ffffff";
+  cursorMigrate();
+  const sz = S.cursorSize || 24, col = S.cursorColor || "#ffffff", mine = myCursor();
+  const gif = !!(mine && /^data:image\/gif/.test(mine.img));
   let cur = null;
-  if (S.cursor === "custom" && S.cursorImg) { const u = customCursor(sz); if (u) cur = [u, 0, 0]; }
-  else cur = cursorUrl(S.cursor, col, sz);
+  if (mine && !gif) { const u = staticCursor(mine.img, sz); if (u) cur = [u, 0, 0]; }
+  else if (S.cursor === "arrow") cur = cursorUrl(col, sz);
   document.body.classList.toggle("cur-on", !!cur);
+  document.body.classList.toggle("cur-fake", gif);
   if (cur) document.body.style.setProperty("--cur", `url("${cur[0]}") ${cur[1]} ${cur[2]}`);
-  // Aperçus dans les paramètres
-  document.querySelectorAll("#cursorSeg button").forEach((btn) => {
-    const p = btn.querySelector(".cur-prev"), v = btn.dataset.v;
-    if (v === "custom") p.style.backgroundImage = S.cursorImg ? `url("${S.cursorImg}")` : "";
-    else if (v !== "system") p.style.backgroundImage = `url("${cursorUrl(v, col, 40)[0]}")`;
-    p.classList.toggle("empty", v === "custom" && !S.cursorImg);
-  });
+  if (gif) fakeCursor(mine.img, sz); else if (fakeCursor.el) fakeCursor.el.removeAttribute("src");
+  renderCursors();
   $("#cursorColor").value = col;
+  $("#cursorColorRow").hidden = S.cursor !== "arrow";
   $("#cursorSize").value = sz; $("#cursorSizeOut").textContent = sz + " px";
+  const ed = $("#cursorEdit");
+  ed.hidden = !mine;
+  if (mine && document.activeElement !== $("#cursorName")) $("#cursorName").value = mine.name;
+}
+// La grille : Windows, Flèche Hush, tes curseurs, puis toujours « + »
+function renderCursors() {
+  const grid = $("#cursorSeg"), add = $("#cursorAdd");
+  grid.querySelectorAll("button.cur-mine").forEach((b) => b.remove());
+  for (const c of S.myCursors) {
+    const b = document.createElement("button");
+    b.className = "cur-mine"; b.dataset.v = "c:" + c.id; b.title = c.name;
+    const i = document.createElement("i"); i.className = "cur-prev"; i.style.backgroundImage = `url("${c.img}")`;
+    const sm = document.createElement("small"); sm.textContent = c.name;
+    b.append(i, sm);
+    grid.insertBefore(b, add);
+  }
+  grid.querySelectorAll("button").forEach((b) => {
+    const v = b.dataset.v;
+    b.setAttribute("aria-pressed", String(v === S.cursor));
+    if (v === "arrow") b.querySelector(".cur-prev").style.backgroundImage = `url("${cursorUrl(S.cursorColor || "#ffffff", 40)[0]}")`;
+    if (v === "add") b.onclick = () => $("#cursorFile").click();
+    else b.onclick = () => { S.cursor = v; apply(); };
+  });
 }
 if (!MINI) {
-  $("#cursorColor").oninput = (e) => { S.cursorColor = e.target.value; if (S.cursor === "system" || S.cursor === "custom") S.cursor = "arrow"; apply(); };
+  $("#cursorColor").oninput = (e) => { S.cursorColor = e.target.value; S.cursor = "arrow"; apply(); };
   $("#cursorSize").oninput = (e) => { S.cursorSize = +e.target.value; apply(); };
-  // « Mon image » déjà choisie : un double-clic en choisit une autre
-  $("#cursorCustomBtn").ondblclick = () => $("#cursorFile").click();
+  $("#cursorName").oninput = (e) => { const c = myCursor(); if (!c) return; c.name = e.target.value.slice(0, 24) || "Curseur"; renderCursors(); save(); };
+  $("#cursorName").onkeydown = (e) => { if (e.key === "Enter") e.target.blur(); };
+  $("#cursorDel").onclick = () => {
+    const c = myCursor(); if (!c) return;
+    S.myCursors = S.myCursors.filter((x) => x !== c); S.cursor = "arrow";
+    showToast(`Curseur « ${c.name} » supprimé`); apply();
+  };
+  // Nouveau curseur : PNG/WebP/SVG ramené à 128 px (fond transparent gardé), GIF gardé tel quel pour rester animé
+  const addCursor = (img, name) => {
+    const id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const before = S.myCursors.slice();
+    S.myCursors.push({ id, name, img });
+    try { localStorage.setItem("vocal-studio", JSON.stringify(S)); }
+    catch { S.myCursors = before; return showToast("Plus de place pour ce curseur : supprime-en un ou prends une image plus légère."); }
+    S.cursor = "c:" + id; apply();
+    showToast(`Curseur « ${name} » enregistré : clique dessus pour le renommer`);
+    setTimeout(() => { $("#cursorName").focus(); $("#cursorName").select(); }, 50);
+  };
   $("#cursorFile").onchange = (e) => {
     const f = e.target.files[0];
     e.target.value = "";
     if (!f) return;
-    // En PNG (pas en JPEG) : le fond transparent reste transparent
+    const name = (f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Curseur").slice(0, 24);
+    if (f.type === "image/gif") {
+      if (f.size > 1024 * 1024) return showToast("Ce GIF est trop lourd (1 Mo maximum).");
+      const r = new FileReader();
+      r.onload = () => addCursor(r.result, name);
+      r.onerror = () => showToast("Ce GIF ne peut pas servir de curseur.");
+      return r.readAsDataURL(f);
+    }
     const u = URL.createObjectURL(f), i = new Image();
     i.onload = () => {
       const k = Math.min(1, 128 / Math.max(i.width, i.height)), c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(i.width * k)); c.height = Math.max(1, Math.round(i.height * k));
       c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
       URL.revokeObjectURL(u);
-      S.cursorImg = c.toDataURL("image/png"); S.cursor = "custom"; apply();
+      addCursor(c.toDataURL("image/png"), name);
     };
     i.onerror = () => { URL.revokeObjectURL(u); showToast("Cette image ne peut pas servir de curseur."); };
     i.src = u;

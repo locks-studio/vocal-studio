@@ -143,11 +143,13 @@ const ipOf = (req) => String(req.headers["x-forwarded-for"] || req.socket.remote
 // En-têtes de sécurité de toutes les pages et réponses du serveur
 const SECURE_HEADERS = { "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" };
 
-function page(res, title, text) {
+// back : bouton « Retourner sur Hush » (lien hush://, comme le client Riot), pour quand la fenêtre ne revient pas toute seule
+function page(res, title, text, back = false) {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  const btn = back ? `<a href="hush://ouvrir" style="display:inline-block;margin-top:22px;padding:13px 30px;border-radius:999px;background:#fff;color:#000;font-weight:700;text-decoration:none;box-shadow:0 0 18px rgba(255,255,255,.45),0 0 44px rgba(255,255,255,.18)">Retourner sur Hush · Back to Hush</a>` : "";
   res.end(`<!doctype html><meta charset="utf-8"><title>Hush</title>
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#f4f5f8;font-family:system-ui,sans-serif;text-align:center">
-<div><h1 style="font-size:26px">${title}</h1><p style="color:#8a8d99">${text}</p></div></body>`);
+<div><h1 style="font-size:26px">${title}</h1><p style="color:#8a8d99">${text}</p>${btn}</div></body>`);
 }
 
 async function handleCallback(url, res) {
@@ -169,7 +171,7 @@ async function handleCallback(url, res) {
     sessions[token] = { id: user.id, name: user.global_name || user.username, at: Date.now(), seen: Date.now() };
     saveSessions();
     p.token = token;
-    page(res, "C'est bon ! · All set!", "Hush est connecté à ton compte Discord. Tu peux fermer cet onglet. · Hush is linked to your Discord account. You can close this tab.");
+    page(res, "C'est bon ! · All set!", "Hush est connecté à ton compte Discord et revient tout seul au premier plan. Tu peux fermer cet onglet. · Hush is linked to your Discord account and comes back on its own. You can close this tab.", true);
   } catch (e) {
     p.error = `Connexion refusée : ${e.message}`;
     page(res, "La connexion a échoué · Login failed", "Reviens dans Hush pour voir l'erreur. · Go back to Hush to see the error.");
@@ -454,6 +456,12 @@ wss.on("connection", (ws, req) => {
           const data = msg.op === "send" ? await bot.chatSend(c.user.id, msg.text) : await bot.chatHistory(c.user.id);
           ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data }));
         } catch (e) { ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: false, error: e.message })); }
+      }
+      else if (msg.type === "has-hush") {
+        // Parmi ces personnes, qui a déjà Hush (pour proposer « Inviter sur Hush » aux autres)
+        const known = new Set(Object.values(sessions).map((x) => x.id));
+        const ids = Array.isArray(msg.ids) ? msg.ids.slice(0, 100).map(String) : [];
+        ws.send(JSON.stringify({ type: "mod-result", rid: msg.rid, ok: true, data: ids.filter((id) => known.has(id)) }));
       }
       else if (msg.type === "home") {
         // Qui a Hush : toutes les sessions connues ; en ligne : appli ouverte en ce moment
