@@ -418,6 +418,8 @@ ipcMain.handle("usage:top", async () => {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
+// Lien hush:// (bouton « Retourner sur Hush » de la page de connexion) : ouvre Hush, ou le ramène devant
+if (gotLock && app.isPackaged) { try { app.setAsDefaultProtocolClient("hush"); } catch {} }
 app.on("second-instance", (_e, argv) => {
   if (argv.includes("--cache")) return; // relancé au démarrage alors qu'il tourne déjà : rien à faire
   showMain();
@@ -581,6 +583,8 @@ app.whenReady().then(() => {
     if (session === botLink) send("voice:state", state);
   });
   botLink.meta = { version: app.getVersion(), os: process.platform };
+  // Compte lié (page « C'est bon ! » dans le navigateur) : Hush revient devant tout de suite, en vocal ou pas
+  botLink.onLinked = () => { botLink.loggedInAt = 0; bringToFront(); };
   botLink.onChat = (m) => send("chat:message", m);
   botLink.onFriends = () => send("friends:changed");
   botLink.onVideo = (m) => sendMain("video:signal", m);
@@ -616,8 +620,9 @@ app.whenReady().then(() => {
   // Bouton « Hush » sur la fenêtre de Discord (Windows) : activé de base, coupable dans les paramètres
   discordBtn = new DiscordButton({
     icon: ICON,
-    onOpen: () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } },
+    onOpen: () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); sendMain("sfx", "toHush"); } },
     getFrac: () => (typeof data.dcBtnFrac === "number" ? data.dcBtnFrac : 0.36),
+    getStyle: () => data.dcBtnStyle || null,
     setFrac: (f) => { data.dcBtnFrac = f; clearTimeout(discordBtn.saveT); discordBtn.saveT = setTimeout(persist, 800); },
   });
   if (data.discordBtn !== false) discordBtn.start();
@@ -720,6 +725,7 @@ ipcMain.handle("account:delete", async () => {
   return { ok: true };
 });
 ipcMain.handle("voice:home", () => (botLink.ws ? botLink.home().catch(() => null) : null));
+ipcMain.handle("voice:hasHush", (_e, ids) => (botLink.ws && Array.isArray(ids) ? botLink.hasHush(ids.filter((x) => /^\d{5,25}$/.test(String(x))).slice(0, 100)).catch(() => null) : null));
 ipcMain.handle("bot:info", async () => {
   const i = await botLink.info();
   return i && { ...i, linked: !!(botLink.ws && botLink.ws.readyState === 1), admin: !!botLink.admin, role: botLink.role || "standard" };
@@ -875,7 +881,14 @@ ipcMain.handle("clip:show", (_e, file) => {
   if (f.startsWith(clipsDir() + path.sep)) shell.showItemInFolder(f); else shell.openPath(clipsDir());
 });
 let discordBtn = null;
-ipcMain.handle("dcbtn:get", () => ({ supported: process.platform === "win32", on: data.discordBtn !== false }));
+ipcMain.handle("dcbtn:get", () => ({ supported: process.platform === "win32", on: data.discordBtn !== false, style: data.dcBtnStyle || null }));
+ipcMain.handle("dcbtn:style", (_e, st) => {
+  const hex = (v, d) => (/^#[0-9a-f]{6}$/i.test(String(v)) ? String(v) : d);
+  data.dcBtnStyle = { shape: ["pill", "soft", "round", "outline"].includes(st && st.shape) ? st.shape : "pill", c1: hex(st && st.c1, "#ff4fa3"), c2: hex(st && st.c2, "#a35cff") };
+  persist();
+  if (discordBtn) discordBtn.restyle();
+  return data.dcBtnStyle;
+});
 ipcMain.handle("dcbtn:set", (_e, on) => {
   data.discordBtn = !!on; persist();
   if (discordBtn) { if (on) discordBtn.start(); else discordBtn.stop(); }

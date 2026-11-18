@@ -99,7 +99,7 @@ class BotLink {
       try {
         const r = await fetch(`${this.server()}/auth/poll?state=${state}`).then((x) => x.json());
         misses = 0;
-        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.loggedInAt = Date.now(); this.start(); }
+        if (r.token) { clearInterval(this.loginTimer); this.store.setToken(r.token); this.loggedInAt = Date.now(); this.start(); if (this.onLinked) this.onLinked(); }
         else if (r.error) { clearInterval(this.loginTimer); this.set(this.blank("needs-login", r.error)); }
       } catch {
         // Serveur injoignable plusieurs fois de suite : il a été fermé pendant la connexion
@@ -173,6 +173,8 @@ class BotLink {
 
   // Page d'accueil : vocaux suggérés et membres qui ont Hush
   home() { return this.userAction({ type: "home" }); }
+  // Parmi ces personnes, qui a déjà Hush
+  hasHush(ids) { return this.userAction({ type: "has-hush", ids }); }
   // Infos publiques du serveur (sans connexion) : bot en ligne ?, nom, lien d'invitation
   async info() {
     if (!this.server()) return null;

@@ -14,6 +14,7 @@ function notifAdd(item) {
   Notif.items.unshift({ ...item, at: Date.now(), read: Notif.open });
   Notif.items = Notif.items.slice(0, 30);
   notifSave();
+  Sfx.play("notif");
   notifDraw();
 }
 
@@ -133,6 +134,10 @@ if (!MINI) window.studio.friends.onInvite((inv) => {
 
 // Appelé par la liste d'amis à chaque mise à jour : nouvelles demandes, amis qui arrivent en vocal
 window.notifOnFriends = (before, now) => {
+  // Nouvelle demande d'ami : petit son (pas au premier chargement de la liste)
+  const ids = new Set((now.incoming || []).map((p) => p.id));
+  if (Notif.knownReq && [...ids].some((id) => !Notif.knownReq.has(id))) Sfx.play("notif");
+  Notif.knownReq = ids;
   if (before) for (const p of now.friends) {
     const was = before.get(p.id);
     if (p.voice && p.voice.channelId && (!was || was.channelId !== p.voice.channelId)) notifAdd({ kind: "voice", from: { id: p.id, name: p.name, avatar: p.avatar }, voice: p.voice });
