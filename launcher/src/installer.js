@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const https = require("https");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const os = require("os");
 const extract = require("extract-zip");
 
@@ -204,11 +204,30 @@ class Installer {
     }
     // Linux : Ubuntu 24.04+ bloque le bac à sable de Chromium pour les applis non installées par le système,
     // les applis Electron plantent au démarrage sans --no-sandbox
-    else if (process.platform === "win32") return launchWindows(s.exec, env);
+    else if (process.platform === "win32") {
+      // Une ancienne version qui tourne encore (lancée au démarrage du PC avant la mise à jour) garderait la place :
+      // la nouvelle se fermerait aussitôt en lui passant la main. On l'arrête, puis on efface ses fichiers.
+      if (stopOldWindows(path.join(this.appsDir, id), s.dir)) this.cleanOld();
+      return launchWindows(s.exec, env);
+    }
     else child = spawn(s.exec, process.platform === "linux" ? linuxArgs() : [], { detached: true, stdio: "ignore", cwd: path.dirname(s.exec), env });
     child.on("error", () => {});
     child.unref();
   }
+}
+
+// Arrête les programmes lancés depuis une autre version que celle installée (dossier apps/<id>/<ancienne version>)
+function stopOldWindows(appDir, keepDir) {
+  try {
+    const others = fs.readdirSync(appDir).map((v) => path.join(appDir, v)).filter((p) => p.toLowerCase() !== keepDir.toLowerCase());
+    if (!others.length) return false;
+    const q = (x) => "'" + (x + "\\").replace(/'/g, "''") + "'";
+    const cond = others.map((p) => `$_.Path.StartsWith(${q(p)}, 'OrdinalIgnoreCase')`).join(" -or ");
+    spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+      `Get-Process | Where-Object { $_.Path -and (${cond}) } | Stop-Process -Force; Start-Sleep -Milliseconds 600`],
+      { timeout: 8000, windowsHide: true });
+    return true;
+  } catch { return false; }
 }
 
 // Windows : lancement direct. S'il échoue (« spawn UNKNOWN » : un antivirus, Smart App Control ou un fichier bloqué

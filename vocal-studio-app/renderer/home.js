@@ -868,31 +868,9 @@ $("#homeBtn").onclick = () => {
 
 /* ——— Liste de gauche : défilement doux, effet tambour et « tic » de molette ———
    La molette ne saute plus : la liste glisse vers sa cible et ralentit en arrivant. Les salons s'inclinent
-   un peu en s'éloignant du milieu (comme un tambour), et chaque salon qui passe fait un petit « tic »,
+   un peu en s'éloignant du milieu (comme un tambour), et chaque salon qui passe sous la souris fait un petit « tic »,
    comme la molette d'un casque quand on monte le son. */
-const SideScroll = { target: null, raf: 0, lastRow: null, ac: null, lastTick: 0 };
-function crownTick(up) {
-  const now = performance.now();
-  if (now - SideScroll.lastTick < 32) return;
-  SideScroll.lastTick = now;
-  try {
-    const ac = SideScroll.ac || (SideScroll.ac = new AudioContext());
-    if (ac.state === "suspended") ac.resume();
-    const t = ac.currentTime;
-    // Un clic court et mat : un peu de bruit filtré, et une note très brève par-dessus
-    const len = Math.floor(ac.sampleRate * 0.012), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
-    const src = ac.createBufferSource(); src.buffer = buf;
-    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = up ? 3600 : 3100; bp.Q.value = 2.2;
-    const g = ac.createGain(); g.gain.value = 0.22;
-    src.connect(bp).connect(g).connect(ac.destination);
-    const o = ac.createOscillator(), og = ac.createGain();
-    o.type = "sine"; o.frequency.setValueAtTime(up ? 2300 : 2050, t);
-    og.gain.setValueAtTime(0.035, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
-    o.connect(og).connect(ac.destination);
-    src.start(t); o.start(t); o.stop(t + 0.02);
-  } catch { /* pas de son : tant pis */ }
-}
+const SideScroll = { target: null, raf: 0, lastRow: null };
 function sideDrum() {
   const box = $("#homeSideList");
   const mid = box.scrollTop + box.clientHeight / 2, half = Math.max(1, box.clientHeight / 2);
@@ -910,9 +888,9 @@ function sideStep() {
   const first = box.firstElementChild;
   const rowH = (first ? first.offsetHeight : 56) + 6;
   const row = Math.round(box.scrollTop / rowH);
-  if (SideScroll.lastRow !== null && row !== SideScroll.lastRow) crownTick(row < SideScroll.lastRow);
   SideScroll.lastRow = row;
   sideDrum();
+  sideHover(); // la liste glisse sous la souris : le vocal survolé change, ça fait « tic »
   if (Math.abs(d) >= 0.5) SideScroll.raf = requestAnimationFrame(sideStep);
   else { SideScroll.raf = 0; SideScroll.target = null; }
 }
@@ -926,5 +904,21 @@ $("#homeSideList").addEventListener("wheel", (e) => {
   if (SideScroll.lastRow === null) SideScroll.lastRow = Math.round(box.scrollTop / 62);
   if (!SideScroll.raf) SideScroll.raf = requestAnimationFrame(sideStep);
 }, { passive: false });
+// « Tic » quand la souris arrive sur un vocal (en passant dessus, ou parce que la liste défile dessous)
+const SideHover = { x: 0, y: 0, inside: false, row: null };
+function sideHover() {
+  if (!SideHover.inside) return;
+  const el = document.elementFromPoint(SideHover.x, SideHover.y);
+  const row = el && el.closest && el.closest("#homeSideList .hs-row");
+  if (row === SideHover.row) return;
+  const prev = SideHover.row;
+  SideHover.row = row;
+  if (!row) return;
+  // Vers le haut ou vers le bas : le « tic » change un peu de hauteur
+  const up = prev && prev.isConnected ? row.offsetTop < prev.offsetTop : true;
+  Sfx.play("tick", up);
+}
+$("#homeSideList").addEventListener("pointermove", (e) => { SideHover.x = e.clientX; SideHover.y = e.clientY; SideHover.inside = true; sideHover(); });
+$("#homeSideList").addEventListener("pointerleave", () => { SideHover.inside = false; SideHover.row = null; });
 new ResizeObserver(() => sideDrum()).observe($("#homeSideList"));
 new MutationObserver(() => requestAnimationFrame(sideDrum)).observe($("#homeSideList"), { childList: true });

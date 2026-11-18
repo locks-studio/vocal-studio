@@ -107,6 +107,15 @@ function place(el, x, y) {
   el.style.top = Math.max(6, Math.min(y, H - h - 6)) + "px";
 }
 
+// Qui a Hush (réponse du bot, gardée le temps de la session)
+UM.hush = new Map(); UM.hushAsk = new Set();
+function inviteToHush(m) {
+  const msg = `Hey ! Viens sur Hush pour voir nos vocaux Discord en version cinéma (anneaux animés, caméra qui suit celui qui parle, overlay en jeu). Ça s'installe avec 1999 : https://1999.organisationphantom.fr/`;
+  window.studio.voice.copy(msg);
+  window.studio.voice.openProfile(m.id);
+  showToast(`Invitation copiée : colle-la à ${m.name} en message privé`);
+}
+
 // Où en est-on avec cette personne côté amis Hush
 function friendState(id) {
   const fr = typeof Home !== "undefined" && Home.friends;
@@ -131,16 +140,16 @@ function renderUserMenu(m) {
   head.textContent = m.name;
   el.appendChild(head);
 
-  // Couleur de son anneau (mode « Couleur de mes amis ») : elle reste chez toi
-  if (!isMe) {
+  // Couleur de son anneau (mode « Indépendant ») : elle reste chez toi ; sur toi-même, c'est ta couleur
+  {
     const row = document.createElement("label");
     row.className = "um-item um-color";
     const t = document.createElement("span");
-    t.textContent = "Couleur de son anneau";
+    t.textContent = isMe ? "Couleur de ton anneau" : "Couleur de son anneau";
     const inp = document.createElement("input");
     inp.type = "color";
     inp.value = (S.friendColors || {})[id] || "#ff8cc6";
-    inp.oninput = () => { setFriendColor(id, inp.value); if (S.ringFrom !== "friends") { S.ringFrom = "friends"; apply(); showToast("Anneau : « Couleur de mes amis » activé"); } };
+    inp.oninput = () => { setFriendColor(id, inp.value); if (S.ringFrom !== "friends") { S.ringFrom = "friends"; apply(); showToast("Anneau : « Indépendant » activé"); } };
     row.append(t, inp);
     el.appendChild(row);
     el.appendChild(umSep());
@@ -151,7 +160,7 @@ function renderUserMenu(m) {
     if (st === "friend") el.appendChild(umItem("✓ Ami Hush", { off: "Vous êtes déjà amis" }));
     else if (st === "sent") el.appendChild(umItem("Demande d'ami envoyée", { off: "En attente de sa réponse" }));
     else if (st === "incoming") el.appendChild(umItem("Accepter sa demande d'ami", { onClick: () => { friendOp("accept", id); closeUserMenu(); } }));
-    else el.appendChild(umItem("➕ Ajouter en ami Hush", {
+    else if (UM.hush.get(id) !== false) el.appendChild(umItem("➕ Ajouter en ami Hush", {
       onClick: async () => {
         closeUserMenu();
         const r = await window.studio.friends.op("add", id);
@@ -159,6 +168,21 @@ function renderUserMenu(m) {
         else { showToast(`Demande d'ami envoyée à ${m.name}`); friendOp("list"); }
       },
     }));
+    // Pas encore sur Hush : un bouton blanc pour l'inviter (message prêt à coller + son profil Discord ouvert)
+    const has = UM.hush.get(id);
+    if (has === false && friendState(id) !== "friend") {
+      const b = umItem("Inviter sur Hush", { onClick: () => { inviteToHush(m); closeUserMenu(); } });
+      b.classList.add("um-invite");
+      el.appendChild(b);
+    } else if (has === undefined && !UM.hushAsk.has(id)) {
+      UM.hushAsk.add(id);
+      window.studio.voice.hasHush([id]).then((r) => {
+        UM.hushAsk.delete(id);
+        if (!Array.isArray(r)) return; // bot trop ancien ou injoignable : pas de bouton
+        UM.hush.set(id, r.includes(id));
+        if (UM.el && UM.target === id) renderUserMenu(m);
+      });
+    }
   }
 
   // — Dans Hush —
