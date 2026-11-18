@@ -89,6 +89,7 @@ contextBridge.exposeInMainWorld("studio", {
   account: {
     remove: () => ipcRenderer.invoke("account:delete"),
     privacy: () => ipcRenderer.invoke("open:privacy"),
+    devPortal: () => ipcRenderer.invoke("open:devPortal"),
   },
   friends: {
     op: (op, arg) => ipcRenderer.invoke("friends:op", op, arg),
