@@ -5,7 +5,7 @@ const { Client, GatewayIntentBits, Events, MessageFlags, PermissionFlagsBits } =
 const { joinVoiceChannel, getVoiceConnection, VoiceConnectionStatus, entersState, EndBehaviorType } = require("@discordjs/voice");
 const prism = require("prism-media");
 const { EventEmitter } = require("events");
-const { installCommunity } = require("./community");
+const { installCommunity, CREATE_VOICE, TEMP_PREFIX } = require("./community");
 
 const EMPTY_LEAVE_MS = 30_000;
 
@@ -418,6 +418,7 @@ class StudioBot extends EventEmitter {
 
   // ——— Événements Discord ———
   onVoiceState(oldS, newS) {
+    this.onTempVoice(oldS, newS).catch((e) => console.warn("Vocal temporaire :", e.message));
     const guild = newS.guild;
     const chanId = this.botChannelId(guild.id);
     if (chanId) {
@@ -454,6 +455,27 @@ class StudioBot extends EventEmitter {
     }
   }
 
+  // Vocaux temporaires : rejoindre « ➕ Créer ton vocal » crée « 🔊 Vocal de X » (à toi de le gérer) et t'y déplace ;
+  // un vocal temporaire vide est supprimé. Seuls les salons « 🔊 … » rangés à côté du créateur sont concernés.
+  async onTempVoice(oldS, newS) {
+    const guild = newS.guild;
+    const created = newS.channel;
+    if (created && created.name === CREATE_VOICE && newS.member && !newS.member.user.bot) {
+      const m = newS.member;
+      const name = `${TEMP_PREFIX}Vocal de ${m.displayName}`.slice(0, 100);
+      const ch = await guild.channels.create({
+        name, type: 2, parent: created.parentId, reason: "Vocal temporaire",
+        permissionOverwrites: [{ id: m.id, allow: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers, PermissionFlagsBits.Connect, PermissionFlagsBits.MuteMembers] }],
+      });
+      await m.voice.setChannel(ch).catch(async () => { await ch.delete("Vocal temporaire inutilisé").catch(() => {}); });
+    }
+    const left = oldS.channel;
+    if (left && left.id !== (created && created.id) && left.name.startsWith(TEMP_PREFIX) && left.members.size === 0) {
+      const maker = guild.channels.cache.find((c) => c.name === CREATE_VOICE && c.parentId === left.parentId);
+      if (maker) await left.delete("Vocal temporaire vide").catch(() => {});
+    }
+  }
+
   async installServer(i) {
     if (!i.guild) return i.reply({ content: "Cette commande se lance dans un serveur.", flags: MessageFlags.Ephemeral });
     if (i.user.id !== i.guild.ownerId) return i.reply({ content: "Seul le propriétaire du serveur peut lancer cette commande.", flags: MessageFlags.Ephemeral });
@@ -464,13 +486,14 @@ class StudioBot extends EventEmitter {
     const dryRun = i.options.getBoolean("apercu") === true;
     await i.deferReply({ flags: MessageFlags.Ephemeral });
     try {
-      const { created, existing } = await installCommunity(i.guild, { dryRun });
+      const { created, existing, notes } = await installCommunity(i.guild, { dryRun });
       const list = (a) => a.map((x) => `• ${x}`).join("\n");
       let text = dryRun
         ? (created.length ? `**Aperçu — serait créé (${created.length}) :**\n${list(created)}` : "Aperçu : tout est déjà en place, rien ne serait créé.")
         : (created.length ? `**Créé (${created.length}) :**\n${list(created)}` : "Tout était déjà en place : rien n'a été créé.");
       if (existing.length) text += `\n\nDéjà là, laissé tel quel : ${existing.length} élément·s.`;
-      if (!dryRun) text += "\n\nÉtape suivante : Paramètres du serveur → **Activer la Communauté**.";
+      if (notes.length) text += "\n\n" + notes.join("\n");
+      if (!dryRun && created.length) text += "\n\nÀ faire toi-même : donne le rôle **Équipe Hush** à ton équipe, et dans Paramètres du serveur › Profil du serveur, ajoute une bannière et une description.";
       await i.editReply(text.length > 1900 ? text.slice(0, 1900) + "…" : text);
     } catch (e) {
       console.error("installer-hush :", e);
