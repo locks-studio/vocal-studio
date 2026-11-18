@@ -532,29 +532,51 @@ async function renderSetup(card, screen) {
     seg.appendChild(b);
   };
   segBtn("bot", "Avec le bot");
-  segBtn("local", "Connexion directe (testeurs)");
+  segBtn("local", "Connexion directe");
 
   // Mode bot : juste l'adresse du serveur Hush
   const botBox = el("div", { class: "setup-box" });
   botBox.append(el("p", {}, "Le bot Hush rejoint ton salon vocal et transmet qui parle. Ça marche pour tout le monde, il suffit que le bot soit invité sur le serveur."),
     f("Adresse du serveur Hush", "cfgServer", cfg.botServer, { placeholder: "https://…" }));
 
-  // Mode direct (RPC) : réservé à toi et à tes testeurs
+  // Mode direct (RPC). Discord limite l'appli Hush à 50 testeurs : chacun peut donc créer SA propre appli
+  // Discord (gratuit, 2 minutes) ; son créateur n'a pas cette limite. Un assistant en 3 étapes guide tout.
   const localBox = el("div", { class: "setup-box" });
-  // Rien à remplir : Hush lit le Discord ouvert sur ce PC, et le serveur Hush fait l'échange secret.
-  // Les identifiants ne servent qu'au propriétaire de l'appli (rangés dans « Avancé »).
-  const intro = el("p", {}, "Hush lit directement ton Discord ouvert sur ce PC : il voit tous tes vocaux, sur n'importe quel serveur, et tes appels. Rien à remplir. Il faut juste que le créateur de Hush t'ait ajouté comme testeur de l'appli (tu reçois une invitation Discord à accepter).");
-  const adv = el("details", { class: "setup-adv" });
-  adv.append(el("summary", {}, "Avancé (créateur de l'appli seulement)"),
-    f("Client ID", "cfgId", cfg.clientId, { inputmode: "numeric", placeholder: "Vide = celui du serveur Hush" }),
-    f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret ? "Déjà enregistré (laisse vide pour le garder)" : "Vide = échange par le serveur Hush" }),
-    f("URL de redirection (la même que sur le portail)", "cfgRedirect", cfg.redirectUri));
-  localBox.append(intro, adv);
+  const intro = el("p", {}, "Hush lit directement ton Discord ouvert sur ce PC : tous tes vocaux, sur n'importe quel serveur, tes appels privés, ton micro et le volume de chacun.");
+  let sub = cfg.mode === "local" && !cfg.clientId ? "tester" : "mine";
+  const subSeg = el("div", { class: "seg two", role: "group", "aria-label": "Quelle appli Discord" });
+  const subBtn = (v, label) => { const b = button(label, "", () => { sub = v; show(); }); b.dataset.v = v; subSeg.appendChild(b); };
+  subBtn("mine", "Ma propre appli");
+  subBtn("tester", "Je suis testeur de Hush");
+  // L'assistant : chaque étape a son bouton (ouvrir le portail, copier l'adresse), puis on colle 2 codes
+  const mine = el("div", { class: "myapp" });
+  const step = (n, title, text, ...extra) => {
+    const d = el("div", { class: "myapp-step" });
+    const h = el("div", { class: "myapp-h" }); h.append(el("b", { class: "myapp-n" }, String(n)), el("span", {}, title));
+    d.append(h, el("p", {}, text), ...extra);
+    return d;
+  };
+  const copyBtn = (label, text) => button(label, "ghost", async () => { await window.studio.voice.copy(text); showToast(`« ${text} » copié`); });
+  mine.append(
+    el("p", { class: "myapp-why" }, "Discord ne laisse que 50 personnes utiliser l'appli de Hush. Avec ta propre appli (gratuite, 2 minutes), tu n'as aucune limite : tu en es le créateur."),
+    step(1, "Crée ton appli", "Ouvre le portail des développeurs de Discord (connecte-toi si besoin). Clique sur « New Application » en haut à droite, appelle-la « Hush », coche la case et clique « Create ».",
+      actions(button("Ouvrir le portail Discord", "cta", () => window.studio.account.devPortal()))),
+    step(2, "Ajoute l'adresse de retour", "Dans le menu à gauche, va dans « OAuth2 ». Dans « Redirects », clique « Add Redirect », colle http://localhost puis clique « Save Changes » en bas.",
+      actions(copyBtn("Copier http://localhost", "http://localhost"))),
+    step(3, "Colle tes 2 codes ici", "Toujours dans « OAuth2 » : copie le « Client ID ». Puis clique « Reset Secret », confirme, et copie le secret qui s'affiche (il ne se montre qu'une fois).",
+      f("Client ID", "cfgId", cfg.clientId, { inputmode: "numeric", placeholder: "Une suite de 17 à 20 chiffres" }),
+      f("Client Secret", "cfgSecret", "", { type: "password", placeholder: cfg.hasSecret && cfg.clientId ? "Déjà enregistré (laisse vide pour le garder)" : "Le secret copié à l'étape 3" })),
+    step(4, "Connecte-toi", "Clique « Enregistrer et connecter » en bas. Discord s'ouvre et te demande d'autoriser ton appli : clique « Autoriser ». C'est fini, pour toujours sur ce PC."));
+  const err = el("p", { class: "err" }); err.hidden = true;
+  const tester = el("p", { class: "hint" }, "Rien à remplir : il faut juste que le créateur de Hush t'ait ajouté comme testeur de son appli (tu reçois une invitation Discord à accepter).");
+  localBox.append(intro, subSeg, mine, tester, err);
 
   function show() {
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === mode));
+    subSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === sub));
     botBox.hidden = mode !== "bot";
     localBox.hidden = mode !== "local";
+    mine.hidden = sub !== "mine"; tester.hidden = sub !== "tester"; err.hidden = true;
     $("#cfgServer").required = mode === "bot";
 
   }
@@ -566,11 +588,20 @@ async function renderSetup(card, screen) {
   form.appendChild(row);
   form.onsubmit = async (e) => {
     e.preventDefault();
+    // Ma propre appli : on vérifie les 2 codes avant d'aller plus loin (erreurs fréquentes : espaces, mauvais champ)
+    const id = $("#cfgId").value.replace(/\s/g, ""), secret = $("#cfgSecret").value.trim();
+    if (mode === "local" && sub === "mine") {
+      const bad = !/^\d{17,20}$/.test(id) ? "Le Client ID est une suite de 17 à 20 chiffres : recopie-le depuis « OAuth2 » (bouton Copy)."
+        : !secret && !(cfg.hasSecret && cfg.clientId === id) ? "Colle aussi le Client Secret (étape 3 : « Reset Secret » puis copie)."
+        : secret && (secret.length < 20 || /^\d+$/.test(secret)) ? "Ce Client Secret n'a pas l'air bon : c'est une suite de lettres et de chiffres, pas le Client ID."
+        : "";
+      if (bad) { err.textContent = bad; err.hidden = false; return; }
+    }
     editingConfig = false;
     if (S.demo) setDemo(false, true);
     await window.studio.config.save(mode === "bot"
       ? { mode, botServer: $("#cfgServer").value }
-      : { mode, clientId: $("#cfgId").value, clientSecret: $("#cfgSecret").value, redirectUri: $("#cfgRedirect").value });
+      : sub === "mine" ? { mode, clientId: id, clientSecret: secret, redirectUri: "http://localhost" } : { mode, clientId: "", clientSecret: "", redirectUri: "http://localhost" });
   };
   card.appendChild(form);
   show();

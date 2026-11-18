@@ -652,6 +652,8 @@ ipcMain.handle("config:save", (_e, { mode, botServer, clientId, clientSecret, re
     data.clientId = String(clientId || "").trim();
     data.redirectUri = String(redirectUri || "http://localhost").trim();
     if (clientSecret) data.clientSecret = seal(String(clientSecret).trim());
+    // Plus d'appli à soi (testeur de l'appli Hush) : l'ancien secret ne doit pas servir avec l'appli Hush
+    if (!data.clientId) delete data.clientSecret;
   } else {
     const server = String(botServer || "").trim().replace(/\/$/, "");
     if (server !== data.botServer) delete data.botToken;
@@ -796,6 +798,8 @@ ipcMain.handle("win:minimize", (e) => winOf(e).minimize());
 ipcMain.handle("win:maximize", (e) => { const w = winOf(e); w.isMaximized() ? w.unmaximize() : w.maximize(); });
 ipcMain.handle("win:close", (e) => winOf(e).close());
 ipcMain.handle("open:privacy", () => safeOpen("https://1999.organisationphantom.fr/confidentialite.html"));
+// Assistant « Ma propre appli Discord » : le portail des développeurs, où chacun crée son appli
+ipcMain.handle("open:devPortal", () => safeOpen("https://discord.com/developers/applications"));
 ipcMain.handle("win:reload", (e) => e.sender.reload()); // location.reload est bloqué par la protection will-navigate
 ipcMain.handle("win:fullscreen", (e) => { const w = winOf(e); w.setFullScreen(!w.isFullScreen()); });
 ipcMain.handle("win:pin", (e, on) => { const w = winOf(e); w.setAlwaysOnTop(!!on, "floating"); return w.isAlwaysOnTop(); });

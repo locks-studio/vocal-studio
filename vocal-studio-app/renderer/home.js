@@ -99,7 +99,7 @@ function plainError(msg) {
   const m = String(msg);
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|ne répond plus/i.test(m)) return "Le serveur du bot ne répond pas : il est peut-être éteint. Réessaie dans un moment.";
   if (/invalid_grant/i.test(m)) return "La liaison à Discord a expiré. Clique à nouveau sur Lier, puis Autoriser dans Discord.";
-  if (/oauth2|invalid_client|invalid_scope|not authori[sz]ed|tester/i.test(m)) return "Discord refuse la connexion directe : ton compte doit être ajouté aux testeurs de l'appli. Passe plutôt par le bot (Modifier la connexion).";
+  if (/oauth2|invalid_client|invalid_scope|not authori[sz]ed|tester/i.test(m)) return "Discord refuse la connexion directe : ton compte n'est pas testeur de l'appli Hush. Crée ta propre appli en 2 minutes (Modifier la connexion › Connexion directe › Ma propre appli), ou passe par le bot.";
   return m;
 }
 
