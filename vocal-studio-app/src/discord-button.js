@@ -6,6 +6,8 @@ const { BrowserWindow, screen } = require("electron");
 const { spawn } = require("child_process");
 
 const W = 86, H = 22;
+// Marge transparente autour du bouton : son ombre et sa lueur ont la place de s'étaler sans être coupées par la fenêtre
+const PAD = 7;
 // Lit toutes les 250 ms : la fenêtre principale de Discord, sa place (pixels réels), si elle est réduite et au premier plan
 const PS = `
 $ErrorActionPreference = 'SilentlyContinue'
@@ -141,14 +143,14 @@ while ($true) {
     try { r = screen.screenToDipRect(null, r); } catch {}
     const frac = Math.max(0.05, Math.min(0.95, this.o.getFrac()));
     // Sur la barre de titre de Discord, à l'endroit choisi, 15 px plus bas que le haut de la fenêtre
-    const x = Math.round(r.x + (r.width - this.w()) * frac), y = Math.round(r.y + 6);
+    const x = Math.round(r.x + (r.width - this.w()) * frac) - PAD, y = Math.round(r.y + 6) - PAD;
     this.show({ x, y });
   }
 
   ensure() {
     if (this.win && !this.win.isDestroyed()) return this.win;
     const win = new BrowserWindow({
-      width: this.w(), height: H, show: false, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+      width: this.w() + 2 * PAD, height: H + 2 * PAD, show: false, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
       skipTaskbar: true, alwaysOnTop: false, hasShadow: false, backgroundColor: "#00000000", icon: this.o.icon,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
@@ -183,7 +185,7 @@ public class HushO { [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW")] p
   show(p) {
     clearTimeout(this.hideT);
     const win = this.ensure();
-    if (!this.last || this.last.x !== p.x || this.last.y !== p.y) win.setBounds({ x: p.x, y: p.y, width: this.w(), height: H });
+    if (!this.last || this.last.x !== p.x || this.last.y !== p.y) win.setBounds({ x: p.x, y: p.y, width: this.w() + 2 * PAD, height: H + 2 * PAD });
     this.last = p;
     if (!win.isVisible()) { win.showInactive(); if (this.lastHwnd) this.setOwner(this.lastHwnd); }
   }
@@ -209,12 +211,14 @@ const page = (st) => `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <style>
 html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;font:700 12px "Segoe UI",system-ui,sans-serif}
+body{box-sizing:border-box;padding:${PAD}px}
 button{all:unset;box-sizing:border-box;width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:999px;cursor:pointer;color:#fff;
-  background:linear-gradient(135deg,${st.c1},${st.c2});box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 4px rgba(0,0,0,.35);transition:filter .15s}
+  background:linear-gradient(135deg,${st.c1},${st.c2});box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 4px rgba(0,0,0,.35),0 0 7px ${st.c1}99;transition:filter .15s,box-shadow .15s}
+button:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 4px rgba(0,0,0,.35),0 0 9px ${st.c1}cc}
 body.soft button{border-radius:6px}
 body.round button{border-radius:50%}
 body.round b{display:none}
-body.outline button{border:2px solid transparent;background:linear-gradient(#1e1f22,#1e1f22) padding-box,linear-gradient(135deg,${st.c1},${st.c2}) border-box;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+body.outline button{border:2px solid transparent;background:linear-gradient(#1e1f22,#1e1f22) padding-box,linear-gradient(135deg,${st.c1},${st.c2}) border-box;box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 7px ${st.c1}80}
 body.outline i{background:linear-gradient(135deg,${st.c1},${st.c2});box-shadow:0 0 6px ${st.c1}}
 button:hover{filter:brightness(1.12)}
 button:active{filter:brightness(.92)}
