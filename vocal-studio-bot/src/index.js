@@ -355,7 +355,8 @@ wss.on("connection", (ws, req) => {
   ws.alive = true;
   ws.on("pong", () => { ws.alive = true; });
   const c = { ws, user: null, last: null, cid: ++nextCid, rtc: false, video: { cam: false, screen: false } };
-  const authTimer = setTimeout(() => ws.close(4001, "auth"), 10_000);
+  // Trop lent à s'identifier (connexion lente) : code à part, l'appli réessaie sans oublier le compte lié
+  const authTimer = setTimeout(() => ws.close(4008, "auth trop lente"), 10_000);
   ws.on("message", async (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }

@@ -102,6 +102,8 @@ const botStore = {
   getServer: () => data.botServer || DEFAULT_BOT_SERVER,
   getToken: () => unseal(data.botToken),
   setToken: (t) => { if (t) data.botToken = seal(t); else delete data.botToken; persist(); },
+  // Jeton de secours (celui de 1999 quand Hush avait déjà le sien) : essayé si le premier est refusé
+  takeSpare: () => { const t = unseal(data.botTokenSpare); delete data.botTokenSpare; persist(); return t; },
 };
 
 const spotifyStore = {
@@ -544,7 +546,11 @@ function launcherSession() {
   const t = process.env.HUSH_SESSION;
   delete process.env.HUSH_SESSION;
   if (!t || !/^[\w-]{20,100}$/.test(t)) return;
-  botStore.setToken(t);
+  // Hush a déjà son compte lié : on le garde (le jeton de 1999 peut être plus ancien et refusé par le bot,
+  // ce qui redemandait de lier le compte à chaque lancement). Celui de 1999 reste en secours.
+  const cur = botStore.getToken();
+  if (!cur) botStore.setToken(t);
+  else if (cur !== t) { data.botTokenSpare = seal(t); persist(); }
   // Le bot est la connexion par défaut. Une connexion directe qui n'a jamais marché (pas testeur) passe au bot ;
   // celle de quelqu'un dont elle fonctionne reste en place.
   if (data.mode === "local" && !store.getToken()) data.mode = "bot";
@@ -654,7 +660,8 @@ ipcMain.handle("config:save", (_e, { mode, botServer, clientId, clientSecret, re
     if (clientSecret) data.clientSecret = seal(String(clientSecret).trim());
   } else {
     const server = String(botServer || "").trim().replace(/\/$/, "");
-    if (server !== data.botServer) delete data.botToken;
+    // Même serveur écrit autrement (adresse par défaut, barre finale) : le compte lié est gardé
+    if (server !== botStore.getServer().replace(/\/$/, "")) delete data.botToken;
     data.botServer = server;
   }
   useMode(mode);

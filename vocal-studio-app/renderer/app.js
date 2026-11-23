@@ -2071,8 +2071,10 @@ function hexA(col, a) {
 }
 
 /* ——— Disposition « Libre » ———
-   Chaque membre est posé où tu veux (glisser-déposer), sur un plan en 3D.
-   La caméra fonctionne comme en Cinéma 3D : elle glisse et zoome vers celui qui parle, le plan pivote un peu. */
+   Chaque membre est posé où tu veux (glisser-déposer), sur un grand plan en 3D (environ 2,5 écrans de large et 2 de haut).
+   La caméra recadre toute seule pour que tout le monde reste visible, et comme en Cinéma 3D elle glisse vers celui
+   qui parle. Pour placer quelqu'un plus loin que le bord, garde-le contre le bord : le plan s'agrandit. */
+const FREE_X = 1.25, FREE_Y = 1; // limites du plan (1 = la largeur ou la hauteur de la fenêtre)
 const freeCam = { x: 0, y: 0, z: 1 };
 let freeDrag = null;
 function freePosOf(id, i, n) {
@@ -2082,41 +2084,71 @@ function freePosOf(id, i, n) {
   const r = Math.floor(i / cols), inRow = r === rows - 1 ? n - r * cols : cols, c = i % cols;
   return { x: inRow <= 1 ? 0 : (c / (inRow - 1) - 0.5) * 0.66 * (inRow / cols), y: rows <= 1 ? 0.06 : (r / (rows - 1) - 0.5) * 0.4 + 0.08 };
 }
+// Le cadre qui montre tout le monde : centre et zoom (jamais plus grand que 100 %)
+function freeFit(pos, W, H) {
+  const tile = parseFloat(stage.style.getPropertyValue("--ctile")) || 120;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of pos.values()) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  if (x0 === Infinity) return { x: 0, y: 0, z: 1 };
+  // Marges : la tuile entière et son pseudo (au-dessus ou en dessous)
+  const z = Math.min(1, (W * 0.9) / ((x1 - x0) * W + tile * 1.15), (H * 0.84) / ((y1 - y0) * H + tile * 1.6));
+  // Tout tient sans dézoomer : on garde le plan centré comme avant ; sinon on centre sur le groupe
+  return z >= 1 && Math.max(Math.abs(x0), Math.abs(x1)) < 0.5 && Math.max(Math.abs(y0), Math.abs(y1)) < 0.47 ? { x: 0, y: 0, z: 1 } : { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z };
+}
 function free(t) {
   const W = stage.clientWidth, H = stage.clientHeight;
   const list = [...tiles.values()].filter((x) => !(S.hideMuted && x.el.classList.contains("muted") && !x.el.classList.contains("me")));
-  const cam = S.camera && !reduced && !freeDrag;
-  // Cible : le membre verrouillé (Ctrl+clic) ou celui qui parle ; personne : tout le monde au centre
+  const cam = S.camera && !reduced;
   const n = list.length;
+  // Membre qu'on fait glisser : il suit la souris, dans le repère de la caméra du moment
+  if (freeDrag && freeDrag.sx != null) {
+    const p = {
+      x: Math.max(-FREE_X, Math.min(FREE_X, (freeDrag.sx - W / 2) / (W * freeCam.z) + freeCam.x + freeDrag.ox)),
+      y: Math.max(-FREE_Y, Math.min(FREE_Y, (freeDrag.sy - H / 2) / (H * freeCam.z) + freeCam.y + freeDrag.oy)),
+    };
+    S.freePos[freeDrag.tile.data.id] = p;
+  }
   const pos = new Map(list.map((x, i) => [x.data.id, freePosOf(x.data.id, i, n)]));
+  const fit = freeFit(pos, W, H);
+  // Cible : le membre verrouillé (Ctrl+clic) ou celui qui parle ; personne : tout le groupe
   const speaking = Date.now() - (lastSpoke.get(focusId) || 0) < 2500;
   const aimId = view.lock || (speaking ? focusId : null);
-  // La caméra se rapproche de celui qui parle sans perdre tout le groupe de vue (60 % du chemin)
-  const tp = cam && aimId && pos.get(aimId);
-  const aim = tp ? { x: tp.x * 0.6, y: tp.y * 0.6 } : { x: 0, y: 0 };
-  const zAim = cam && aimId ? 1.15 : 1;
-  const k = reduced ? 1 : 0.04 * S.speed;
-  if (!freeDrag) {
-    freeCam.x += (aim.x - freeCam.x) * k;
-    freeCam.y += (aim.y - freeCam.y) * k;
-    freeCam.z += (zAim - freeCam.z) * k;
+  // La caméra se rapproche de celui qui parle sans perdre le groupe de vue (60 % du chemin)
+  const tp = cam && !freeDrag && aimId && pos.get(aimId);
+  // Vers celui qui parle, mais sans jamais sortir quelqu'un de l'écran : on prend l'approche la plus franche
+  // (jusqu'à 60 % du chemin et un zoom de 115 %) qui garde encore tout le monde dans le cadre
+  let aim = { x: fit.x, y: fit.y }, zAim = fit.z;
+  if (tp) {
+    const tile = parseFloat(stage.style.getPropertyValue("--ctile")) || 120, all = [...pos.values()];
+    const inside = (cx, cy, z) => all.every((p) => Math.abs((p.x - cx) * W * z) + tile * z * 0.58 <= W * 0.48 && Math.abs((p.y - cy) * H * z) + tile * z * 0.8 <= H * 0.46);
+    search: for (const pull of [0.6, 0.45, 0.3, 0.15, 0]) for (const z of [1.15, 1.08, 1, fit.z]) {
+      if (z < fit.z) continue;
+      const cx = fit.x + (tp.x - fit.x) * pull, cy = fit.y + (tp.y - fit.y) * pull;
+      if (pull === 0 || inside(cx, cy, z)) { aim = { x: cx, y: cy }; zAim = pull === 0 ? fit.z : z; break search; }
+    }
   }
+  // Pendant un glisser, la caméra recadre plus doucement (le plan s'agrandit quand on reste contre le bord)
+  const k = reduced ? 1 : (freeDrag ? 0.025 : 0.04 * S.speed);
+  freeCam.x += (aim.x - freeCam.x) * k;
+  freeCam.y += (aim.y - freeCam.y) * k;
+  freeCam.z += (zAim - freeCam.z) * k;
   const sp = reduced ? 0 : S.speed;
-  // Le plan pivote vers celui qu'on regarde, comme une caméra qui se tourne, plus une respiration lente
-  const yaw = cam ? -freeCam.x * 28 + 4 * Math.sin(t * 0.0003 * sp) : 0;
-  const pitch = cam ? freeCam.y * 18 + 3 * Math.sin(t * 0.00023 * sp) : 0;
+  // Le plan pivote vers celui qu'on regarde, comme une caméra qui se tourne, plus une respiration lente (pas pendant un glisser)
+  const tilt = cam && !freeDrag;
+  const yaw = tilt ? -(freeCam.x - fit.x) * 28 + 4 * Math.sin(t * 0.0003 * sp) : 0;
+  const pitch = tilt ? (freeCam.y - fit.y) * 18 + 3 * Math.sin(t * 0.00023 * sp) : 0;
   for (const x of list) {
     const p = pos.get(x.data.id);
     const px = (p.x - freeCam.x) * W * freeCam.z;
     const py = (p.y - freeCam.y) * H * freeCam.z;
-    const bob = 5 * Math.sin(t * 0.001 * sp + x.seed);
+    const bob = x === (freeDrag && freeDrag.tile) ? 0 : 5 * Math.sin(t * 0.001 * sp + x.seed);
     x.el.style.transform = `rotateX(${pitch.toFixed(2)}deg) rotateY(${yaw.toFixed(2)}deg) translate3d(${px.toFixed(1)}px, ${(py + bob).toFixed(1)}px, 0) scale(${freeCam.z.toFixed(3)})`;
     x.el.style.zIndex = x === (freeDrag && freeDrag.tile) ? "50" : "";
   }
   // Comme ailleurs : aucun avatar coupé par le bord (il s'efface, et réapparaît en entier)
   if (!freeDrag) hideClipped(list);
 }
-// Glisser un membre pour le placer
+// Glisser un membre pour le placer : on retient où on l'a attrapé, la position suit ensuite la souris
 stage.addEventListener("pointerdown", (e) => {
   if (L !== "free" || e.button !== 0 || e.ctrlKey || e.metaKey) return;
   const el = e.target.closest(".tile");
@@ -2125,18 +2157,18 @@ stage.addEventListener("pointerdown", (e) => {
   e.preventDefault(); e.stopPropagation();
   const list = [...tiles.values()];
   const p = { ...freePosOf(tile.data.id, list.indexOf(tile), list.length) };
-  freeDrag = { tile, x: e.clientX, y: e.clientY, p };
+  const W = stage.clientWidth, H = stage.clientHeight, r = stage.getBoundingClientRect();
+  const sx = e.clientX - r.left, sy = e.clientY - r.top;
+  freeDrag = { tile, sx: null, sy: null, ox: p.x - ((sx - W / 2) / (W * freeCam.z) + freeCam.x), oy: p.y - ((sy - H / 2) / (H * freeCam.z) + freeCam.y) };
   el.setPointerCapture(e.pointerId);
   el.classList.add("dragging");
 });
 stage.addEventListener("pointermove", (e) => {
   if (!freeDrag) return;
-  const W = stage.clientWidth, H = stage.clientHeight;
-  const p = {
-    x: Math.max(-0.48, Math.min(0.48, freeDrag.p.x + (e.clientX - freeDrag.x) / (W * freeCam.z))),
-    y: Math.max(-0.45, Math.min(0.45, freeDrag.p.y + (e.clientY - freeDrag.y) / (H * freeCam.z))),
-  };
-  S.freePos[freeDrag.tile.data.id] = p;
+  const r = stage.getBoundingClientRect();
+  // Contre le bord (ou au-delà) : on reste au bord, et la caméra dézoome peu à peu pour aller plus loin
+  freeDrag.sx = Math.max(0, Math.min(r.width, e.clientX - r.left));
+  freeDrag.sy = Math.max(0, Math.min(r.height, e.clientY - r.top));
 });
 const endFreeDrag = () => {
   if (!freeDrag) return;
