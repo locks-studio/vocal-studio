@@ -35,19 +35,11 @@
       "icon": "../vocal-studio-app/build/icon.png",
       "banner": null,
       "notes": [
-        "Petits sons doux, différents selon le bouton (onglet, pastille, interrupteur…), notification, caméra, stream, passage Hush ↔ Discord",
-        "Accueil : le « tic » de molette sonne au survol d'un vocal (en passant la souris ou en défilant)",
-        "Plongée plus douce : la caméra, un peu au-dessus, tourne lentement et sans arrêt autour de celui qui parle",
-        "Anneau « Indépendant » : tu choisis aussi ta propre couleur",
-        "Pseudos plus jamais rognés sur les côtés ; les vocaux de l'accueil ne sont plus coupés au survol",
-        "Sons désactivables dans Paramètres › Musique, avec leur volume",
-        "Bouton « Aller sur Discord » instantané",
-        "Nouvel onglet Paramètres › Bouton Discord : l'enlever, choisir sa forme (pilule, arrondi, rond, contour) et les couleurs de son dégradé",
-        "Clic droit sur quelqu'un qui n'a pas Hush : « Inviter sur Hush »",
-        "Fonds d'écran nets : « Taille réelle » (jamais agrandie), « Entière », zoom sans flou, et déplacement en largeur ou en hauteur",
-        "Après la connexion Discord, Hush revient tout seul devant (et un bouton « Retourner sur Hush » sur la page)",
-        "Ombre portée des avatars toujours noire et bien placée sous l'avatar",
-        "Curseurs : Windows et Flèche Hush, plus tes propres curseurs (images ou GIF animés) que tu enregistres, renommes et supprimes, avec un « + » pour en créer"
+        "Mode Libre : un plan bien plus grand, place les membres où tu veux (garde-les contre le bord pour aller plus loin) ; la caméra montre toujours tout le monde",
+        "Connexion directe pour tous : crée ta propre appli Discord en 2 minutes, un assistant te guide (plus de limite de 50 testeurs)",
+        "Hush ne te redemande plus de lier ton compte au bot sans raison",
+        "Bouton Hush sur Discord : sa lueur et sa forme ne sont plus coupées",
+        "L'écran « Connecter Discord » défile à la molette"
       ],
       "artifacts": {
         "win32-x64": {
