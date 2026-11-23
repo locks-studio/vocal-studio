@@ -61,7 +61,9 @@ class BotLink {
     ws.on("close", (code) => {
       if (this.ws !== ws || this.stopped) return;
       if (code === 4001) {
-        // Session inconnue du serveur : il faut se reconnecter avec Discord
+        // Session inconnue du serveur : on essaie d'abord le jeton de secours (celui de 1999), sinon il faut se reconnecter
+        const spare = this.store.takeSpare && this.store.takeSpare();
+        if (spare && spare !== this.store.getToken()) { this.store.setToken(spare); return this.start(); }
         this.store.setToken(null);
         return this.set(this.blank("needs-login"));
       }
